@@ -23,6 +23,7 @@ export interface LogPayload {
 }
 
 // Supabase table structure (flattened for easier querying)
+// NOTE: context_label is optional - may not exist in older table schemas
 interface SupabaseLogEntry {
   user_id: string;
   timestamp: string;
@@ -37,7 +38,7 @@ interface SupabaseLogEntry {
   target_tag: string;
   target_id: string;
   target_class: string;
-  context_label: string; // New field for data mining
+  context_label?: string; // Optional - may not exist in DB
   viewport_width: number;
   viewport_height: number;
   screen_width: number;
@@ -112,22 +113,27 @@ const sendToGoogleSheets = async (payload: LogPayload) => {
 
 // Send to Supabase
 const sendToSupabase = async (payload: LogPayload) => {
-  if (!isSupabaseConfigured) return;
+  if (!isSupabaseConfigured) {
+    console.warn('[Logging] Supabase not configured');
+    return;
+  }
 
   try {
     const entry = toSupabaseFormat(payload);
+
+    // Remove context_label if it might cause issues with older schemas
+    const safeEntry = { ...entry };
+    delete safeEntry.context_label; // Remove optional field to ensure compatibility
+
     const { error } = await supabase
       .from('user_logs')
-      .insert([entry]);
+      .insert([safeEntry]);
 
     if (error) {
-      // Log error only in development
-      if ((import.meta as any).env?.DEV) {
-        console.warn('Supabase logging error:', error.message);
-      }
+      console.error('[Logging] Supabase insert error:', error.message, error.details);
     }
   } catch (error) {
-    // Silently fail to avoid breaking user experience
+    console.error('[Logging] Exception during insert:', error);
   }
 };
 

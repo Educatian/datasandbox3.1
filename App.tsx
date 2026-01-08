@@ -681,7 +681,7 @@ const App: React.FC = () => {
             </div>
 
 
-            <GlobalClickLogger page={activeModuleId || 'portal'} />
+            <GlobalClickLogger userId={user?.email || user?.id || 'anonymous'} page={activeModuleId || 'portal'} />
             {renderPage()}
             <footer className="text-center text-slate-600 mt-24 pb-8 w-full border-t border-slate-800/50 pt-8">
                 <p className="font-medium">Data Sandbox 1.04</p>
