@@ -69,7 +69,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Welcome to the Data Sorter! I'm Dr. Gem. 🦾 I can update the dataset theme or give you hints. Try me!" }
+        { role: 'model', text: "Welcome to the Data Sorter! I'm Dr. Gem. 🦾\n\n**Your Task:** Drag the floating data capsule and drop it into the correct measurement scale category below (Nominal, Ordinal, Interval, or Ratio).\n\nNeed a hint? Just ask me! You can also type 'theme science' or 'theme sports' to change the dataset." }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -268,8 +268,8 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
                 >
                     <div ref={toastRef} className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#181825] px-8 py-4 rounded-xl text-white font-bold text-center border border-[#89b4fa] transition-opacity duration-300 opacity-0 z-50 pointer-events-none shadow-2xl"></div>
 
-                    {/* Drag Area / Staging */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {/* Drag Area / Staging - positioned higher to avoid overlap with baskets */}
+                    <div className="absolute inset-0 flex items-start justify-center pt-16 pointer-events-none">
                         {currentItem && (
                             <div
                                 ref={capsuleRef}
@@ -283,7 +283,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
                                 <div className="mt-2 w-8 h-1 bg-slate-200 rounded-full"></div>
                             </div>
                         )}
-                        <div className="absolute text-[200px] font-bold text-white/5 select-none pointer-events-none">?</div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[200px] font-bold text-white/5 select-none pointer-events-none">?</div>
                     </div>
 
                     {/* Baskets */}

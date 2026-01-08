@@ -119,11 +119,11 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                 </div>
             )}
 
-            <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4">
+            <main className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4 min-h-[400px]">
                     <DistributionChart distributions={distributionsForChart} />
                 </div>
-                <div className="lg:col-span-2 flex flex-col space-y-8">
+                <div className="md:col-span-1 flex flex-col space-y-6">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-6">
                         <div>
                             <h3 className="text-lg font-semibold text-cyan-400 mb-3 border-b border-cyan-400/20 pb-2">Group 1 (Cyan)</h3>
@@ -173,14 +173,16 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                         </div>
                     </div>
 
-
-                    <UnifiedGenAIChat
-                        moduleTitle={customTitle || "Z-Test Analysis"}
-                        history={chatHistory}
-                        onSendMessage={handleSendMessage}
-                        isLoading={isChatLoading}
-                        variant="embedded"
-                    />
+                    {/* Chat - constrained height with internal scroll */}
+                    <div className="max-h-[300px] overflow-hidden rounded-lg">
+                        <UnifiedGenAIChat
+                            moduleTitle={customTitle || "Z-Test Analysis"}
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
+                    </div>
 
                 </div>
             </main >

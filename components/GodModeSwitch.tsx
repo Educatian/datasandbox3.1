@@ -87,9 +87,9 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
 
     useEffect(() => {
         if (mode === 'experimental') {
-            addBotMessage("⚡ GOD MODE ACTIVATED. You now control the Sunlight directly. Temperature is fixed at 25°C. Prove it's the light!");
+            addBotMessage("⚡ **GOD MODE ACTIVATED** — You now control Sunlight directly.\n\n🔒 **Temperature is fixed at 25°C** (controlled variable).\n\nThis isolates the independent variable so you can prove causality!");
         } else {
-            addBotMessage("📷 Back to Observational Mode. We are just passive observers again.");
+            addBotMessage("📷 **OBSERVATIONAL MODE** — We are passive observers.\n\n⚠️ **Sunlight AND Temperature vary together** (confounding variables).\n\nNotice how it's harder to tell what's really causing plant growth?");
         }
     }, [mode]);
 
@@ -218,8 +218,8 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
                         </div>
                     </div>
 
-                    {/* Unified Chat Interface */}
-                    <div className="h-96">
+                    {/* Unified Chat Interface - constrained height with internal scroll */}
+                    <div className="max-h-[320px] overflow-hidden rounded-xl bg-slate-800 mb-4">
                         <UnifiedGenAIChat
                             moduleTitle="God Mode Switch"
                             history={chatHistory}

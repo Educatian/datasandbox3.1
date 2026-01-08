@@ -174,7 +174,8 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
                         </div>
 
                         <div className={`relative w-48 h-48 bg-slate-800 rounded-3xl border-4 border-indigo-500 shadow-[0_0_50px_rgba(99,102,241,0.2)] flex items-center justify-center transition-transform duration-100 ${isCrunching ? 'animate-shake' : ''}`}>
-                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-16 bg-slate-700 [clip-path:polygon(0%_0%,100%_0%,80%_100%,20%_100%)]"></div>
+                            {/* Hopper - reduced size to avoid covering sigma */}
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-20 h-8 bg-slate-700 [clip-path:polygon(0%_0%,100%_0%,75%_100%,25%_100%)]"></div>
                             <div className="text-9xl font-black text-indigo-500 select-none">Σ</div>
                             <div className={`absolute top-4 right-4 w-3 h-3 rounded-full ${isCrunching ? 'bg-red-500 animate-ping' : 'bg-green-500'}`}></div>
                         </div>
