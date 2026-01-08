@@ -15,7 +15,7 @@ export interface LogPayload {
     x: number; y: number; pageX: number; pageY: number; nx: number; ny: number;
   };
   target: {
-    tagName: string; id: string; className: string;
+    tagName: string; id: string; className: string; label?: string;
   };
   screenSize: {
     viewportWidth: number; viewportHeight: number; screenWidth: number; screenHeight: number;
@@ -37,6 +37,7 @@ interface SupabaseLogEntry {
   target_tag: string;
   target_id: string;
   target_class: string;
+  context_label: string; // New field for data mining
   viewport_width: number;
   viewport_height: number;
   screen_width: number;
@@ -85,6 +86,7 @@ const toSupabaseFormat = (payload: LogPayload): SupabaseLogEntry => ({
   target_tag: payload.target.tagName,
   target_id: payload.target.id,
   target_class: payload.target.className,
+  context_label: payload.target.label || '',
   viewport_width: payload.screenSize.viewportWidth,
   viewport_height: payload.screenSize.viewportHeight,
   screen_width: payload.screenSize.screenWidth,
