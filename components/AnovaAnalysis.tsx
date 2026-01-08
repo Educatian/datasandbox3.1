@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DistributionParams } from '../types';
 import { calculateAnova } from '../services/statisticsService';
-import { getAnovaPValueExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import DistributionChart from './DistributionChart';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface AnovaAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void}> = ({ label, value, min, max, step, onChange }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -36,9 +36,9 @@ const GroupControls: React.FC<{
     <div>
         <h3 className={`text-lg font-semibold ${colorClass} mb-3 border-b ${colorClass.replace('text-', 'border-')}/20 pb-2`}>{title}</h3>
         <div className="space-y-4 mt-3">
-            <Slider label="Mean" value={params.mean} min={10} max={90} step={0.5} onChange={(e) => setParams(p => ({...p, mean: +e.target.value}))} />
-            <Slider label="Standard Deviation" value={params.stdDev} min={2} max={20} step={0.5} onChange={(e) => setParams(p => ({...p, stdDev: +e.target.value}))} />
-            <Slider label="Sample Size (n)" value={params.size} min={5} max={200} step={1} onChange={(e) => setParams(p => ({...p, size: +e.target.value}))} />
+            <Slider label="Mean" value={params.mean} min={10} max={90} step={0.5} onChange={(e) => setParams(p => ({ ...p, mean: +e.target.value }))} />
+            <Slider label="Standard Deviation" value={params.stdDev} min={2} max={20} step={0.5} onChange={(e) => setParams(p => ({ ...p, stdDev: +e.target.value }))} />
+            <Slider label="Sample Size (n)" value={params.size} min={5} max={200} step={1} onChange={(e) => setParams(p => ({ ...p, size: +e.target.value }))} />
         </div>
     </div>
 );
@@ -48,10 +48,14 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
     const [group1, setGroup1] = useState<DistributionParams>({ mean: 40, stdDev: 8, size: 50 });
     const [group2, setGroup2] = useState<DistributionParams>({ mean: 50, stdDev: 8, size: 50 });
     const [group3, setGroup3] = useState<DistributionParams>({ mean: 60, stdDev: 8, size: 50 });
-    
+
     const [anovaResult, setAnovaResult] = useState({ fStatistic: 0, pValue: 1 });
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you interpret these ANOVA results. Try adjusting the group means to see how the F-statistic changes!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const distributionsForChart = useMemo(() => [
         { mean: group1.mean, stdDev: group1.stdDev, color: 'rgb(34 211 238)' },  // Cyan
@@ -64,16 +68,34 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
         setAnovaResult(result);
     }, [group1, group2, group3]);
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getAnovaPValueExplanation(anovaResult.pValue, 3);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
 
-        return () => clearTimeout(handler);
-    }, [anovaResult.pValue]);
+        const context = `
+            We are performing a One-Way ANOVA test.
+            Group 1 (Cyan): Mean=${group1.mean}, SD=${group1.stdDev}, N=${group1.size}
+            Group 2 (Pink): Mean=${group2.mean}, SD=${group2.stdDev}, N=${group2.size}
+            Group 3 (Lime): Mean=${group3.mean}, SD=${group3.stdDev}, N=${group3.size}
+            
+            Current Results:
+            F-Statistic: ${anovaResult.fStatistic.toFixed(3)}
+            P-Value: ${anovaResult.pValue.toFixed(5)}
+            
+            User Question: ${msg}
+            
+            Explain the relationship between the group separation (between-group variance) and the spread within groups (within-group variance) and how that determines the F-statistic.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the variance right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [group1, group2, group3, anovaResult]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -95,8 +117,8 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
                         <GroupControls title="Group 2 (Pink)" colorClass="text-pink-500" params={group2} setParams={setGroup2} />
                         <GroupControls title="Group 3 (Lime)" colorClass="text-lime-400" params={group3} setParams={setGroup3} />
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                         <h3 className="text-lg font-semibold text-cyan-400 mb-3">Test Results</h3>
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                        <h3 className="text-lg font-semibold text-cyan-400 mb-3">Test Results</h3>
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-slate-300">F-Statistic:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
@@ -105,22 +127,20 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">p-value:</span>
-                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
+                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
                                 {anovaResult.pValue < 0.001 && anovaResult.pValue !== 0 ? anovaResult.pValue.toExponential(2) : anovaResult.pValue.toFixed(4)}
                             </span>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    You are comparing the final exam scores of students who used one of three different online learning platforms (Platform A, B, C). ANOVA can tell you if there is a statistically significant difference in the average scores among the three groups. If the p-value is low, it suggests that the choice of platform has a real effect on student performance, prompting further investigation to see which platform is best.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="ANOVA Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

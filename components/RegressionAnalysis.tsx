@@ -2,10 +2,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ResidualPoint, RegressionLine } from '../types';
 import { calculateLinearRegression, calculateRSquared, calculateStandardError } from '../services/statisticsService';
-import { getRegressionExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import RegressionScatterPlot from './RegressionScatterPlot';
 import SpringVisualizer from './SpringVisualizer';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface RegressionAnalysisProps {
     onBack: () => void;
@@ -27,7 +27,7 @@ const generateInitialData = (count: number): ResidualPoint[] => {
     });
 };
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void}> = ({ label, value, min, max, step, onChange }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -48,8 +48,11 @@ const Slider: React.FC<{label: string, value: number, min: number, max: number, 
 
 const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customTitle, customContext }) => {
     const [points, setPoints] = useState<ResidualPoint[]>(() => generateInitialData(25));
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    // Chat State
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Welcome to Regression Analysis! 📉 I'm Dr. Gem. Let's find the line of best fit." }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
     const [hasOutlier, setHasOutlier] = useState<boolean>(false);
 
     // Mode Selection
@@ -60,10 +63,10 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     const [manualLine, setManualLine] = useState<RegressionLine>({ slope: 1, intercept: 20 });
     const [showSquares, setShowSquares] = useState(false);
     const [showMeanLine, setShowMeanLine] = useState(false);
-    
+
     // Physics Experiment State
     const [springMass, setSpringMass] = useState(20);
-    
+
     // Prediction Tool State
     const [predictX, setPredictX] = useState<number>(50);
 
@@ -79,12 +82,12 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
             { id: Date.now(), x, y, yHat: 0, residual: 0 }
         ]);
     }, []);
-    
+
     const resetData = () => {
         if (scenario === 'physics') {
-             setPoints([]);
+            setPoints([]);
         } else {
-             setPoints(generateInitialData(25));
+            setPoints(generateInitialData(25));
         }
     };
 
@@ -92,23 +95,23 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     useEffect(() => {
         if (scenario === 'physics') {
             setPoints([]); // Clear points for fresh experiment
-            setExplanation("Perform the experiment! Use the slider to change the mass, then click 'Measure' to plot data points.");
-            setIsLoading(false);
             setManualLine({ slope: 0.6, intercept: 20 }); // Close to 'true' physics params
+            setChatHistory(prev => [...prev, { role: 'model', text: "Entering Physics Mode! 🧪 Use the slider to change mass, then click 'Measure' to collect data. Can you discover Hooke's Law?" }]);
         } else {
             setPoints(generateInitialData(25));
+            setChatHistory(prev => [...prev, { role: 'model', text: "Back to Abstract Mode. Try to minimize the squared errors!" }]);
         }
     }, [scenario]);
 
     // Physics measurement logic
     const handleMeasureSpring = () => {
         // Physics Model: Length = NaturalLength + Elasticity * Mass + Noise
-        const naturalLength = 20; 
+        const naturalLength = 20;
         const elasticity = 0.6;
         const noise = (Math.random() - 0.5) * 8; // Measurement error
-        
+
         const measuredLength = naturalLength + (elasticity * springMass) + noise;
-        
+
         handleAddPoint(springMass, measuredLength);
     };
 
@@ -133,24 +136,37 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
         });
         return { points: updated, maxResidual };
     }, [points, effectiveLine]);
-    
+
     useEffect(() => {
         setHasOutlier(displayPoints.maxResidual > 35 && points.length > 5);
     }, [displayPoints.maxResidual, points.length]);
 
 
-    // Fetch explanation when R-squared changes significantly (Only in Abstract Mode)
-    useEffect(() => {
-        if (scenario === 'physics') return; 
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getRegressionExplanation(rSquared, hasOutlier);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+    const handleSendMessage = async (msg: string) => {
+        setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
+        setIsChatLoading(true);
 
-        return () => clearTimeout(handler);
-    }, [rSquared, hasOutlier, scenario]);
+        const context = `
+            Regression Analysis (${scenario} mode):
+            - Points: ${points.length}
+            - Line: Slope=${effectiveLine.slope.toFixed(2)}, Intercept=${effectiveLine.intercept.toFixed(2)}
+            - R-Squared: ${rSquared.toFixed(3)}
+            - Standard Error: ${standardError.toFixed(2)}
+            - Manual Mode: ${isManualMode}
+            - Has Outlier: ${hasOutlier}
+            
+            Goal: Understand relationship between X and Y.
+        `;
+
+        try {
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { role: 'model', text: response }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { role: 'model', text: "I'm having trouble analyzing the regression right now." }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
 
     // Predicted Y for the tool
     const predictedY = effectiveLine.slope * predictX + effectiveLine.intercept;
@@ -173,13 +189,13 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
 
             <div className="flex justify-center mb-6">
                 <div className="bg-slate-800 p-1 rounded-lg inline-flex">
-                    <button 
+                    <button
                         onClick={() => setScenario('abstract')}
                         className={`px-4 py-2 rounded-md transition-colors ${scenario === 'abstract' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
                     >
                         Abstract Data
                     </button>
-                    <button 
+                    <button
                         onClick={() => setScenario('physics')}
                         className={`px-4 py-2 rounded-md transition-colors ${scenario === 'physics' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
                     >
@@ -191,18 +207,18 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
             <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left Panel: Visualizer (Physics Mode) or Chart (Abstract Mode) */}
                 <div className={`${scenario === 'physics' ? 'lg:col-span-3' : 'hidden'} bg-slate-800 rounded-lg shadow-2xl p-4 flex flex-col items-center`}>
-                     <h3 className="text-lg font-semibold text-yellow-400 mb-4">Experimental Setup</h3>
-                     <SpringVisualizer mass={springMass} onMeasure={handleMeasureSpring} />
-                     <div className="w-full mt-6 px-2">
+                    <h3 className="text-lg font-semibold text-yellow-400 mb-4">Experimental Setup</h3>
+                    <SpringVisualizer mass={springMass} onMeasure={handleMeasureSpring} />
+                    <div className="w-full mt-6 px-2">
                         <Slider label="Add Mass (g)" value={springMass} min={0} max={100} step={5} onChange={(e) => setSpringMass(+e.target.value)} />
-                     </div>
+                    </div>
                 </div>
 
                 {/* Center Panel: Scatter Plot */}
                 <div className={`${scenario === 'physics' ? 'lg:col-span-6' : 'lg:col-span-8'} bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4`}>
-                    <RegressionScatterPlot 
-                        data={displayPoints.points} 
-                        line={effectiveLine} 
+                    <RegressionScatterPlot
+                        data={displayPoints.points}
+                        line={effectiveLine}
                         onPointUpdate={handlePointUpdate}
                         onAddPoint={handleAddPoint}
                         showSquares={showSquares}
@@ -214,19 +230,19 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
 
                 {/* Right Panel: Controls */}
                 <div className={`${scenario === 'physics' ? 'lg:col-span-3' : 'lg:col-span-4'} flex flex-col space-y-6`}>
-                    
+
                     {/* Mode Toggle & Controls */}
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-yellow-400">Analysis Model</h3>
                             <div className="flex bg-slate-700 rounded-lg p-1">
-                                <button 
+                                <button
                                     onClick={() => setIsManualMode(false)}
                                     className={`px-3 py-1 rounded-md text-sm transition-colors ${!isManualMode ? 'bg-yellow-600 text-white' : 'text-slate-300 hover:text-white'}`}
                                 >
                                     Auto Fit
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => {
                                         setIsManualMode(true);
                                         if (!isManualMode) setManualLine(autoLine);
@@ -240,7 +256,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
 
                         {/* Visual Toggles */}
                         <div className="grid grid-cols-1 gap-3 mb-6">
-                             <label className="flex items-center space-x-2 cursor-pointer group">
+                            <label className="flex items-center space-x-2 cursor-pointer group">
                                 <input type="checkbox" checked={showSquares} onChange={(e) => setShowSquares(e.target.checked)} className="accent-yellow-500 w-4 h-4" />
                                 <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Squared Errors (Least Squares)</span>
                             </label>
@@ -253,22 +269,22 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         {/* Manual Controls */}
                         {isManualMode && (
                             <div className="space-y-4 border-t border-slate-700 pt-4 animate-fade-in mb-4">
-                                <Slider 
-                                    label={scenario === 'physics' ? "Elasticity (Slope)" : "Slope (β₁)"} 
-                                    value={manualLine.slope} 
-                                    min={-2} max={2} step={0.01} 
-                                    onChange={(e) => setManualLine(prev => ({ ...prev, slope: +e.target.value }))} 
+                                <Slider
+                                    label={scenario === 'physics' ? "Elasticity (Slope)" : "Slope (β₁)"}
+                                    value={manualLine.slope}
+                                    min={-2} max={2} step={0.01}
+                                    onChange={(e) => setManualLine(prev => ({ ...prev, slope: +e.target.value }))}
                                 />
-                                <Slider 
+                                <Slider
                                     label={scenario === 'physics' ? "Natural Length (Intercept)" : "Intercept (β₀)"}
-                                    value={manualLine.intercept} 
-                                    min={-20} max={120} step={1} 
-                                    onChange={(e) => setManualLine(prev => ({ ...prev, intercept: +e.target.value }))} 
+                                    value={manualLine.intercept}
+                                    min={-20} max={120} step={1}
+                                    onChange={(e) => setManualLine(prev => ({ ...prev, intercept: +e.target.value }))}
                                 />
                             </div>
                         )}
-                        
-                         <button 
+
+                        <button
                             onClick={resetData}
                             className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
                         >
@@ -278,44 +294,44 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
 
                     {/* Model Metrics */}
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-3">
-                         <h3 className="text-lg font-semibold text-white mb-2">Model Metrics</h3>
+                        <h3 className="text-lg font-semibold text-white mb-2">Model Metrics</h3>
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">R-squared ($R^2$):</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-yellow-400">
                                 {rSquared.toFixed(3)}
                             </span>
                         </div>
-                         <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center">
                             <span className="text-slate-300" title="Standard Error of the Estimate">Std. Error ($S_e$):</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-slate-200">
                                 {standardError.toFixed(2)}
                             </span>
                         </div>
                         {scenario === 'physics' && (
-                             <p className="text-xs text-slate-400 mt-2 border-t border-slate-700 pt-2">
-                                <strong>Physical Interpretation:</strong><br/>
-                                Slope ≈ 0.6 (Elasticity)<br/>
+                            <p className="text-xs text-slate-400 mt-2 border-t border-slate-700 pt-2">
+                                <strong>Physical Interpretation:</strong><br />
+                                Slope ≈ 0.6 (Elasticity)<br />
                                 Intercept ≈ 20 (Rest Length)
                             </p>
                         )}
                     </div>
-                    
+
                     {/* Prediction Tool */}
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-teal-400 mb-3">Prediction Tool</h3>
                         <div className="space-y-3">
                             <label className="flex flex-col text-sm text-slate-400">
                                 <span>Input {scenario === 'physics' ? 'Mass (g)' : 'X Value'}:</span>
                                 <div className="flex items-center space-x-3 mt-1">
-                                    <input 
-                                        type="range" min={0} max={100} value={predictX} 
+                                    <input
+                                        type="range" min={0} max={100} value={predictX}
                                         onChange={(e) => setPredictX(+e.target.value)}
                                         className="flex-grow h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                     />
                                     <span className="font-mono w-10 text-right text-white">{predictX}</span>
                                 </div>
                             </label>
-                             <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-700">
                                 <span className="text-slate-300">Predicted {scenario === 'physics' ? 'Length' : 'Y'}:</span>
                                 <span className="text-xl font-bold font-mono text-teal-400">
                                     {Math.min(100, Math.max(0, predictedY)).toFixed(1)}
@@ -324,7 +340,13 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         </div>
                     </div>
 
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
+                    <UnifiedGenAIChat
+                        moduleTitle="Regression Analysis"
+                        history={chatHistory}
+                        onSendMessage={handleSendMessage}
+                        isLoading={isChatLoading}
+                        variant="embedded"
+                    />
                 </div>
             </main>
             <style>{`

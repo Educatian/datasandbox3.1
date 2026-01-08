@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ContingencyTableData, ChiSquareResult } from '../types';
 import { calculateChiSquareTest } from '../services/statisticsService';
-import { getChiSquareExplanation, getIndependenceExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import ContingencyTableVisualizer from './ContingencyTableVisualizer';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface ChiSquareAnalysisProps {
     onBack: () => void;
@@ -15,9 +15,12 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
         [15, 25]  // Row 2
     ]);
     const [chiResult, setChiResult] = useState<ChiSquareResult | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [infoTopic, setInfoTopic] = useState<'result' | 'independence' | null>(null);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand the relationship between these categorical variables. Try changing the observed frequencies!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const handleTableChange = (rowIndex: number, colIndex: number, value: string) => {
         const numValue = parseInt(value, 10);
@@ -30,27 +33,36 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
     useEffect(() => {
         const result = calculateChiSquareTest(observedData);
         setChiResult(result);
-        setInfoTopic('result'); // Default to showing result explanation when data changes
     }, [observedData]);
 
-    const fetchExplanation = useCallback(async () => {
-        if (!chiResult) return;
-        setIsLoading(true);
-        let exp = '';
-        if (infoTopic === 'result') {
-            exp = await getChiSquareExplanation(chiResult.pValue);
-        } else if (infoTopic === 'independence') {
-            exp = await getIndependenceExplanation();
-        }
-        setExplanation(exp);
-        setIsLoading(false);
-    }, [chiResult, infoTopic]);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
 
-    useEffect(() => {
-        if (!chiResult || infoTopic === null) return;
-        const handler = setTimeout(fetchExplanation, 1500);
-        return () => clearTimeout(handler);
-    }, [chiResult, infoTopic, fetchExplanation]);
+        const context = `
+            We are performing a Chi-Square Test of Independence.
+            Observed Data:
+            Group 1: A=${observedData[0][0]}, B=${observedData[0][1]}
+            Group 2: A=${observedData[1][0]}, B=${observedData[1][1]}
+            
+            Test Results:
+            Chi-Square Statistic: ${chiResult?.chi2.toFixed(3)}
+            P-Value: ${chiResult?.pValue.toFixed(5)}
+            
+            User Question: ${msg}
+            
+            Explain whether there is a significant association between the groups and the categories based on the p-value.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the contingency table right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [observedData, chiResult]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -82,7 +94,7 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
                                     <td><input type="number" value={observedData[0][0]} onChange={e => handleTableChange(0, 0, e.target.value)} className="w-20 bg-slate-900 text-center p-2 rounded" /></td>
                                     <td><input type="number" value={observedData[0][1]} onChange={e => handleTableChange(0, 1, e.target.value)} className="w-20 bg-slate-900 text-center p-2 rounded" /></td>
                                 </tr>
-                                 <tr>
+                                <tr>
                                     <td className="font-normal text-slate-400 text-left">Group 2</td>
                                     <td><input type="number" value={observedData[1][0]} onChange={e => handleTableChange(1, 0, e.target.value)} className="w-20 bg-slate-900 text-center p-2 rounded" /></td>
                                     <td><input type="number" value={observedData[1][1]} onChange={e => handleTableChange(1, 1, e.target.value)} className="w-20 bg-slate-900 text-center p-2 rounded" /></td>
@@ -90,8 +102,8 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
                             </tbody>
                         </table>
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                         <h3 className="text-lg font-semibold text-amber-400 mb-3">Test Results</h3>
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                        <h3 className="text-lg font-semibold text-amber-400 mb-3">Test Results</h3>
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-slate-300">Chi-Square (χ²):</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">{chiResult?.chi2.toFixed(3)}</span>
@@ -101,21 +113,15 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">{chiResult?.pValue.toFixed(4)}</span>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-4 rounded-lg shadow-lg text-center text-sm">
-                        <p className="text-slate-400">What does independence mean?</p>
-                        <button onClick={() => setInfoTopic('independence')} className="text-amber-400 hover:underline">Ask Gemini</button>
-                    </div>
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    You want to know if there's a relationship between a student's chosen major (e.g., STEM vs. Humanities) and their preferred learning resource (e.g., Video Lectures vs. Interactive Textbooks). A low p-value suggests the preference isn't random; for example, STEM students might significantly prefer interactive resources. This insight can guide content development for different learner populations.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Chi-Square Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PCA3DPoint, PCAResult } from '../types';
 import { calculatePCA } from '../services/statisticsService';
-import { getPCAExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import PCAVisualizer from './PCAVisualizer';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface PCAAnalysisProps {
     onBack: () => void;
@@ -19,12 +19,12 @@ const generateEllipsoidData = (count: number): PCA3DPoint[] => {
         let x = 45 * Math.sin(phi) * Math.cos(theta);
         let y = 25 * Math.sin(phi) * Math.sin(theta);
         let z = 10 * Math.cos(phi);
-        
+
         // Add some noise
         x += (Math.random() - 0.5) * 10;
         y += (Math.random() - 0.5) * 10;
         z += (Math.random() - 0.5) * 10;
-        
+
         data.push({ id: i, x, y, z });
     }
     return data;
@@ -33,25 +33,19 @@ const generateEllipsoidData = (count: number): PCA3DPoint[] => {
 const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
     const [data3D, setData3D] = useState<PCA3DPoint[]>(() => generateEllipsoidData(200));
     const [pcaResult, setPcaResult] = useState<PCAResult | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [showExplanation, setShowExplanation] = useState(false);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Principal Component Analysis. I can explain how we simplify 3D data into 2D while keeping the most important information!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => setData3D(generateEllipsoidData(200)), []);
 
     useEffect(() => {
         const result = calculatePCA(data3D);
         setPcaResult(result);
-        setShowExplanation(false);
     }, [data3D]);
-    
-    const fetchExplanation = useCallback(async () => {
-        setIsLoading(true);
-        setShowExplanation(true);
-        const exp = await getPCAExplanation();
-        setExplanation(exp);
-        setIsLoading(false);
-    }, []);
 
     const explainedVariance = useMemo(() => {
         if (!pcaResult) return { pc1: 0, pc2: 0, total: 0 };
@@ -59,6 +53,31 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
         const pc2 = pcaResult.explainedVarianceRatio[1] * 100;
         return { pc1, pc2, total: pc1 + pc2 };
     }, [pcaResult]);
+
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are performing Principal Component Analysis (PCA).
+            First Component Explained Variance: ${explainedVariance.pc1.toFixed(1)}%
+            Second Component Explained Variance: ${explainedVariance.pc2.toFixed(1)}%
+            Total Variance Explained (in 2D): ${explainedVariance.total.toFixed(1)}%
+            
+            User Question: ${msg}
+            
+            Explain what these principal components represent and why dimensionality reduction is useful.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the principal components right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [explainedVariance]);
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -86,30 +105,24 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
                                 <span className="text-slate-300">Principal Component 2:</span>
                                 <span className="font-mono bg-slate-900 px-2 py-1 rounded">{explainedVariance.pc2.toFixed(1)}%</span>
                             </div>
-                             <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-700">
                                 <span className="text-slate-300 font-bold">Total (in 2D):</span>
                                 <span className="font-mono bg-slate-900 px-2 py-1 rounded font-bold">{explainedVariance.total.toFixed(1)}%</span>
                             </div>
                         </div>
-                         <button onClick={regenerateData} className="w-full mt-6 bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg">
+                        <button onClick={regenerateData} className="w-full mt-6 bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg">
                             Regenerate Data
                         </button>
                     </div>
-                    {showExplanation && <GeminiExplanation explanation={explanation} isLoading={isLoading} />}
-                    <div className="bg-slate-800 p-4 rounded-lg shadow-lg text-center text-sm">
-                        <p className="text-slate-400">Why is PCA useful?</p>
-                        <button onClick={fetchExplanation} className="text-violet-400 hover:underline">Ask Gemini</button>
-                    </div>
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    Your learning platform tracks dozens of engagement metrics: clicks, time-on-page, forum posts, video plays, quiz attempts, etc. This is too much to easily interpret. PCA can distill these many variables into a few key "principal components," such as a general "Active Engagement" score and a "Social Participation" score. This simplifies complex data for visualization and analysis.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Principal Component Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

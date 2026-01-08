@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StudentSequence, FrequentPattern, StudentAction } from '../types';
 import { generateSequenceData, findFrequentPatterns } from '../services/statisticsService';
-import { getSPMExplanation } from '../services/geminiService';
-import GeminiExplanation from './GeminiExplanation';
+import { getChatResponse } from '../services/geminiService';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface SPMAnalysisProps {
     onBack: () => void;
@@ -17,7 +17,7 @@ const actionMap: Record<StudentAction, { emoji: string; name: string }> = {
     E: { emoji: '❌', name: 'Fail/Error' },
 };
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string}> = ({ label, value, min, max, step, onChange, format }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string }> = ({ label, value, min, max, step, onChange, format }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -56,8 +56,12 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
     const [sequences, setSequences] = useState<StudentSequence[]>(() => generateSequenceData(100));
     const [support, setSupport] = useState(0.2);
     const [patternLength, setPatternLength] = useState(3);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you find frequent learning patterns. Compare Group A and Group B to see how their strategies differ!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => setSequences(generateSequenceData(100)), []);
 
@@ -69,15 +73,31 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
         return { patternsA, patternsB };
     }, [sequences, support, patternLength]);
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getSPMExplanation(patternsA, patternsB);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
-        return () => clearTimeout(handler);
-    }, [patternsA, patternsB]);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are performing Sequential Pattern Mining (SPM).
+            Minimum Support: ${(support * 100).toFixed(0)}%
+            Pattern Length: ${patternLength}
+            Found Patterns Group A: ${patternsA.length}
+            Found Patterns Group B: ${patternsB.length}
+            
+            User Question: ${msg}
+            
+            Compare the sequential patterns between the two groups and explain what they suggest about learning habits.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the sequential patterns right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [support, patternLength, patternsA.length, patternsB.length]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -100,17 +120,15 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
                         <Slider label="Pattern Length" value={patternLength} min={2} max={5} step={1} onChange={e => setPatternLength(+e.target.value)} />
                         <button onClick={regenerateData} className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Regenerate Data</button>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    SPM can reveal common learning pathways. For example, you might find that high-performing students frequently follow a pattern of `(Watch Video → Pass Quiz)`, while struggling students show `(Fail Quiz → View Forum → Fail Quiz)`. Identifying these patterns helps educators design timely interventions and understand which resources are used effectively.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Sequential Pattern Mining"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

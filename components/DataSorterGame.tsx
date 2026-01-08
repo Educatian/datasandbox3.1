@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface DataSorterGameProps {
     onBack: () => void;
@@ -55,23 +54,22 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
     const basketsRef = useRef<HTMLDivElement>(null);
     const toastRef = useRef<HTMLDivElement>(null);
     const toastTimeoutRef = useRef<number | null>(null);
-    
+
     // Game Logic State
     const [score, setScore] = useState(0);
     const [currentTheme, setCurrentTheme] = useState('general');
     const [deck, setDeck] = useState<DataItem[]>([]);
     const [currentItem, setCurrentItem] = useState<DataItem | null>(null);
-    
+
     // Dragging State
     const isDragging = useRef(false);
     const dragOffset = useRef({ x: 0, y: 0 });
     const [capsulePos, setCapsulePos] = useState({ x: 0, y: 0 }); // Visual position in px relative to center
     const [isResetting, setIsResetting] = useState(false);
 
-    // Chat State (Using shared interface)
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "System Initialized. I am Dr. Gem, your Data Architect.", sender: 'bot' },
-        { text: "Drag the capsules to the correct pipe. I can help with definitions or hints!", sender: 'bot' }
+    // Chat State
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Welcome to the Data Sorter! I'm Dr. Gem. 🦾 I can update the dataset theme or give you hints. Try me!" }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -89,8 +87,8 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
         }
         const randomIndex = Math.floor(Math.random() * currentDeck.length);
         setCurrentItem(currentDeck[randomIndex]);
-        setDeck(currentDeck); 
-        
+        setDeck(currentDeck);
+
         // Reset visual position
         setCapsulePos({ x: 0, y: 0 });
         setIsResetting(true);
@@ -103,9 +101,9 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
             toastRef.current.style.opacity = '1';
             toastRef.current.style.borderColor = type === 'success' ? '#a6e3a1' : '#f38ba8';
             toastRef.current.style.color = type === 'success' ? '#a6e3a1' : '#f38ba8';
-            
+
             if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-            
+
             toastTimeoutRef.current = window.setTimeout(() => {
                 if (toastRef.current) toastRef.current.style.opacity = '0';
             }, type === 'success' ? 1500 : 3500);
@@ -117,7 +115,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
     const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
         if (isResetting) return;
         isDragging.current = true;
-        
+
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
@@ -146,7 +144,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
 
         const capsuleRect = capsuleRef.current.getBoundingClientRect();
         const baskets = Array.from(basketsRef.current.children) as HTMLElement[];
-        
+
         let droppedTarget: MeasurementScale | null = null;
 
         const capsuleCenter = {
@@ -212,84 +210,36 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
 
     // --- Chat Logic ---
 
-    const processChatCommand = (cmd: string): string | null => {
-        const lowerCmd = cmd.toLowerCase().trim();
+    const handleSendMessage = async (msg: string) => {
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
 
+        // Quick local command check
+        const lowerCmd = msg.toLowerCase().trim();
         if (lowerCmd.startsWith('theme')) {
             const themeName = lowerCmd.split(' ')[1];
             if (THEMES[themeName]) {
                 setCurrentTheme(themeName);
                 setDeck([...THEMES[themeName]]);
                 spawnNext([...THEMES[themeName]]);
-                return `Theme switched to '${themeName}'. Loading new dataset...`;
-            } else {
-                return `Theme '${themeName}' not found. Available themes: general, science, sports.`;
+                setTimeout(() => setChatHistory(prev => [...prev, { text: `Theme switched to '${themeName}'. Ready!`, role: 'model' as const }]), 500);
+                return;
             }
-        }
-        else if (lowerCmd.startsWith('add') || lowerCmd.startsWith('create')) {
-            const match = lowerCmd.match(/(?:add|create)\s+['"]?([^'"]+)['"]?\s+(nominal|ordinal|interval|ratio)/i);
-            if (match) {
-                const text = match[1];
-                const type = match[2].toLowerCase() as MeasurementScale;
-                const newItem: DataItem = { text, type, hint: "User generated content." };
-                
-                const newDeck = [...deck, newItem];
-                setDeck(newDeck);
-                setCurrentItem(newItem);
-                setCapsulePos({ x: 0, y: 0 });
-                setIsResetting(true);
-                setTimeout(() => setIsResetting(false), 300);
-
-                return `Data Entity Created: '${text}' classified as ${type.toUpperCase()}. Injected into active stream.`;
-            } else {
-                return "Syntax Error. Use: add 'Item Name' [nominal/ordinal/interval/ratio]";
-            }
-        }
-        else if (lowerCmd === 'skip' || lowerCmd === 'next') {
-            spawnNext(deck);
-            return "Item skipped. Generating next data packet.";
-        }
-        else if (lowerCmd === 'hint' || lowerCmd === 'help') {
-            if (currentItem) {
-                return `Quick Hint: ${currentItem.hint}`;
-            }
-        }
-        else if (lowerCmd.startsWith('filter')) {
-             return "Filter protocol active. Prioritizing requested data types in queue.";
-        }
-
-        return null; // Pass to Gemini
-    };
-
-    const handleChatSend = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
-
-        const localResponse = processChatCommand(msg);
-        if (localResponse) {
-            setTimeout(() => {
-                setChatHistory(prev => [...prev, { text: localResponse, sender: 'bot' }]);
-            }, 400);
-            return;
         }
 
         setIsChatLoading(true);
         const context = `
-            You are Dr. Gem, an intelligent tutor for a data classification game.
-            Current Game State:
-            - User is sorting: "${currentItem ? currentItem.text : 'Nothing'}"
-            - Correct Category: "${currentItem ? currentItem.type : 'None'}"
-            - Current Theme: ${currentTheme}
-            
-            Instructions:
-            - Provide hints based on the item without giving the answer directly.
-            - Keep responses brief and encouraging.
+            You are Dr. Gem, an intelligent data science tutor.
+            Current Activity: Data Sorting Game.
+            Current Theme: ${currentTheme}
+            Current Item: ${currentItem ? currentItem.text : 'None'} (${currentItem ? currentItem.type : 'N/A'}).
+            Instructions: Provide a hint or explaining the concept of Nominal, Ordinal, Interval, or Ratio scales.
         `;
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "Connection failed. Please try again.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -311,8 +261,8 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left: Game Area */}
-                <div 
-                    ref={gameContainerRef} 
+                <div
+                    ref={gameContainerRef}
                     className="flex-[7] relative flex flex-col justify-end border-r-2 border-[#181825] overflow-hidden select-none bg-slate-900"
                     style={{ background: 'radial-gradient(circle at center, #2b2b3d 0%, #1e1e2e 100%)' }}
                 >
@@ -321,7 +271,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
                     {/* Drag Area / Staging */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         {currentItem && (
-                            <div 
+                            <div
                                 ref={capsuleRef}
                                 onMouseDown={handleMouseDown}
                                 onTouchStart={handleMouseDown}
@@ -339,7 +289,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
                     {/* Baskets */}
                     <div ref={basketsRef} className="h-[180px] w-full flex gap-4 p-4 z-10">
                         {['nominal', 'ordinal', 'interval', 'ratio'].map((type) => (
-                            <div 
+                            <div
                                 key={type}
                                 data-type={type}
                                 className={`flex-1 flex flex-col items-center justify-center rounded-t-2xl border-t-4 bg-[#1e1e2e]/50 backdrop-blur-sm transition-all hover:bg-[#313244]/50`}
@@ -359,21 +309,16 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
 
                 {/* Right: Unified Chat Interface */}
                 <div className="flex-[3] bg-[#252537] flex flex-col shadow-[-5px_0_15px_rgba(0,0,0,0.3)] z-50">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="Data Sorter"
                         history={chatHistory}
-                        onSendMessage={handleChatSend}
+                        onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full border-none rounded-none"
-                        suggestedActions={[
-                            { label: "Hint", action: () => handleChatSend("hint") },
-                            { label: "Skip", action: () => handleChatSend("skip") },
-                            { label: "Theme: Science", action: () => handleChatSend("theme science") },
-                            { label: "What is ordinal?", action: () => handleChatSend("What is ordinal?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </div>
-            
+
             <style>{`
                 @keyframes flashGreen { 0% { background: rgba(166, 227, 161, 0.2); } 100% { background: transparent; } }
                 .correct-flash { animation: flashGreen 0.5s; }

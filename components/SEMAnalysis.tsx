@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SEMModel, FitIndices, SEMPath } from '../types';
 import { calculateModelFit } from '../services/statisticsService';
-import { getSEMExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import PathDiagram from './PathDiagram';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface SEMAnalysisProps {
     onBack: () => void;
@@ -49,11 +49,14 @@ const FitDisplay: React.FC<{ label: string; value: string | number; isGood?: boo
 const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
     const [userModel, setUserModel] = useState<SEMModel>(initialModel);
     const [fitIndices, setFitIndices] = useState<FitIndices | null>(null);
-    const [prevFit, setPrevFit] = useState<FitIndices | null>(null);
     const [lastChangedPath, setLastChangedPath] = useState<SEMPath | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. Connect the variables to build a model, and I'll tell you how well it fits the data.", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
+
     const variableLabels = useMemo(() => Object.fromEntries(userModel.variables.map(v => [v.id, v.label])), [userModel.variables]);
 
     const handlePathToggle = useCallback((pathId: string) => {
@@ -67,7 +70,7 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
                     if (regressionPath) regressionPath.specified = false;
                 }
                 if (path.type === 'regression') {
-                     const covariancePath = newModel.paths.find(p => p.from === path.from && p.to === path.to && p.type === 'covariance');
+                    const covariancePath = newModel.paths.find(p => p.from === path.from && p.to === path.to && p.type === 'covariance');
                     if (covariancePath) covariancePath.specified = false;
                 }
 
@@ -77,29 +80,39 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
             return newModel;
         });
     }, []);
-    
+
     useEffect(() => {
-        setPrevFit(fitIndices);
         const newFit = calculateModelFit(userModel);
         setFitIndices(newFit);
     }, [userModel]);
 
-    useEffect(() => {
-        if (!fitIndices || !lastChangedPath) {
-            setExplanation("Click a dashed line to add a path to your model and see how it affects the model's fit.");
-            setIsLoading(false);
-            return;
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are performing Structural Equation Modeling (SEM).
+            Model Fit Indices:
+            Chi-Square: ${fitIndices?.chiSquare.toFixed(2)} (p=${fitIndices?.pValue.toFixed(3)})
+            CFI: ${fitIndices?.cfi.toFixed(3)}
+            RMSEA: ${fitIndices?.rmsea.toFixed(3)}
+            
+            Last changed path: ${lastChangedPath ? `${lastChangedPath.type} from ${variableLabels[lastChangedPath.from]} to ${variableLabels[lastChangedPath.to]}` : 'None'}
+            
+            User Question: ${msg}
+            
+            Explain the model fit and suggest potential improvements based on the modification indices.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the model fit right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
         }
-
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getSEMExplanation(fitIndices, prevFit, lastChangedPath, variableLabels);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
-
-        return () => clearTimeout(handler);
-    }, [fitIndices, lastChangedPath]);
+    }, [fitIndices, lastChangedPath, variableLabels]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -119,23 +132,21 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-orange-400 mb-3">Model Fit Indices</h3>
                         <div className="space-y-2">
-                           <FitDisplay label="Chi-Square (χ²)" value={fitIndices?.chiSquare.toFixed(2) || 'N/A'} />
-                           <FitDisplay label="p-value" value={fitIndices?.pValue.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.pValue > 0.05} isBad={fitIndices && fitIndices.pValue <= 0.05} />
-                           <FitDisplay label="CFI" value={fitIndices?.cfi.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.cfi >= 0.95} isBad={fitIndices && fitIndices.cfi < 0.90} />
-                           <FitDisplay label="RMSEA" value={fitIndices?.rmsea.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.rmsea <= 0.06} isBad={fitIndices && fitIndices.rmsea > 0.10}/>
+                            <FitDisplay label="Chi-Square (χ²)" value={fitIndices?.chiSquare.toFixed(2) || 'N/A'} />
+                            <FitDisplay label="p-value" value={fitIndices?.pValue.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.pValue > 0.05} isBad={fitIndices && fitIndices.pValue <= 0.05} />
+                            <FitDisplay label="CFI" value={fitIndices?.cfi.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.cfi >= 0.95} isBad={fitIndices && fitIndices.cfi < 0.90} />
+                            <FitDisplay label="RMSEA" value={fitIndices?.rmsea.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.rmsea <= 0.06} isBad={fitIndices && fitIndices.rmsea > 0.10} />
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                   SEM is used to test complex theories. For instance, a researcher might theorize that a student's 'Motivation' influences their 'Study Habits,' and that both, in turn, affect their final 'Grades'. SEM allows the researcher to model and test this entire system of relationships at once, providing a holistic view of the factors contributing to academic success.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Structural Equation Modeling"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

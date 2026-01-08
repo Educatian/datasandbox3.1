@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface PredictionLaserProps {
     onBack: () => void;
@@ -13,11 +12,10 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
     const [inputValue, setInputValue] = useState(50); // X (0-100)
     const [correlation, setCorrelation] = useState(0.9); // r (0-1)
     const [outputValue, setOutputValue] = useState(50); // Y
-    
+
     // Chat
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to The Prediction Laser! 🔦", sender: 'bot' },
-        { text: "Correlation is about control. High correlation means X predicts Y precisely. Low correlation means Y is noisy and unpredictable.", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to The Prediction Laser! 🔦 I'm Dr. Gem. Control the Correlation to steady your aim.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -28,16 +26,16 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
         const interval = setInterval(() => {
             // Target Y is same as Input X (assuming linear 1:1 relationship)
             const targetY = inputValue;
-            
+
             // Noise factor inverse to correlation
             // If r=1, noise=0. If r=0, noise is max (e.g., +/- 50)
             const noiseMax = (1 - correlation) * 50;
             const noise = (Math.random() - 0.5) * 2 * noiseMax;
-            
+
             // Calculate final Y
             let nextY = targetY + noise;
             nextY = Math.max(5, Math.min(95, nextY)); // Clamp
-            
+
             setOutputValue(nextY);
         }, 50); // Update 20 times a second
 
@@ -58,11 +56,11 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
         const chartHeight = height - 2 * padding;
 
         const scale = d3.scaleLinear().domain([0, 100]).range([padding, width - padding]);
-        
+
         // --- The Controller (Input X) ---
         // A sliding block at the bottom
         const inputXPos = scale(inputValue);
-        
+
         svg.append('rect')
             .attr('x', inputXPos - 20)
             .attr('y', height - 40)
@@ -70,7 +68,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
             .attr('height', 20)
             .attr('fill', '#0891b2') // Cyan-600
             .attr('rx', 4);
-            
+
         svg.append('text')
             .attr('x', inputXPos)
             .attr('y', height - 10)
@@ -91,7 +89,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
         // --- The Laser Beam ---
         // Originating from Input X, hitting Output Y on the wall
         const outputXPos = scale(outputValue);
-        
+
         svg.append('line')
             .attr('x1', inputXPos)
             .attr('y1', height - 40)
@@ -108,7 +106,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
             .attr('r', 6 + (1 - correlation) * 10) // Dot gets fuzzy/large if low correlation
             .attr('fill', '#ef4444')
             .attr('filter', 'drop-shadow(0 0 8px red)');
-            
+
         svg.append('text')
             .attr('x', outputXPos)
             .attr('y', 20)
@@ -128,7 +126,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                 .attr('stroke', '#0891b2')
                 .attr('stroke-dasharray', '2,2')
                 .attr('opacity', 0.5);
-                
+
             // Error line
             svg.append('line')
                 .attr('x1', inputXPos)
@@ -143,7 +141,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
     }, [inputValue, outputValue, correlation]);
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const context = `
@@ -161,9 +159,9 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
         } catch {
-            setChatHistory(prev => [...prev, { text: "Connection error.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -180,7 +178,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 {/* Left: Visualization */}
                 <div className="lg:col-span-2 flex flex-col space-y-6">
                     <div className="bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 relative overflow-hidden">
@@ -194,10 +192,10 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 <span>Input Control (X)</span>
                                 <span className="font-mono text-cyan-400">{inputValue}</span>
                             </label>
-                            <input 
-                                type="range" min="0" max="100" 
-                                value={inputValue} 
-                                onChange={(e) => setInputValue(parseFloat(e.target.value))} 
+                            <input
+                                type="range" min="0" max="100"
+                                value={inputValue}
+                                onChange={(e) => setInputValue(parseFloat(e.target.value))}
                                 className="w-full h-4 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                             />
                             <p className="text-xs text-slate-500 mt-1">Move the slider to aim the laser.</p>
@@ -208,10 +206,10 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 <span>Correlation Strength (r)</span>
                                 <span className="font-mono text-red-400">{correlation.toFixed(2)}</span>
                             </label>
-                            <input 
-                                type="range" min="0" max="1" step="0.05" 
-                                value={correlation} 
-                                onChange={(e) => setCorrelation(parseFloat(e.target.value))} 
+                            <input
+                                type="range" min="0" max="1" step="0.05"
+                                value={correlation}
+                                onChange={(e) => setCorrelation(parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
                             />
                             <div className="flex justify-between text-xs text-slate-500 mt-1">
@@ -224,15 +222,12 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
 
                 {/* Right: Chatbot */}
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="The Prediction Laser"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "What is Prediction?", action: () => handleSendMessage("How is correlation related to prediction?") },
-                            { label: "Why the jitter?", action: () => handleSendMessage("Why does the dot jitter when correlation is low?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </main>

@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ConfidenceInterval } from '../types';
 import { generateSampleData, calculateConfidenceInterval } from '../services/statisticsService';
-import { getConfidenceIntervalExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 import ConfidenceIntervalChart from './ConfidenceIntervalChart';
-import GeminiExplanation from './GeminiExplanation';
 
 interface ConfidenceIntervalAnalysisProps {
     onBack: () => void;
@@ -15,7 +15,7 @@ interface ConfidenceIntervalAnalysisProps {
 const POPULATION_MEAN = 50;
 const POPULATION_STD_DEV = 15;
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, unit?: string}> = ({ label, value, min, max, step, onChange, unit }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, unit?: string }> = ({ label, value, min, max, step, onChange, unit }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -34,8 +34,10 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
     const [confidenceLevel, setConfidenceLevel] = useState(95);
     const [sampleSize, setSampleSize] = useState(30);
     const [intervals, setIntervals] = useState<ConfidenceInterval[]>([]);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Welcome. This is Dr. Gem. 🧬 Here we test how 'Confident' we can be that our sample represents the truth. Try running 100 samples!" }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const runSimulation = useCallback((count: number) => {
         const newIntervals: ConfidenceInterval[] = [];
@@ -47,21 +49,38 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
         }
         setIntervals(prev => [...prev, ...newIntervals]);
     }, [sampleSize, confidenceLevel]);
-    
+
     const resetSimulations = () => {
         setIntervals([]);
     };
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getConfidenceIntervalExplanation(confidenceLevel);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+    const handleSendMessage = async (msg: string) => {
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
+        setIsChatLoading(true);
 
-        return () => clearTimeout(handler);
-    }, [confidenceLevel]);
+        const context = `
+            You are Dr. Gem, explaining Confidence Intervals.
+            Current Simulation State:
+            - Confidence Level: ${confidenceLevel}%
+            - Sample Size: ${sampleSize}
+            - Total Samples Run: ${stats.total}
+            - Percentage Capturing Mean: ${stats.percentage.toFixed(1)}% (Target: ${confidenceLevel}%)
+            
+            Educational Goal:
+            - Explain that higher confidence = wider intervals.
+            - Explain that larger samples = narrower intervals (more precision).
+            - Explain that "95% confidence" means 95 out of 100 random intervals will capture the true mean in the long run.
+        `;
+
+        try {
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
+        } catch {
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
 
     const stats = React.useMemo(() => {
         const total = intervals.length;
@@ -92,14 +111,14 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
 
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
-                     <ConfidenceIntervalChart 
+                    <ConfidenceIntervalChart
                         intervals={intervals}
                         populationMean={POPULATION_MEAN}
-                     />
+                    />
                 </div>
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-6">
-                         <div>
+                        <div>
                             <h3 className="text-lg font-semibold text-indigo-400 mb-3 border-b border-indigo-400/20 pb-2">Simulation Controls</h3>
                             <div className="space-y-4 mt-3">
                                 <Slider label="Confidence Level" value={confidenceLevel} min={80} max={99} step={1} onChange={(e) => setConfidenceLevel(+e.target.value)} unit="%" />
@@ -110,36 +129,33 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                             <button onClick={() => runSimulation(1)} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg">Resample</button>
                             <button onClick={() => runSimulation(100)} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg">Run 100 Samples</button>
                         </div>
-                         <button onClick={resetSimulations} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        <button onClick={resetSimulations} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
                             Reset
                         </button>
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                         <h3 className="text-lg font-semibold text-indigo-400 mb-3">Results</h3>
-                         <div className="flex justify-between items-center">
-                             <span className="text-slate-300">Total Samples:</span>
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                        <h3 className="text-lg font-semibold text-indigo-400 mb-3">Results</h3>
+                        <div className="flex justify-between items-center">
+                            <span className="text-slate-300">Total Samples:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
                                 {stats.total}
                             </span>
-                         </div>
-                         <div className="flex justify-between items-center mt-2">
-                             <span className="text-slate-300">Intervals Capturing Mean:</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                            <span className="text-slate-300">Intervals Capturing Mean:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
                                 {stats.captured} ({stats.percentage.toFixed(1)}%)
                             </span>
-                         </div>
-                    </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    After a pilot study of a new educational game with 50 students, you find their average engagement time was 20 minutes. A confidence interval gives you a range (e.g., 18 to 22 minutes) where the true average engagement time for the entire student population likely lies. It helps you report the precision of your findings and understand the uncertainty of your sample estimate.
-                                </p>
-                            </div>
                         </div>
+                    </div>
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle={customTitle || "Confidence Intervals"}
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

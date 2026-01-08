@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface GodModeSwitchProps {
     onBack: () => void;
@@ -24,9 +23,9 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
     const [isRecording, setIsRecording] = useState(false);
 
     // Chat State using shared type
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to the Causality Lab! 🌿 I'm Dr. Gem.", sender: 'bot' },
-        { text: "Right now we are in Observational Mode. Notice how Temperature and Sunlight move together? That's a Confounding Variable.", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to the Causality Lab! 🌿 I'm Dr. Gem.", role: 'model' },
+        { text: "Right now we are in Observational Mode. Notice how Temperature and Sunlight move together? That's a Confounding Variable.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -60,10 +59,10 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
             temp = currentWeather.temp;
         } else {
             sun = sunlightInput;
-            temp = 25; 
+            temp = 25;
         }
         const growth = calculateGrowth(sun, temp);
-        
+
         setTimeout(() => {
             const newPoint: PlantData = {
                 id: Date.now(),
@@ -83,7 +82,7 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
     };
 
     const addBotMessage = (text: string) => {
-        setChatHistory(prev => [...prev, { text, sender: 'bot' }]);
+        setChatHistory(prev => [...prev, { text, role: 'model' }]);
     };
 
     useEffect(() => {
@@ -103,17 +102,17 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
     }, [data.length, mode]);
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const lower = msg.toLowerCase();
-        
+
         if (lower.includes('reset') || lower.includes('clear')) {
             handleReset();
             setIsChatLoading(false);
             return;
         }
-        
+
         if (lower === 'switch' || lower === 'mode' || lower.includes('change mode')) {
             setMode(prev => prev === 'observational' ? 'experimental' : 'observational');
             setIsChatLoading(false);
@@ -178,8 +177,8 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
 
                         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex space-x-8 items-end">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className={`w-4 bg-green-500 rounded-t-full transition-all duration-500 ease-out ${isRecording ? 'animate-pulse' : ''}`} 
-                                     style={{ height: isRecording ? '10px' : `${mode === 'observational' ? calculateGrowth(currentWeather.sun, currentWeather.temp) * 2 : calculateGrowth(sunlightInput, 25) * 2}px`, opacity: isRecording ? 0.5 : 1 }}>
+                                <div key={i} className={`w-4 bg-green-500 rounded-t-full transition-all duration-500 ease-out ${isRecording ? 'animate-pulse' : ''}`}
+                                    style={{ height: isRecording ? '10px' : `${mode === 'observational' ? calculateGrowth(currentWeather.sun, currentWeather.temp) * 2 : calculateGrowth(sunlightInput, 25) * 2}px`, opacity: isRecording ? 0.5 : 1 }}>
                                     <div className="w-8 h-8 bg-green-500 rounded-full -translate-x-2 -translate-y-4 opacity-80"></div>
                                 </div>
                             ))}
@@ -201,7 +200,7 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
                         {mode === 'experimental' ? (
                             <div className="mb-6">
                                 <label className="flex justify-between text-sm text-cyan-400 font-bold mb-2"><span>Manipulate Variable: Sunlight</span><span>{sunlightInput}%</span></label>
-                                <input type="range" min="0" max="100" value={sunlightInput} onChange={(e) => setSunlightInput(+e.target.value)} className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"/>
+                                <input type="range" min="0" max="100" value={sunlightInput} onChange={(e) => setSunlightInput(+e.target.value)} className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
                             </div>
                         ) : (
                             <div className="mb-6 p-4 bg-amber-900/20 border border-amber-500/30 rounded-lg"><p className="text-amber-200 text-sm flex items-center gap-2"><span>🚫</span><span>Variable manipulation locked.</span></p></div>
@@ -221,16 +220,12 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
 
                     {/* Unified Chat Interface */}
                     <div className="h-96">
-                        <AITutor 
+                        <UnifiedGenAIChat
+                            moduleTitle="God Mode Switch"
                             history={chatHistory}
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
-                            className="h-full"
-                            suggestedActions={[
-                                { label: "Switch Mode", action: () => handleSendMessage("switch") },
-                                { label: "Reset Data", action: () => handleSendMessage("reset") },
-                                { label: "Explain confounding", action: () => handleSendMessage("What is a confounding variable?") },
-                            ]}
+                            variant="embedded"
                         />
                     </div>
                 </div>
@@ -260,8 +255,8 @@ const GodModeScatterPlot: React.FC<{ data: PlantData[] }> = ({ data }) => {
         svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(5)).attr('color', '#94a3b8');
         svg.append('g').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5)).attr('color', '#94a3b8');
 
-        svg.append('text').attr('x', width/2).attr('y', height - 5).attr('text-anchor', 'middle').attr('fill', '#64748b').attr('font-size', '10px').text('Sunlight (%)');
-        svg.append('text').attr('transform', 'rotate(-90)').attr('x', -height/2).attr('y', 15).attr('text-anchor', 'middle').attr('fill', '#64748b').attr('font-size', '10px').text('Plant Height (cm)');
+        svg.append('text').attr('x', width / 2).attr('y', height - 5).attr('text-anchor', 'middle').attr('fill', '#64748b').attr('font-size', '10px').text('Sunlight (%)');
+        svg.append('text').attr('transform', 'rotate(-90)').attr('x', -height / 2).attr('y', 15).attr('text-anchor', 'middle').attr('fill', '#64748b').attr('font-size', '10px').text('Plant Height (cm)');
 
         svg.selectAll('circle').data(data).join('circle').attr('cx', d => x(d.sunlight)).attr('cy', d => y(d.growth)).attr('r', 5).attr('fill', d => d.mode === 'observational' ? '#f59e0b' : '#06b6d4').attr('fill-opacity', 0.7).attr('stroke', '#1e293b').attr('stroke-width', 1);
     }, [data]);

@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface AnscombeQuartetProps {
     onBack: () => void;
@@ -10,32 +10,36 @@ interface AnscombeQuartetProps {
 
 const DATASETS = {
     I: [
-        {x: 10, y: 8.04}, {x: 8, y: 6.95}, {x: 13, y: 7.58}, {x: 9, y: 8.81},
-        {x: 11, y: 8.33}, {x: 14, y: 9.96}, {x: 6, y: 7.24}, {x: 4, y: 4.26},
-        {x: 12, y: 10.84}, {x: 7, y: 4.82}, {x: 5, y: 5.68}
+        { x: 10, y: 8.04 }, { x: 8, y: 6.95 }, { x: 13, y: 7.58 }, { x: 9, y: 8.81 },
+        { x: 11, y: 8.33 }, { x: 14, y: 9.96 }, { x: 6, y: 7.24 }, { x: 4, y: 4.26 },
+        { x: 12, y: 10.84 }, { x: 7, y: 4.82 }, { x: 5, y: 5.68 }
     ],
     II: [
-        {x: 10, y: 9.14}, {x: 8, y: 8.14}, {x: 13, y: 8.74}, {x: 9, y: 8.77},
-        {x: 11, y: 9.26}, {x: 14, y: 8.10}, {x: 6, y: 6.13}, {x: 4, y: 3.10},
-        {x: 12, y: 9.13}, {x: 7, y: 7.26}, {x: 5, y: 4.74}
+        { x: 10, y: 9.14 }, { x: 8, y: 8.14 }, { x: 13, y: 8.74 }, { x: 9, y: 8.77 },
+        { x: 11, y: 9.26 }, { x: 14, y: 8.10 }, { x: 6, y: 6.13 }, { x: 4, y: 3.10 },
+        { x: 12, y: 9.13 }, { x: 7, y: 7.26 }, { x: 5, y: 4.74 }
     ],
     III: [
-        {x: 10, y: 7.46}, {x: 8, y: 6.77}, {x: 13, y: 12.74}, {x: 9, y: 7.11},
-        {x: 11, y: 7.81}, {x: 14, y: 8.84}, {x: 6, y: 6.08}, {x: 4, y: 5.39},
-        {x: 12, y: 8.15}, {x: 7, y: 6.42}, {x: 5, y: 5.73}
+        { x: 10, y: 7.46 }, { x: 8, y: 6.77 }, { x: 13, y: 12.74 }, { x: 9, y: 7.11 },
+        { x: 11, y: 7.81 }, { x: 14, y: 8.84 }, { x: 6, y: 6.08 }, { x: 4, y: 5.39 },
+        { x: 12, y: 8.15 }, { x: 7, y: 6.42 }, { x: 5, y: 5.73 }
     ],
     IV: [
-        {x: 8, y: 6.58}, {x: 8, y: 5.76}, {x: 8, y: 7.71}, {x: 8, y: 8.84},
-        {x: 8, y: 8.47}, {x: 8, y: 7.04}, {x: 8, y: 5.25}, {x: 19, y: 12.50},
-        {x: 8, y: 5.56}, {x: 8, y: 7.91}, {x: 8, y: 6.89}
+        { x: 8, y: 6.58 }, { x: 8, y: 5.76 }, { x: 8, y: 7.71 }, { x: 8, y: 8.84 },
+        { x: 8, y: 8.47 }, { x: 8, y: 7.04 }, { x: 8, y: 5.25 }, { x: 19, y: 12.50 },
+        { x: 8, y: 5.56 }, { x: 8, y: 7.91 }, { x: 8, y: 6.89 }
     ]
 };
 
 const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
     const [selectedSet, setSelectedSet] = useState<'I' | 'II' | 'III' | 'IV'>('I');
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain the importance of visualizing data. Check out these datasets—they all have the same stats but look totally different!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     useEffect(() => {
         if (!svgRef.current) return;
@@ -43,12 +47,12 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
         const width = 600;
         const height = 400;
         const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-        
+
         svg.attr('viewBox', `0 0 ${width} ${height}`);
         svg.selectAll('*').remove();
 
         const data = DATASETS[selectedSet];
-        
+
         const x = d3.scaleLinear().domain([0, 20]).range([margin.left, width - margin.right]);
         const y = d3.scaleLinear().domain([0, 14]).range([height - margin.bottom, margin.top]);
 
@@ -85,13 +89,34 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
 
     }, [selectedSet]);
 
-    const handleAsk = async () => {
-        setIsLoading(true);
-        const prompt = `Explain Anscombe's Quartet Set ${selectedSet}. Why does it have the same stats as the others but look so different?`;
-        const res = await getChatResponse(prompt, "You are a statistics tutor.");
-        setExplanation(res);
-        setIsLoading(false);
-    };
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are looking at Anscombe's Quartet.
+            Currently viewing: Dataset ${selectedSet}.
+            
+            Key Fact: All four datasets (I, II, III, IV) have nearly identical simple descriptive statistics (mean, variance, correlation, linear regression line), yet appear very different when graphed.
+            dataset I: Linear trend.
+            dataset II: Non-linear (quadratic) trend.
+            dataset III: Linear with one outlier.
+            dataset IV: Vertical line with one outlier that skewers the regression.
+            
+            User Question: ${msg}
+            
+            Explain why visualization is critical before relying on summary statistics.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing this dataset.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [selectedSet]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -112,7 +137,7 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <div className="grid grid-cols-2 gap-2 mb-4">
                             {(['I', 'II', 'III', 'IV'] as const).map(set => (
-                                <button 
+                                <button
                                     key={set}
                                     onClick={() => setSelectedSet(set)}
                                     className={`py-2 px-4 rounded font-bold transition-all ${selectedSet === set ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
@@ -121,7 +146,7 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
                                 </button>
                             ))}
                         </div>
-                        
+
                         <div className="space-y-2 font-mono text-sm border-t border-slate-700 pt-4">
                             <div className="text-slate-400 text-xs uppercase mb-2">Identical Stats for ALL Sets:</div>
                             <div className="flex justify-between"><span className="text-slate-300">Mean X:</span> <span className="text-green-400">9.0</span></div>
@@ -129,10 +154,17 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
                             <div className="flex justify-between"><span className="text-slate-300">Correlation:</span> <span className="text-green-400">0.816</span></div>
                             <div className="flex justify-between"><span className="text-slate-300">Line:</span> <span className="text-yellow-400">y = 0.5x + 3.0</span></div>
                         </div>
-                        
-                        <button onClick={handleAsk} className="mt-6 w-full bg-cyan-600 hover:bg-cyan-700 p-2 rounded text-white font-bold">What is happening here?</button>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
+
+                    <div className="h-[400px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Anscombe's Quartet"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
+                    </div>
                 </div>
             </main>
         </div>

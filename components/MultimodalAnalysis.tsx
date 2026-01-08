@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MultimodalData, Bookmark } from '../types';
 import { generateMultimodalData, findBookmarks } from '../services/statisticsService';
-import { getMultimodalEventExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import MultimodalDisplay from './MultimodalDisplay';
 import MultimodalTimeline from './MultimodalTimeline';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface MultimodalAnalysisProps {
     onBack: () => void;
@@ -15,8 +15,13 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
     const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
     const [currentTime, setCurrentTime] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you analyze the synchronized video, speech, and eye-tracking traces. Click on a bookmark to explore specific events!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
+
     const animationFrameRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number | null>(null);
 
@@ -27,14 +32,12 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
         setBookmarks(newBookmarks);
         setCurrentTime(0);
         setIsPlaying(false);
-        setExplanation("Press Play to start the simulation, or click the timeline to explore.");
-        setIsLoading(false);
     }, []);
-    
+
     useEffect(() => {
         regenerateData();
     }, [regenerateData]);
-    
+
     const animate = useCallback((timestamp: number) => {
         if (lastTimeRef.current === null) {
             lastTimeRef.current = timestamp;
@@ -50,7 +53,7 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
             }
             return newTime;
         });
-        
+
         animationFrameRef.current = requestAnimationFrame(animate);
     }, [data]);
 
@@ -72,11 +75,55 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
 
     const handleBookmarkClick = useCallback(async (bookmark: Bookmark) => {
         setCurrentTime(bookmark.time);
-        setIsLoading(true);
-        const exp = await getMultimodalEventExplanation(bookmark);
-        setExplanation(exp);
-        setIsLoading(false);
+
+        // Auto-send a message for the bookmark
+        setIsChatLoading(true);
+        const msg = `What is happening at ${bookmark.time.toFixed(1)}s?`;
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are looking at a Multimodal Analysis of a learning session.
+            Bookmark Time: ${bookmark.time.toFixed(1)}s
+            Event Type: ${bookmark.type}
+            Description: ${bookmark.description}
+            
+            User Question: ${msg}
+            
+            Explain the significance of this event in the context of collaborative learning.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing this event right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
     }, []);
+
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are analyzing synchronized multimodal data (speech, gaze, clicks).
+            Current Time: ${currentTime.toFixed(1)}s
+            
+            User Question: ${msg}
+            
+            Explain the potential connection between gaze patterns and speech at this moment.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the multimodal stream.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [currentTime]);
 
     if (!data) {
         return <div>Loading...</div>;
@@ -105,22 +152,20 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
                                 <button onClick={regenerateData} className="flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded">Regenerate Data</button>
                             </div>
                         </div>
-                        <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                        <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                            <div className="flex items-start space-x-4 w-full">
-                                <div className="text-3xl">🎓</div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                    <p className="text-slate-300 text-sm leading-relaxed">
-                                        This dashboard simulates the analysis of rich data from collaborative problem-solving. By synchronizing what students say (speech), where they look (gaze), and what they do (clicks), researchers can uncover the micro-processes of learning. For example, a bookmark might highlight where one student's explanation leads to a shared gaze focus and a correct action, indicating successful knowledge co-construction.
-                                    </p>
-                                </div>
-                            </div>
+
+                        <div className="h-[500px]">
+                            <UnifiedGenAIChat
+                                moduleTitle="Multimodal Analysis"
+                                history={chatHistory}
+                                onSendMessage={handleSendMessage}
+                                isLoading={isChatLoading}
+                                variant="embedded"
+                            />
                         </div>
                     </div>
                 </div>
                 <div className="bg-slate-800 rounded-lg shadow-2xl p-4">
-                     <MultimodalTimeline 
+                    <MultimodalTimeline
                         data={data}
                         bookmarks={bookmarks}
                         currentTime={currentTime}

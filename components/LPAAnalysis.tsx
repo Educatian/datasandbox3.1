@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LPAPoint, Profile } from '../types';
 import { initializeLPA, expectationStep, maximizationStep } from '../services/statisticsService';
-import { getLPAExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import LPAScatterPlot from './LPAScatterPlot';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface LPAAnalysisProps {
     onBack: () => void;
@@ -26,8 +26,13 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
     const [points, setPoints] = useState<LPAPoint[]>(() => generateInitialData(150));
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [isAnimating, setIsAnimating] = useState(false);
-    const [explanation, setExplanation] = useState<string | null>("Set the number of profiles and press 'Run Analysis'.");
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you uncover hidden subgroups (profiles) in this data using Latent Profile Analysis. Set the number of profiles and run the analysis!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
+
     const animationRef = useRef<number | null>(null);
 
     const resetSimulation = useCallback(() => {
@@ -35,7 +40,6 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
         if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
         setPoints(p => p.map(point => ({ ...point, profileId: null, responsibilities: [] })));
         setProfiles([]);
-        setExplanation("Set the number of profiles and press 'Run Analysis'.");
     }, []);
 
     const regenerateData = () => {
@@ -48,26 +52,25 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
         if (currentProfiles.length === 0) {
             currentProfiles = initializeLPA(points, k);
         }
-        
+
         const pointsWithResponsibilities = expectationStep(points, currentProfiles);
         const newProfiles = maximizationStep(pointsWithResponsibilities, k);
-        
+
         setPoints(pointsWithResponsibilities);
         setProfiles(newProfiles);
         return newProfiles;
     }, [points, profiles, k]);
 
-
     const animate = useCallback(() => {
         const newProfiles = runStep();
         const oldProfiles = profiles;
-        
+
         let converged = true;
         if (oldProfiles.length === newProfiles.length) {
-            for(let i=0; i<newProfiles.length; i++) {
+            for (let i = 0; i < newProfiles.length; i++) {
                 const dx = newProfiles[i].mean[0] - oldProfiles[i].mean[0];
                 const dy = newProfiles[i].mean[1] - oldProfiles[i].mean[1];
-                if(dx*dx + dy*dy > 0.01) {
+                if (dx * dx + dy * dy > 0.01) {
                     converged = false;
                     break;
                 }
@@ -90,29 +93,41 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
 
     useEffect(() => {
         if (isAnimating) {
-             animationRef.current = requestAnimationFrame(animate);
+            animationRef.current = requestAnimationFrame(animate);
         }
         return () => {
             if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
         };
     }, [isAnimating, animate]);
-    
+
     useEffect(() => {
         resetSimulation();
     }, [k, resetSimulation]);
 
-    useEffect(() => {
-        if (!isAnimating && profiles.length > 0) {
-            const fetchExplanation = async () => {
-                setIsLoading(true);
-                const exp = await getLPAExplanation(k);
-                setExplanation(exp);
-                setIsLoading(false);
-            };
-            fetchExplanation();
-        }
-    }, [isAnimating, profiles, k]);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
 
+        const context = `
+            We are performing Latent Profile Analysis (LPA).
+            Number of Profiles (K): ${k}
+            Current Profiles Detected: ${profiles.length}
+            Simulation Status: ${isAnimating ? 'Running' : 'Stopped'}
+            
+            User Question: ${msg}
+            
+            Explain how LPA identifies these hidden groups based on the data distribution.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the latent profiles right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [k, profiles, isAnimating]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -131,7 +146,7 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-4">
                         <h3 className="text-lg font-semibold text-emerald-400 mb-2">Controls</h3>
-                         <div>
+                        <div>
                             <label className="flex justify-between text-sm text-slate-400">
                                 <span>Number of Profiles (K)</span>
                                 <span className="font-mono">{k}</span>
@@ -139,25 +154,23 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
                             <input type="range" min={2} max={5} step={1} value={k} onChange={(e) => setK(+e.target.value)} className="w-full h-2 bg-slate-700 rounded-lg" />
                         </div>
                         <div className="flex space-x-2">
-                             <button onClick={startAnimation} disabled={isAnimating} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 p-2 rounded">Run Analysis</button>
+                            <button onClick={startAnimation} disabled={isAnimating} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 p-2 rounded">Run Analysis</button>
                             <button onClick={() => setIsAnimating(false)} disabled={!isAnimating} className="flex-1 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 p-2 rounded">Pause</button>
                         </div>
-                         <div className="flex space-x-2">
-                             <button onClick={regenerateData} className="flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded">Regenerate Data</button>
+                        <div className="flex space-x-2">
+                            <button onClick={regenerateData} className="flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded">Regenerate Data</button>
                             <button onClick={resetSimulation} className="flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded">Reset</button>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    Imagine you have data on students' weekly study hours and their final exam scores. LPA can help you identify if there are natural groupings, such as "High-Effort, High-Achievers", "Low-Effort, Low-Achievers", and perhaps an unexpected "Efficient Learners" group (low hours, high scores). This is more nuanced than simple clustering as it models the shape and density of each group.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Latent Profile Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

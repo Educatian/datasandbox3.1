@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StudentFeatures, PredictionResult } from '../types';
 import { calculateXaiPrediction } from '../services/statisticsService';
-import { getXAIExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import PredictionGauge from './PredictionGauge';
 import ContributionBars from './ContributionBars';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface XAIAnalysisProps {
     onBack: () => void;
@@ -44,11 +44,15 @@ const FeatureSlider: React.FC<{
 const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
     const [features, setFeatures] = useState<StudentFeatures>(initialFeatures);
     const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain why the AI predicts this student's success probability. Try changing the student's profile to see how the factors change!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const handleFeatureChange = useCallback((feature: keyof StudentFeatures, value: number) => {
-        setFeatures(prev => ({...prev, [feature]: value }));
+        setFeatures(prev => ({ ...prev, [feature]: value }));
     }, []);
 
     useEffect(() => {
@@ -56,24 +60,46 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
         setPredictionResult(result);
     }, [features]);
 
-    useEffect(() => {
-        if (!predictionResult) return;
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getXAIExplanation(predictionResult);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
-        return () => clearTimeout(handler);
-    }, [predictionResult]);
-    
     const { positiveContributions, negativeContributions } = useMemo(() => {
         if (!predictionResult) return { positiveContributions: [], negativeContributions: [] };
         return {
-            positiveContributions: predictionResult.contributions.filter(c => c.value > 0).sort((a,b) => b.value - a.value),
-            negativeContributions: predictionResult.contributions.filter(c => c.value < 0).sort((a,b) => a.value - b.value)
+            positiveContributions: predictionResult.contributions.filter(c => c.value > 0).sort((a, b) => b.value - a.value),
+            negativeContributions: predictionResult.contributions.filter(c => c.value < 0).sort((a, b) => a.value - b.value)
         };
     }, [predictionResult]);
+
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const topPositive = positiveContributions.slice(0, 2).map(c => c.feature).join(', ');
+        const topNegative = negativeContributions.slice(0, 2).map(c => c.feature).join(', ');
+
+        const context = `
+            We are performing Explainable AI (XAI) analysis on a student success prediction model (SHAP-like values).
+            Current Predicted Probability: ${(predictionResult?.prediction || 0).toFixed(0)}%
+            Top Positive Factors: ${topPositive}
+            Top Negative Factors: ${topNegative}
+            
+            Student Profile:
+            - Assignment Completion: ${features.assignmentCompletion}
+            - Quiz Scores: ${features.quizScores}
+            - Absences: ${features.absences}
+            
+            User Question: ${msg}
+            
+            Explain *why* the model made this prediction based on the factors.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the prediction factors.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [predictionResult, features, positiveContributions, negativeContributions]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -87,7 +113,7 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
 
             <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-4">
-                     <h3 className="text-lg font-semibold text-blue-400 mb-2">Student Profile</h3>
+                    <h3 className="text-lg font-semibold text-blue-400 mb-2">Student Profile</h3>
                     <FeatureSlider label="Assignment Completion" value={features.assignmentCompletion} onChange={v => handleFeatureChange('assignmentCompletion', v)} />
                     <FeatureSlider label="Quiz Scores" value={features.quizScores} onChange={v => handleFeatureChange('quizScores', v)} />
                     <FeatureSlider label="Forum Participation" value={features.forumParticipation} onChange={v => handleFeatureChange('forumParticipation', v)} />
@@ -96,27 +122,25 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
                 </div>
                 <div className="flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg flex flex-col items-center">
-                         <h3 className="text-lg font-semibold text-blue-400 mb-4">Predicted Probability of Success</h3>
+                        <h3 className="text-lg font-semibold text-blue-400 mb-4">Predicted Probability of Success</h3>
                         {predictionResult && <PredictionGauge prediction={predictionResult.prediction} baseValue={predictionResult.baseValue} />}
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-blue-400 mb-4 text-center">Prediction Factors</h3>
                         <div className="grid grid-cols-2 gap-6">
                             <ContributionBars title="Positive Factors (+)" contributions={positiveContributions} color="rgb(34 197 94)" />
                             <ContributionBars title="Negative Factors (-)" contributions={negativeContributions} color="rgb(239 68 68)" />
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    This module is crucial for building trust in AI-driven educational tools. Instead of just telling a teacher a student is 'at-risk,' XAI explains *why*—e.g., 'due to low assignment completion and high absences, despite good quiz scores.' This allows educators to provide highly specific, personalized feedback and interventions, turning a black-box prediction into actionable educational insights.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="XAI Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

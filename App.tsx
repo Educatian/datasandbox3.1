@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { setUser, setPage, logEvent, logLogin, logLogout } from './services/loggingService';
-import { onAuthStateChange, signOut, getSession, isSupabaseConfigured } from './services/supabaseService';
+import { supabase, isSupabaseConfigured, getSession, onAuthStateChange, signIn, signOut, isAdmin } from './services/supabaseService';
 import { GlobalClickLogger } from './components/GlobalClickLogger';
 import LoginPage from './components/LoginPage';
+import AdminDashboard from './components/AdminDashboard';
 import ZTestAnalysis from './components/ZTestAnalysis';
 import RegressionAnalysis from './components/RegressionAnalysis';
 import ConfidenceIntervalAnalysis from './components/ConfidenceIntervalAnalysis';
@@ -324,7 +324,7 @@ const SECTION_THEMES = [
 // Curriculum View
 //================================================
 
-const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void }> = ({ navigateTo }) => {
+const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void, settings: Record<string, any> | null, isAdmin: boolean }> = ({ navigateTo, settings, isAdmin }) => {
     return (
         <div className="w-full max-w-6xl mx-auto">
             <header className="text-center mb-16 pt-8">
@@ -352,30 +352,55 @@ const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void }> = ({ 
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {assessment.modules.map((mod) => (
-                                    <button
-                                        key={mod.id}
-                                        onClick={() => navigateTo(mod.id)}
-                                        className={`text-left bg-slate-800/80 hover:bg-slate-800 p-6 rounded-xl border border-slate-700/50 ${theme.hoverBorder} transition-all duration-300 group relative overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1`}
-                                    >
-                                        <div className="relative z-10 flex flex-col h-full">
-                                            <h3 className={`text-lg font-bold ${theme.accentColor} group-hover:text-white transition-colors mb-2`}>
-                                                {mod.title}
-                                            </h3>
-                                            <p className="text-sm text-slate-400 mb-4 line-clamp-3 flex-grow">
-                                                {mod.description}
-                                            </p>
-                                            <div className="mt-auto">
-                                                <div className={`text-xs text-slate-500 italic bg-slate-900/50 p-3 rounded border border-slate-700/30`}>
-                                                    <span className="font-bold not-italic text-slate-600 mr-1">Activity:</span>
-                                                    {mod.manipulation}
+                                {assessment.modules.map((mod) => {
+                                    // Visibility Logic
+                                    const setting = settings?.[mod.id];
+                                    const state = setting?.visibility_state || 'hidden'; // Default to hidden
+                                    const releaseAt = setting?.release_at ? new Date(setting.release_at) : null;
+                                    const isScheduledReleased = releaseAt ? new Date() >= releaseAt : false;
+
+                                    const isVisible = isAdmin
+                                        || state === 'visible'
+                                        || (state === 'scheduled' && isScheduledReleased);
+
+                                    // If hidden for student, don't render
+                                    if (!isVisible) return null;
+
+                                    return (
+                                        <button
+                                            key={mod.id}
+                                            onClick={() => navigateTo(mod.id)}
+                                            className={`text-left bg-slate-800/80 hover:bg-slate-800 p-6 rounded-xl border border-slate-700/50 ${theme.hoverBorder} transition-all duration-300 group relative overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1`}
+                                        >
+                                            <div className="relative z-10 flex flex-col h-full">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h3 className={`text-lg font-bold ${theme.accentColor} group-hover:text-white transition-colors`}>
+                                                        {mod.title}
+                                                    </h3>
+                                                    {isAdmin && (
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${state === 'visible' ? 'bg-emerald-900/50 text-emerald-400 border-emerald-800' :
+                                                            state === 'scheduled' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
+                                                                'bg-red-900/50 text-red-400 border-red-800'
+                                                            }`}>
+                                                            {state === 'scheduled' && releaseAt && releaseAt > new Date() ? 'WAITING' : state.toUpperCase()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-slate-400 mb-4 line-clamp-3 flex-grow">
+                                                    {mod.description}
+                                                </p>
+                                                <div className="mt-auto">
+                                                    <div className={`text-xs text-slate-500 italic bg-slate-900/50 p-3 rounded border border-slate-700/30`}>
+                                                        <span className="font-bold not-italic text-slate-600 mr-1">Activity:</span>
+                                                        {mod.manipulation}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        {/* Decor element */}
-                                        <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl transition-all opacity-0 group-hover:opacity-20 ${theme.bgColor.replace('/5', '/30')}`}></div>
-                                    </button>
-                                ))}
+                                            {/* Decor element */}
+                                            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl transition-all opacity-0 group-hover:opacity-20 ${theme.bgColor.replace('/5', '/30')}`}></div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     );
@@ -392,7 +417,10 @@ const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void }> = ({ 
 const App: React.FC = () => {
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
     const [user, setUserState] = useState<User | null>(null);
+    const [isAdminState, setIsAdminState] = useState(false);
+
     const [authLoading, setAuthLoading] = useState(true);
+    const [moduleSettings, setModuleSettings] = useState<Record<string, any>>({});
 
     // Check for existing session on mount
     useEffect(() => {
@@ -431,6 +459,43 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (user) {
+            isAdmin(user).then(setIsAdminState);
+        } else {
+            setIsAdminState(false);
+        }
+    }, [user]);
+
+
+
+    useEffect(() => {
+        // Fetch module settings for everyone (RLS allows reading)
+        const fetchSettings = async () => {
+            const { data } = await supabase.from('module_settings').select('*');
+            if (data) {
+                const map: Record<string, any> = {};
+                data.forEach((s: any) => map[s.module_id] = s);
+                setModuleSettings(map);
+            }
+        };
+        fetchSettings();
+
+        // Subscribe to changes
+        const channel = supabase
+            .channel('public:module_settings')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'module_settings' }, (payload) => {
+                const newSetting = payload.new as any;
+                setModuleSettings(prev => ({
+                    ...prev,
+                    [newSetting.module_id]: newSetting
+                }));
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
+    useEffect(() => {
         setPage(activeModuleId || 'portal');
     }, [activeModuleId]);
 
@@ -456,7 +521,8 @@ const App: React.FC = () => {
     };
 
     const renderPage = () => {
-        if (!activeModuleId) return <CurriculumView navigateTo={navigateTo} />;
+        if (activeModuleId === 'admin_dashboard') return <AdminDashboard curriculum={CURRICULUM} onBack={() => setActiveModuleId(null)} preVerifiedAdmin={isAdminState} />;
+        if (!activeModuleId) return <CurriculumView navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
 
         const moduleDef = getModuleDef(activeModuleId);
         if (!moduleDef) return <CurriculumView navigateTo={navigateTo} />;
@@ -516,7 +582,8 @@ const App: React.FC = () => {
         const commonProps = {
             onBack: () => setActiveModuleId(null),
             customTitle: moduleDef.title,
-            customContext: moduleDef.manipulation
+            customContext: moduleDef.manipulation,
+            moduleId: moduleDef.id
         };
 
         switch (moduleDef.component) {
@@ -600,7 +667,19 @@ const App: React.FC = () => {
                         </svg>
                     </button>
                 </div>
+
+                {isAdminState && (
+                    <div className="mt-2 text-right">
+                        <button
+                            onClick={() => setActiveModuleId(activeModuleId === 'admin_dashboard' ? null : 'admin_dashboard')}
+                            className={`${activeModuleId === 'admin_dashboard' ? 'bg-slate-600 hover:bg-slate-500 border-slate-400' : 'bg-indigo-600 hover:bg-indigo-500 border-indigo-400'} text-white text-xs px-3 py-1 rounded-full shadow-lg border transition-all font-bold tracking-wider`}
+                        >
+                            {activeModuleId === 'admin_dashboard' ? '↩ Exit Admin' : '⚡ Admin Dashboard'}
+                        </button>
+                    </div>
+                )}
             </div>
+
 
             <GlobalClickLogger page={activeModuleId || 'portal'} />
             {renderPage()}
@@ -608,7 +687,7 @@ const App: React.FC = () => {
                 <p className="font-medium">Data Sandbox 1.04</p>
                 <p className="mt-2 text-sm">Designed for Interactive Learning</p>
             </footer>
-        </div>
+        </div >
     );
 };
 

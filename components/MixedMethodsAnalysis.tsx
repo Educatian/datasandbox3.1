@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Participant, QualitativeTheme } from '../types';
 import { generateMixedMethodsData } from '../services/statisticsService';
-import { getMixedMethodsInsight } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import QuantitativeBarChart from './QuantitativeBarChart';
 import QualitativeThemeCloud from './QualitativeThemeCloud';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface MixedMethodsAnalysisProps {
     onBack: () => void;
@@ -14,15 +14,18 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [themes, setThemes] = useState<QualitativeTheme[]>([]);
     const [selectedTheme, setSelectedTheme] = useState<QualitativeTheme | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how these qualitative themes explain the quantitative trends. Select a theme to get started!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => {
         const { participants, themes } = generateMixedMethodsData(100);
         setParticipants(participants);
         setThemes(themes);
         setSelectedTheme(null);
-        setExplanation("Click a theme in the word cloud to see how it connects to the quantitative survey scores.");
     }, []);
 
     useEffect(() => {
@@ -33,25 +36,34 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
         setSelectedTheme(theme);
     }, []);
 
-    useEffect(() => {
-        if (!selectedTheme) {
-            setExplanation("Click a theme in the word cloud to see how it connects to the quantitative survey scores.");
-            setIsLoading(false);
-            return;
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const subgroup = selectedTheme ? participants.filter(p => p.themes.includes(selectedTheme.text)) : [];
+        const avgScore = subgroup.length > 0 ? subgroup.reduce((acc, p) => acc + p.surveyScore, 0) / subgroup.length : 0;
+
+        const context = `
+            We are performing Mixed Methods Analysis.
+            Selected Theme: ${selectedTheme ? selectedTheme.text : 'None'}
+            Participants with this theme: ${subgroup.length}
+            Average score for this group: ${avgScore.toFixed(2)}
+            
+            User Question: ${msg}
+            
+            Synthesize the qualitative theme with the quantitative scores to provide a mixed-methods insight.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble synthesizing the data right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
         }
-
-        setIsLoading(true);
-        const fetchExplanation = async () => {
-            const subgroup = participants.filter(p => p.themes.includes(selectedTheme.text));
-            const exp = await getMixedMethodsInsight(selectedTheme, subgroup, participants);
-            setExplanation(exp);
-            setIsLoading(false);
-        };
-
-        const handler = setTimeout(fetchExplanation, 1500);
-        return () => clearTimeout(handler);
     }, [selectedTheme, participants]);
-    
+
     const subgroupData = selectedTheme
         ? participants.filter(p => p.themes.includes(selectedTheme.text))
         : null;
@@ -73,29 +85,27 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
                 </div>
                 <div className="bg-slate-800 rounded-lg shadow-2xl p-4">
                     <h3 className="text-lg font-semibold text-center text-slate-300 mb-2">Qualitative: Interview Themes</h3>
-                     <QualitativeThemeCloud 
+                    <QualitativeThemeCloud
                         themes={themes}
                         selectedTheme={selectedTheme}
                         onThemeSelect={handleThemeSelect}
                     />
                 </div>
-                 <div className="lg:col-span-2 flex flex-col space-y-8">
+                <div className="lg:col-span-2 flex flex-col space-y-8">
                     <button onClick={regenerateData} className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg">
                         Regenerate Data
                     </button>
-                     <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                      <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                   This method provides a richer understanding than either quantitative or qualitative data alone. For example, survey data (quantitative) might show that a new learning module has a low average satisfaction score. By analyzing interview data (qualitative), you might discover the key theme is 'Confusing Navigation.' Clicking this theme highlights that the dissatisfied students were precisely those who mentioned navigation issues, giving you a clear, actionable insight.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Mixed Methods Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
-                 </div>
+                </div>
             </main>
         </div>
     );

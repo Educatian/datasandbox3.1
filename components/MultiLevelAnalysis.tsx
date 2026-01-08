@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { GroupPoint, RegressionLine } from '../types';
 import { generateMultiLevelData, calculateLinearRegression } from '../services/statisticsService';
-import { getMultiLevelExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import MultiLevelScatterPlot from './MultiLevelScatterPlot';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface MultiLevelAnalysisProps {
     onBack: () => void;
 }
 
 // Reusable Slider component
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, unit?: string}> = ({ label, value, min, max, step, onChange, unit }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, unit?: string }> = ({ label, value, min, max, step, onChange, unit }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -38,8 +38,11 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
     const [overallLine, setOverallLine] = useState<RegressionLine>({ slope: 0, intercept: 0 });
     const [groupLines, setGroupLines] = useState<(RegressionLine & { groupId: number })[]>([]);
 
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Multi-level Modeling. Adjust the variances to see how group-level effects differ from the overall trend!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => {
         const newData = generateMultiLevelData(
@@ -64,17 +67,29 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
         regenerateData();
     }, [fixedIntercept, fixedSlope, interceptVariance, slopeVariance, regenerateData]);
 
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
 
-    // Debounced explanation fetching
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getMultiLevelExplanation(fixedSlope, interceptVariance, slopeVariance);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+        const context = `
+            We are analyzing Multi-level Modeling.
+            Fixed Slope (Overall): ${fixedSlope}
+            Intercept Variance: ${interceptVariance}
+            Slope Variance: ${slopeVariance}
+            
+            User Question: ${msg}
+            
+            Explain how the group-level variations affect the interpretation of the overall trend.
+        `;
 
-        return () => clearTimeout(handler);
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the multi-level effects right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
     }, [fixedSlope, interceptVariance, slopeVariance]);
 
     return (
@@ -103,20 +118,18 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
                             </div>
                         </div>
                         <button onClick={regenerateData} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
-                           Regenerate Data
+                            Regenerate Data
                         </button>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    You are studying the effect of a new teaching strategy on students' math scores across different schools. Student performance is influenced by individual factors, but also by their classroom and school environments. Multi-level models account for this nested structure, allowing you to correctly estimate the teaching strategy's true effect while considering the variations between schools.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Multi-level Modeling"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

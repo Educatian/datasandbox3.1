@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Interaction, SNANode, SNALink } from '../types';
+import { Interaction } from '../types';
 import { generateSNAData, processSNAData } from '../services/statisticsService';
-import { getSNAExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import SNAGraph from './SNAGraph';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface SNAAnalysisProps {
     onBack: () => void;
@@ -17,8 +17,13 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
     const [time, setTime] = useState(0);
     const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
     const [isAnimating, setIsAnimating] = useState(false);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help visualize the social dynamics here. Play the animation to see how the network evolves!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
+
     const animationRef = useRef<number | null>(null);
 
     const regenerateData = useCallback(() => {
@@ -31,12 +36,11 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
     useEffect(() => {
         regenerateData();
     }, [regenerateData]);
-    
-    const { visibleNodes, visibleLinks, allNodes } = useMemo(() => {
+
+    const { visibleNodes, visibleLinks } = useMemo(() => {
         const visibleInteractions = allInteractions.slice(0, time + 1);
         const { nodes, links } = processSNAData(visibleInteractions);
-        const allNodeData = processSNAData(allInteractions).nodes;
-        return { visibleNodes: nodes, visibleLinks: links, allNodes: allNodeData };
+        return { visibleNodes: nodes, visibleLinks: links };
     }, [allInteractions, time]);
 
 
@@ -61,21 +65,31 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
         };
     }, [isAnimating, animate]);
-    
-    useEffect(() => {
-        if (time >= allInteractions.length - 1 && allInteractions.length > 0) {
-             const fetchExplanation = async () => {
-                setIsLoading(true);
-                const exp = await getSNAExplanation(allNodes);
-                setExplanation(exp);
-                setIsLoading(false);
-            };
-            fetchExplanation();
-        } else {
-            setExplanation("Play the animation or move the slider to see the network form.");
-            setIsLoading(false);
+
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are performing Social Network Analysis (SNA).
+            Current Interactions Visible: ${time + 1}/${allInteractions.length}
+            Number of Active Nodes: ${visibleNodes.length}
+            Number of Active Links: ${visibleLinks.length}
+            
+            User Question: ${msg}
+            
+            Explain the structure of the network, identifying central actors and any isolated sub-groups.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the network right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
         }
-    }, [time, allInteractions, allNodes]);
+    }, [time, allInteractions, visibleNodes, visibleLinks]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -91,9 +105,9 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
                     <SNAGraph nodes={visibleNodes} links={visibleLinks} selectedNodeId={selectedNodeId} onNodeClick={setSelectedNodeId} />
                 </div>
                 <div className="lg:col-span-2 flex flex-col space-y-8">
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-4">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-4">
                         <h3 className="text-lg font-semibold text-sky-400 mb-2">Controls</h3>
-                         <div>
+                        <div>
                             <label className="flex justify-between text-sm text-slate-400">
                                 <span>Time / Interaction Step</span>
                                 <span className="font-mono">{allInteractions.length > 0 ? time + 1 : 0} / {allInteractions.length}</span>
@@ -105,17 +119,15 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
                             <button onClick={regenerateData} className="flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded">Regenerate Data</button>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    In a collaborative online course, who talks to whom? SNA visualizes these interactions from discussion forums. It can identify "central" students who act as knowledge hubs, "brokers" who connect different groups, and "isolated" students who may need extra support. Clicking a student highlights their direct network.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Social Network Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

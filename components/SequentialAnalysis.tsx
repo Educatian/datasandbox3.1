@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ValueTimePoint } from '../types';
 import { generateTimeSeriesData, calculateMovingAverage } from '../services/statisticsService';
-import { getTimeSeriesExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import LineChart from './LineChart';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface TimeSeriesAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void}> = ({ label, value, min, max, step, onChange }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -32,8 +32,12 @@ const DATA_POINTS_COUNT = 50;
 const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
     const [data, setData] = useState<ValueTimePoint[]>(() => generateTimeSeriesData(DATA_POINTS_COUNT));
     const [movingAverageWindow, setMovingAverageWindow] = useState<number>(5);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+
+    // Chat State
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Welcome to Time Series Analysis! 📈 I'm Dr. Gem. I can help you find trends and smooth out the noise." }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
 
     const movingAverageData = useMemo(() => {
         return calculateMovingAverage(data, movingAverageWindow);
@@ -48,20 +52,34 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
     const resetData = () => {
         setData(generateTimeSeriesData(DATA_POINTS_COUNT));
     };
-    
-    const analyzePattern = useCallback(async () => {
-        setIsLoading(true);
-        // Ask Gemini to analyze the middle part of the data to get a representative sample
-        const analysisSlice = data.slice(Math.floor(data.length / 4), Math.floor(data.length * 3 / 4)).map(p => p.value);
-        const exp = await getTimeSeriesExplanation(analysisSlice);
-        setExplanation(exp);
-        setIsLoading(false);
-    }, [data]);
 
-    // Initial explanation
-    useEffect(() => {
-        analyzePattern();
-    }, []);
+    const handleSendMessage = async (msg: string) => {
+        setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
+        setIsChatLoading(true);
+
+        const context = `
+            Time Series Analysis:
+            - Data Points: ${data.length}
+            - Moving Average Window: ${movingAverageWindow}
+            - Data Sample (First 5): ${data.slice(0, 5).map(p => p.value.toFixed(1)).join(', ')}
+            - Data Sample (Last 5): ${data.slice(-5).map(p => p.value.toFixed(1)).join(', ')}
+            
+            Goal: Identify trends (upward, downward, cyclic) and noise levels.
+        `;
+
+        try {
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { role: 'model', text: response }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { role: 'model', text: "I'm having trouble analyzing the data right now." }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
+
+    const analyzePattern = () => {
+        handleSendMessage("Analyze the current time series pattern. Is there a trend?");
+    };
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -79,22 +97,22 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
                 </div>
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                         <h3 className="text-lg font-semibold text-lime-400 mb-3">Controls</h3>
-                         <div className="space-y-4">
-                            <Slider 
-                                label="Moving Average Window" 
-                                value={movingAverageWindow} 
-                                min={1} max={20} step={1} 
-                                onChange={(e) => setMovingAverageWindow(+e.target.value)} 
+                        <h3 className="text-lg font-semibold text-lime-400 mb-3">Controls</h3>
+                        <div className="space-y-4">
+                            <Slider
+                                label="Moving Average Window"
+                                value={movingAverageWindow}
+                                min={1} max={20} step={1}
+                                onChange={(e) => setMovingAverageWindow(+e.target.value)}
                             />
                             <div className="flex space-x-2 pt-2">
-                                 <button 
+                                <button
                                     onClick={resetData}
                                     className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
                                 >
                                     Reset Data
                                 </button>
-                                <button 
+                                <button
                                     onClick={analyzePattern}
                                     className="flex-1 bg-lime-600 hover:bg-lime-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
                                 >
@@ -103,18 +121,13 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
                             </div>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    Analyze student engagement over a semester. The X-axis could be 'Weeks into the Course' and the Y-axis 'Average Forum Posts per Student.' A moving average smooths weekly noise to reveal the overall trend. Is engagement increasing towards mid-terms, or is there a slow decline that warrants an intervention?
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <UnifiedGenAIChat
+                        moduleTitle="Time Series Analysis"
+                        history={chatHistory}
+                        onSendMessage={handleSendMessage}
+                        isLoading={isChatLoading}
+                        variant="embedded"
+                    />
                 </div>
             </main>
         </div>

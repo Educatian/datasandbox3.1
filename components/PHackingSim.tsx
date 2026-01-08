@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { getChatResponse } from '../services/geminiService';
 
 interface PHackingSimProps {
@@ -21,11 +21,10 @@ const JELLY_BEANS = [
 
 const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
     const [experiments, setExperiments] = useState<Experiment[]>([]);
-    
+
     // Chat State
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to The P-Hacking Lab! 🕵️‍♂️", sender: 'bot' },
-        { text: "We are testing if Jelly Beans cause acne. We found no link overall. But maybe a SPECIFIC color does? Click 'Run 20 Studies' to check every color.", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to The P-Hacking Lab! 🕵️‍♂️ I'm Dr. Gem. We are testing if Jelly Beans cause acne. Click 'Run 20 Studies' to check every color.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -41,7 +40,7 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
             };
         });
         setExperiments(results);
-        
+
         const sigCount = results.filter(r => r.significant).length;
         if (sigCount > 0) {
             const sigNames = results.filter(r => r.significant).map(r => r.name).join(', ');
@@ -52,21 +51,21 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
     };
 
     const addBotMessage = (text: string) => {
-        setChatHistory(prev => [...prev, { text, sender: 'bot' }]);
+        setChatHistory(prev => [...prev, { text, role: 'model' }]);
     };
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
         const context = `Dr. Gem explaining P-Hacking. 
         Running 20 tests at alpha=0.05 means we EXPECT 1 false positive by chance (Type I Error). 
         Cherry-picking that one result is bad science.`;
-        
+
         try {
             const res = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: res, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: res, role: 'model' as const }]);
         } catch {
-            setChatHistory(prev => [...prev, { text: "Error.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -87,7 +86,7 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
                     <button onClick={runSim} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-4 rounded-lg mb-6 shadow-lg transform active:scale-95 transition-all">
                         RUN 20 RANDOM EXPERIMENTS
                     </button>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {experiments.map(exp => (
                             <div key={exp.id} className={`p-3 rounded border-2 flex flex-col items-center justify-center text-center transition-all duration-500 ${exp.significant ? 'bg-green-900/50 border-green-500 scale-105 shadow-[0_0_15px_rgba(74,222,128,0.3)]' : 'bg-slate-800 border-slate-700 opacity-60'}`}>
@@ -104,15 +103,12 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
                 </div>
 
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="P-Hacking Lab"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "Why is this bad?", action: () => handleSendMessage("Why is running 20 tests bad?") },
-                            { label: "What is Type I Error?", action: () => handleSendMessage("What is a Type I error?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </main>

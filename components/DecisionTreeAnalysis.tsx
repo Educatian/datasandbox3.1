@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DecisionTreePoint, DecisionTreeNode } from '../types';
 import { calculateDecisionTree } from '../services/statisticsService';
-import { getDecisionTreeNodeExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import DecisionTreeVisualizer from './DecisionTreeVisualizer';
 import DecisionBoundaryPlot from './DecisionBoundaryPlot';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface DecisionTreeAnalysisProps {
     onBack: () => void;
 }
 
 // Reusable Slider component
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void}> = ({ label, value, min, max, step, onChange }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -45,7 +45,7 @@ const generateMoonData = (n_samples: number, noise: number = 0.2): DecisionTreeP
         const y = radius * Math.sin(angle) + 0.5 + (Math.random() - 0.5) * noise * 2;
         data.push({ id: i + n_samples_out, features: [x, y], label: 1 });
     }
-    
+
     // Scale and shift data to be in a viewable range (e.g., 0-100)
     const allX = data.map(d => d.features[0]);
     const allY = data.map(d => d.features[1]);
@@ -66,24 +66,49 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
     const [minSamplesSplit, setMinSamplesSplit] = useState(5);
     const [data, setData] = useState<DecisionTreePoint[]>(() => generateMoonData(150));
     const [tree, setTree] = useState<DecisionTreeNode | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how this decision tree makes classifications. Click on any node, and I'll analyze the split logic for you!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => setData(generateMoonData(150)), []);
 
     useEffect(() => {
         const newTree = calculateDecisionTree(data, maxDepth, minSamplesSplit);
         setTree(newTree);
-        setExplanation("Adjust hyperparameters to see how the tree changes, or click a node for an explanation.");
     }, [data, maxDepth, minSamplesSplit]);
 
-    const handleNodeClick = useCallback(async (node: DecisionTreeNode) => {
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are analyzing a Decision Tree Classifier.
+            Hyperparameters: Max Depth=${maxDepth}, Min Samples Split=${minSamplesSplit}.
+            Tree Nodes: ${tree ? 'Generated' : 'Pending'}.
+            
+            User Question: ${msg}
+            
+            Explain how decision trees define boundaries to classify the data points (moons dataset).
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the tree right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [maxDepth, minSamplesSplit, tree]);
+
+    const handleNodeClick = useCallback((node: DecisionTreeNode) => {
         if (!node.splitFeatureIndex === undefined || node.splitThreshold === undefined) return;
-        setIsLoading(true);
-        const exp = await getDecisionTreeNodeExplanation(node.splitFeatureIndex!, node.splitThreshold!);
-        setExplanation(exp);
-        setIsLoading(false);
-    }, []);
+        const msg = `What does the split at Feature ${node.splitFeatureIndex} <= ${node.splitThreshold.toFixed(2)} mean?`;
+        handleSendMessage(msg);
+    }, [handleSendMessage]);
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -112,22 +137,20 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
                         {tree && <DecisionBoundaryPlot data={data} tree={tree} />}
                     </div>
                 </div>
-                 <div className="flex flex-col space-y-8">
+                <div className="flex flex-col space-y-8">
                     <div className="bg-slate-800 rounded-lg shadow-2xl p-4 flex-grow min-h-[400px]">
                         <h3 className="text-lg font-semibold text-rose-400 text-center mb-2">Tree Structure</h3>
                         {tree && <DecisionTreeVisualizer root={tree} onNodeClick={handleNodeClick} />}
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    Imagine building a model to identify students at risk of failing a course. The tree learns rules from data, such as "IF weekly logins &lt; 2 AND quiz average &lt; 60% THEN predict 'at-risk'". The key benefit is interpretability; educators can see the exact rules the model uses, making it easier to trust its predictions and design targeted interventions.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Decision Tree Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

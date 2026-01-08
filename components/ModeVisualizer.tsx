@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { getChatResponse } from '../services/geminiService';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface ModeVisualizerProps {
     onBack: () => void;
@@ -11,12 +11,16 @@ const CATEGORIES = ['🍎', '🍌', '🍇', '🍊', '🍉'];
 
 const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
     const [counts, setCounts] = useState<number[]>([1, 3, 2, 5, 2]);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Chat State
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Welcome to The Mode Magnet! 🧲 I'm Dr. Gem. Stack the blocks to find the Mode (the most popular value)." }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const maxCount = Math.max(...counts);
     const modes = counts.map((c, i) => c === maxCount ? i : -1).filter(i => i !== -1);
-    
+
     const handleAdd = (index: number) => {
         const newCounts = [...counts];
         if (newCounts[index] < 10) newCounts[index]++;
@@ -29,16 +33,29 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
         setCounts(newCounts);
     };
 
-    const handleAsk = async () => {
-        setIsLoading(true);
+    const handleSendMessage = async (msg: string) => {
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
+        setIsChatLoading(true);
+
         const modeNames = modes.map(i => CATEGORIES[i]);
-        const prompt = `I have a dataset of fruits: ${CATEGORIES.map((c,i) => `${c}:${counts[i]}`).join(', ')}. 
-        The Mode is ${modeNames.join(' and ')}. 
-        Explain what the Mode tells us about this fruit basket in one simple sentence.`;
-        
-        const response = await getChatResponse(prompt, "You are a statistics tutor.");
-        setExplanation(response);
-        setIsLoading(false);
+        const context = `
+            You are Dr. Gem, explaining the Mode (Statistics).
+            Current Data:
+            - Fruits: ${CATEGORIES.map((c, i) => `${c}:${counts[i]}`).join(', ')}
+            - Mode (Tallest Tower): ${modeNames.join(' and ')}
+            - Type: ${modes.length > 1 ? "Multi-modal" : "Uni-modal"}
+            
+            Educational Goal: Use the visual of "tallest stack" to explain Mode.
+        `;
+
+        try {
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
+        } catch {
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
+        } finally {
+            setIsChatLoading(false);
+        }
     };
 
     return (
@@ -59,8 +76,8 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
                             <div key={i} className="flex flex-col items-center group relative h-full justify-end w-full mx-2">
                                 <div className="mb-2 space-y-1 w-full flex flex-col-reverse items-center">
                                     {Array.from({ length: count }).map((_, blockIndex) => (
-                                        <div 
-                                            key={blockIndex} 
+                                        <div
+                                            key={blockIndex}
                                             className={`w-full max-w-[60px] h-8 rounded border border-black/20 shadow-sm transition-all duration-300 ${isMode ? 'bg-amber-500' : 'bg-slate-700'}`}
                                         ></div>
                                     ))}
@@ -87,9 +104,18 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
                         <p className="text-sm text-slate-400 mb-4">
                             {modes.length > 1 ? "This distribution is Multi-modal (has multiple peaks)." : "This distribution is Uni-modal (one clear peak)."}
                         </p>
-                        <button onClick={handleAsk} className="w-full bg-amber-600 hover:bg-amber-700 p-2 rounded text-white font-bold">Ask Dr. Gem</button>
+                        <button onClick={() => handleSendMessage("Explain this mode")} className="w-full bg-amber-600 hover:bg-amber-700 p-2 rounded text-white font-bold mb-4">Why is this the Mode?</button>
+
+                        <div className="h-[400px]">
+                            <UnifiedGenAIChat
+                                moduleTitle="The Mode Magnet"
+                                history={chatHistory}
+                                onSendMessage={handleSendMessage}
+                                isLoading={isChatLoading}
+                                variant="embedded"
+                            />
+                        </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
                 </div>
             </main>
         </div>

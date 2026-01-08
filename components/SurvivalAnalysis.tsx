@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SurvivalDataPoint, SurvivalCurvePoint } from '../types';
 import { generateSurvivalData, calculateKaplanMeier } from '../services/statisticsService';
-import { getSurvivalAnalysisExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import SurvivalCurveChart from './SurvivalCurveChart';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface SurvivalAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string}> = ({ label, value, min, max, step, onChange, format }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string }> = ({ label, value, min, max, step, onChange, format }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -30,14 +30,18 @@ const Slider: React.FC<{label: string, value: number, min: number, max: number, 
 const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
     const [interventionEffect, setInterventionEffect] = useState(0.5);
     const [survivalData, setSurvivalData] = useState<SurvivalDataPoint[]>([]);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help interpret these survival curves. Adjust the mentoring effect to see how it changes student retention over time!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => {
         const data = generateSurvivalData(200, interventionEffect);
         setSurvivalData(data);
     }, [interventionEffect]);
-    
+
     useEffect(() => {
         regenerateData();
     }, [regenerateData]);
@@ -62,16 +66,30 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
     }, [survivalData]);
 
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getSurvivalAnalysisExplanation(medianSurvivalA, medianSurvivalB);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
 
-        return () => clearTimeout(handler);
-    }, [medianSurvivalA, medianSurvivalB]);
+        const context = `
+            We are performing Survival Analysis (Kaplan-Meier Estimator).
+            Group A (Mentored) Median Survival Time: ${medianSurvivalA} weeks.
+            Group B (Control) Median Survival Time: ${medianSurvivalB} weeks.
+            Intervention Effect Setting: ${(interventionEffect * 100).toFixed(0)}% risk reduction.
+            
+            User Question: ${msg}
+            
+            Explain the difference in the curves and what it implies about the effectiveness of the mentoring program on student retention.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the survival curves.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [medianSurvivalA, medianSurvivalB, interventionEffect]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -93,39 +111,37 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-teal-400 mb-3">Controls</h3>
-                         <Slider 
-                            label="Mentoring Program Effect" 
-                            value={interventionEffect} 
-                            min={0} max={0.9} step={0.05} 
-                            onChange={(e) => setInterventionEffect(+e.target.value)} 
+                        <Slider
+                            label="Mentoring Program Effect"
+                            value={interventionEffect}
+                            min={0} max={0.9} step={0.05}
+                            onChange={(e) => setInterventionEffect(+e.target.value)}
                             format={v => `${(v * 100).toFixed(0)}% reduction in dropout risk`}
-                         />
+                        />
                         <button onClick={regenerateData} className="w-full mt-6 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">
                             Regenerate Data
                         </button>
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-teal-400 mb-3">Analysis Results</h3>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-300">Median Survival (Group A):</span>
                             <span className="font-mono bg-slate-900 px-2 py-1 rounded">{medianSurvivalA} weeks</span>
                         </div>
-                         <div className="flex justify-between items-center mt-2 text-sm">
+                        <div className="flex justify-between items-center mt-2 text-sm">
                             <span className="text-slate-300">Median Survival (Group B):</span>
                             <span className="font-mono bg-slate-900 px-2 py-1 rounded">{medianSurvivalB} weeks</span>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                   This analysis is crucial for evaluating interventions aimed at student retention. By comparing the survival curves of students who received an intervention (like extra tutoring) against those who didn't, we can visually and statistically determine if the intervention was effective at reducing dropouts over the duration of the course.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Survival Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

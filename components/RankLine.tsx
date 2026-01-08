@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface RankLineProps {
     onBack: () => void;
@@ -14,7 +13,7 @@ const generateScores = () => {
         // Box-Muller transform for simple normal distribution approximation
         const u = 1 - Math.random();
         const v = Math.random();
-        const z = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+        const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
         // Mean 75, SD 15, clamped 0-100
         let score = 75 + z * 15;
         score = Math.max(0, Math.min(100, score));
@@ -26,11 +25,10 @@ const generateScores = () => {
 const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
     const [percentile, setPercentile] = useState(50);
     const [scores] = useState<number[]>(generateScores);
-    
+
     // Chat State
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to The Rank Line! 🚩 I'm Dr. Gem.", sender: 'bot' },
-        { text: "This lineup represents 100 students sorted by score. Move the slider to understand Percentiles.", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to The Rank Line! 🚩 I'm Dr. Gem. I can explain how Percentiles show your relative standing. Try me!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -44,7 +42,7 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
     };
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const context = `
@@ -64,9 +62,9 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "Connection error. Please try again.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Connection error. Please try again.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -74,16 +72,16 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
 
     const jumpTo = (val: number, label: string) => {
         setPercentile(val);
-        setChatHistory(prev => [...prev, { text: `Jumped to ${label} (${val}th percentile).`, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: `Jumped to ${label} (${val}th percentile).`, role: 'user' as const }]);
         setTimeout(() => {
-             // Trigger a simple bot reaction based on the jump
-             let reaction = "";
-             if (val === 50) reaction = "Right in the middle! That's the Median.";
-             else if (val === 25) reaction = "That's Q1. 25% scored lower, 75% scored higher.";
-             else if (val === 75) reaction = "That's Q3. Only the top 25% are above this point.";
-             else if (val === 99) reaction = "Top of the class!";
-             
-             if(reaction) setChatHistory(prev => [...prev, { text: reaction, sender: 'bot' }]);
+            // Trigger a simple bot reaction based on the jump
+            let reaction = "";
+            if (val === 50) reaction = "Right in the middle! That's the Median.";
+            else if (val === 25) reaction = "That's Q1. 25% scored lower, 75% scored higher.";
+            else if (val === 75) reaction = "That's Q3. Only the top 25% are above this point.";
+            else if (val === 99) reaction = "Top of the class!";
+
+            if (reaction) setChatHistory(prev => [...prev, { text: reaction, role: 'model' as const }]);
         }, 500);
     };
 
@@ -100,10 +98,10 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left: Visualization */}
                 <div className="lg:col-span-2 flex flex-col space-y-6">
-                    
+
                     {/* The Lineup Container */}
                     <div className="bg-slate-900 rounded-xl p-6 border-4 border-slate-800 shadow-2xl relative min-h-[400px]">
-                        
+
                         {/* Metrics Overlay */}
                         <div className="flex justify-between items-end mb-6 border-b border-slate-700 pb-4">
                             <div>
@@ -122,10 +120,10 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
                                 const rank = index + 1;
                                 const isBelow = rank <= percentile;
                                 const isExact = rank === percentile;
-                                
+
                                 return (
-                                    <div 
-                                        key={index} 
+                                    <div
+                                        key={index}
                                         className={`
                                             relative h-8 rounded transition-all duration-300 flex items-center justify-center group
                                             ${isExact ? 'bg-white scale-125 z-10 shadow-[0_0_15px_white]' : ''}
@@ -136,7 +134,7 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
                                     >
                                         {/* Little Person Icon / Bar */}
                                         <div className={`w-1.5 h-1.5 rounded-full ${isExact ? 'bg-emerald-900' : 'bg-black/20'}`}></div>
-                                        
+
                                         {/* Tooltip on Hover */}
                                         <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs p-1 rounded whitespace-nowrap z-20">
                                             Rank {rank}: {score.toFixed(0)}pts
@@ -158,12 +156,12 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
 
                         {/* Slider Control */}
                         <div className="mt-8 relative pt-6">
-                            <input 
-                                type="range" 
-                                min="1" 
-                                max="100" 
-                                value={percentile} 
-                                onChange={(e) => setPercentile(parseInt(e.target.value))} 
+                            <input
+                                type="range"
+                                min="1"
+                                max="100"
+                                value={percentile}
+                                onChange={(e) => setPercentile(parseInt(e.target.value))}
                                 className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 z-10 relative"
                             />
                             {/* Tick Marks for Quartiles */}
@@ -177,7 +175,7 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
 
                 {/* Right: AI Tutor & Controls */}
                 <div className="lg:col-span-1 flex flex-col space-y-4">
-                    
+
                     {/* Quick Jump Buttons */}
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => jumpTo(25, "Q1")} className="bg-slate-800 hover:bg-slate-700 p-3 rounded-lg border border-slate-700 text-sm font-bold text-slate-300 transition-colors">
@@ -196,15 +194,12 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
 
                     {/* Chatbot */}
                     <div className="flex-grow min-h-[400px]">
-                        <AITutor 
+                        <UnifiedGenAIChat
+                            moduleTitle="The Rank Line"
                             history={chatHistory}
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
-                            className="h-full"
-                            suggestedActions={[
-                                { label: "What is a Quartile?", action: () => handleSendMessage("What is a Quartile?") },
-                                { label: "Percentile vs % Correct", action: () => handleSendMessage("Difference between percentile and percent correct?") },
-                            ]}
+                            variant="embedded"
                         />
                     </div>
                 </div>

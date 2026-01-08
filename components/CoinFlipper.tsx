@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface CoinFlipperProps {
     onBack: () => void;
@@ -17,10 +16,10 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
     const [pValue, setPValue] = useState<number | null>(null);
 
     // Chat State
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to The Coin Flipper! 🪙", sender: 'bot' },
-        { text: "Here we test the Null Hypothesis ($H_0$): 'This coin is fair'.", sender: 'bot' },
-        { text: "Flip the coin and see if the results look suspicious!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to The Coin Flipper! 🪙 I'm Dr. Gem.", role: 'model' },
+        { text: "Here we test the Null Hypothesis ($H_0$): 'This coin is fair'.", role: 'model' },
+        { text: "Flip the coin and see if the results look suspicious!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -59,18 +58,18 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
     // Calculating probability of observing outcome strictly more extreme
     const calculatePValue = (k: number, n: number) => {
         if (n === 0) return;
-        
+
         // Z-score approximation for speed (good enough for visualization > 10 flips)
         // Mean = n * 0.5, SD = sqrt(n * 0.5 * 0.5)
         const mean = n * 0.5;
         const sd = Math.sqrt(n * 0.25);
         const z = (k - mean) / sd;
-        
+
         // P-value from Z (two-tailed)
         // Using a simple approx function from existing services would be ideal, but implementing inline for independence
         const p = 2 * (1 - normalCDF(Math.abs(z)));
         setPValue(p);
-        
+
         if (p < 0.05) {
             addBotMessage(`Warning! P-value is ${p.toFixed(4)}. This result is very unlikely for a fair coin. We reject the Null Hypothesis!`);
         } else {
@@ -87,11 +86,11 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
     }
 
     const addBotMessage = (text: string) => {
-        setChatHistory(prev => [...prev, { text, sender: 'bot' }]);
+        setChatHistory(prev => [...prev, { text, role: 'model' }]);
     };
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const context = `
@@ -112,9 +111,9 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
         } catch {
-            setChatHistory(prev => [...prev, { text: "Connection error.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -134,7 +133,7 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
                 {/* Left: Experiment */}
                 <div className="lg:col-span-2 flex flex-col space-y-6">
                     <div className="bg-slate-900 rounded-xl p-8 border-4 border-slate-800 shadow-2xl relative flex flex-col items-center min-h-[400px]">
-                        
+
                         {/* Coin Animation Area */}
                         <div className="relative w-40 h-40 mb-8 perspective-1000">
                             <div className={`w-full h-full rounded-full border-8 border-yellow-500 bg-yellow-400 shadow-[0_0_50px_rgba(234,179,8,0.4)] flex items-center justify-center text-6xl font-black text-yellow-700 transition-transform duration-500 ${isFlipping ? 'animate-[spin_0.5s_linear_infinite]' : ''}`}>
@@ -170,7 +169,7 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
                                 </div>
                                 <div className="h-4 bg-slate-700 rounded-full overflow-hidden relative">
                                     <div className="absolute top-0 bottom-0 left-0 w-[5%] bg-red-500/50 z-10" title="Significance Threshold (0.05)"></div>
-                                    <div 
+                                    <div
                                         className={`absolute top-0 bottom-0 left-0 transition-all duration-700 ${pValue < 0.05 ? 'bg-red-500' : 'bg-green-500'}`}
                                         style={{ width: `${Math.min(100, pValue * 100)}%` }}
                                     ></div>
@@ -190,14 +189,14 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
                                 <span>GOD MODE: True Coin Bias (Hidden Parameter)</span>
                                 <span>{trueBias === 0.5 ? 'Fair (50%)' : `${(trueBias * 100).toFixed(0)}% Heads`}</span>
                             </label>
-                            <input 
-                                type="range" 
-                                min="0" max="1" step="0.1" 
-                                value={trueBias} 
+                            <input
+                                type="range"
+                                min="0" max="1" step="0.1"
+                                value={trueBias}
                                 onChange={(e) => {
                                     setTrueBias(parseFloat(e.target.value));
                                     reset();
-                                }} 
+                                }}
                                 className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
                             />
                         </div>
@@ -207,15 +206,12 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
 
                 {/* Right: Chatbot */}
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="The Coin Flipper"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "What is p-value?", action: () => handleSendMessage("What exactly is a p-value?") },
-                            { label: "Why reject H0?", action: () => handleSendMessage("Why do we reject the null hypothesis?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </main>

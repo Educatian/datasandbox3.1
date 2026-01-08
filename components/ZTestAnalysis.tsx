@@ -5,15 +5,17 @@ import { calculateZTest, calculateMean2ForPValue } from '../services/statisticsS
 import { getPValueExplanation } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import DistributionChart from './DistributionChart';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import { getChatResponse } from '../services/geminiService';
 
 interface ZTestAnalysisProps {
     onBack: () => void;
     customTitle?: string;
     customContext?: string;
+    moduleId?: string;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, onMouseUp?: () => void}> = ({ label, value, min, max, step, onChange, onMouseUp }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, onMouseUp?: () => void }> = ({ label, value, min, max, step, onChange, onMouseUp }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -37,8 +39,11 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
     const [dist1, setDist1] = useState<DistributionParams>({ mean: 45, stdDev: 10, size: 100 });
     const [dist2, setDist2] = useState<DistributionParams>({ mean: 55, stdDev: 10, size: 100 });
     const [testResult, setTestResult] = useState({ zScore: 0, pValue: 1 });
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    // Chat State
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Hello! I'm Dr. Gem. 🧪 Ready to test our hypothesis? Adjust the group means and let's check that p-value!" }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
     const [logPValue, setLogPValue] = useState(0); // For the log-scale slider, from 0 to 4 (p=1 to 0.0001)
 
     const distributionsForChart = useMemo(() => [
@@ -56,28 +61,42 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
         }
     }, [dist1, dist2]);
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getPValueExplanation(testResult.pValue);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+    // Unified Chat Handler
+    const handleSendMessage = async (message: string) => {
+        const newHistory = [...chatHistory, { role: 'user' as const, text: message }];
+        setChatHistory(newHistory);
+        setIsChatLoading(true);
 
-        return () => clearTimeout(handler);
-    }, [testResult.pValue]);
-    
+        const context = `
+            Current Z-Test Simulation State:
+            Group 1 (Control): Mean=${dist1.mean}, StdDev=${dist1.stdDev}, Size=${dist1.size}
+            Group 2 (Experimental): Mean=${dist2.mean}, StdDev=${dist2.stdDev}, Size=${dist2.size}
+            Result: Z-Score=${testResult.zScore.toFixed(3)}, p-value=${testResult.pValue.toExponential(4)}
+            User Context: ${customContext || 'General Z-Test Analysis'}
+        `;
+
+        try {
+            const response = await getChatResponse(message, context);
+            setChatHistory(prev => [...prev, { role: 'model' as const, text: response }]);
+        } catch (error) {
+            console.error("Chat error:", error);
+            setChatHistory(prev => [...prev, { role: 'model' as const, text: "Sorry, I encountered an error. Please try again." }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
+
     const handlePValueSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newLogP = parseFloat(e.target.value);
         setLogPValue(newLogP);
 
         const targetPValue = Math.pow(10, -newLogP);
-        
-        const newMean2 = calculateMean2ForPValue(targetPValue, dist1, { 
-            stdDev: dist2.stdDev, 
-            size: dist2.size 
+
+        const newMean2 = calculateMean2ForPValue(targetPValue, dist1, {
+            stdDev: dist2.stdDev,
+            size: dist2.size
         }, dist2.mean);
-        
+
         // Clamp the value to stay within the slider's allowed range
         const clampedMean2 = Math.max(10, Math.min(90, newMean2));
 
@@ -109,20 +128,20 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                         <div>
                             <h3 className="text-lg font-semibold text-cyan-400 mb-3 border-b border-cyan-400/20 pb-2">Group 1 (Cyan)</h3>
                             <div className="space-y-4 mt-3">
-                                <Slider label="Mean" value={dist1.mean} min={10} max={90} step={0.5} onChange={(e) => setDist1(d => ({...d, mean: +e.target.value}))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 1 Mean', value: dist1.mean })} />
-                                <Slider label="Standard Deviation" value={dist1.stdDev} min={2} max={20} step={0.5} onChange={(e) => setDist1(d => ({...d, stdDev: +e.target.value}))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 1 StdDev', value: dist1.stdDev })} />
+                                <Slider label="Mean" value={dist1.mean} min={10} max={90} step={0.5} onChange={(e) => setDist1(d => ({ ...d, mean: +e.target.value }))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 1 Mean', value: dist1.mean })} />
+                                <Slider label="Standard Deviation" value={dist1.stdDev} min={2} max={20} step={0.5} onChange={(e) => setDist1(d => ({ ...d, stdDev: +e.target.value }))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 1 StdDev', value: dist1.stdDev })} />
                             </div>
                         </div>
-                         <div>
+                        <div>
                             <h3 className="text-lg font-semibold text-pink-500 mb-3 border-b border-pink-500/20 pb-2">Group 2 (Pink)</h3>
                             <div className="space-y-4 mt-3">
-                                <Slider label="Mean" value={dist2.mean} min={10} max={90} step={0.5} onChange={(e) => setDist2(d => ({...d, mean: +e.target.value}))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 2 Mean', value: dist2.mean })} />
-                                <Slider label="Standard Deviation" value={dist2.stdDev} min={2} max={20} step={0.5} onChange={(e) => setDist2(d => ({...d, stdDev: +e.target.value}))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 2 StdDev', value: dist2.stdDev })} />
+                                <Slider label="Mean" value={dist2.mean} min={10} max={90} step={0.5} onChange={(e) => setDist2(d => ({ ...d, mean: +e.target.value }))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 2 Mean', value: dist2.mean })} />
+                                <Slider label="Standard Deviation" value={dist2.stdDev} min={2} max={20} step={0.5} onChange={(e) => setDist2(d => ({ ...d, stdDev: +e.target.value }))} onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'Group 2 StdDev', value: dist2.stdDev })} />
                             </div>
                         </div>
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                         <h3 className="text-lg font-semibold text-cyan-400 mb-3">Test Results</h3>
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                        <h3 className="text-lg font-semibold text-cyan-400 mb-3">Test Results</h3>
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-slate-300">Z-Score:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
@@ -131,11 +150,11 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">p-value:</span>
-                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
+                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
                                 {testResult.pValue < 0.001 && testResult.pValue !== 0 ? testResult.pValue.toExponential(2) : testResult.pValue.toFixed(4)}
                             </span>
                         </div>
-                         <div className="mt-4 pt-4 border-t border-slate-700">
+                        <div className="mt-4 pt-4 border-t border-slate-700">
                             <label className="flex justify-between text-sm text-slate-400" htmlFor="p-value-slider">
                                 <span>Adjust p-value (moves Group 2)</span>
                             </label>
@@ -153,21 +172,19 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                             />
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    This is the classic A/B test. Imagine you want to see if a new, gamified quiz interface (Group 1) leads to higher scores than the old interface (Group 2). The Z-test helps you determine if the observed difference in average scores between the two groups is statistically significant, or if it could have just happened by random chance.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+
+
+                    <UnifiedGenAIChat
+                        moduleTitle={customTitle || "Z-Test Analysis"}
+                        history={chatHistory}
+                        onSendMessage={handleSendMessage}
+                        isLoading={isChatLoading}
+                        variant="embedded"
+                    />
+
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 };
 

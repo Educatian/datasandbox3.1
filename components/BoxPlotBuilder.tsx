@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface BoxPlotBuilderProps {
     onBack: () => void;
@@ -11,9 +11,12 @@ interface BoxPlotBuilderProps {
 const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
     // Initial Data: a simple spread
     const [data, setData] = useState<number[]>([10, 25, 40, 45, 50, 55, 60, 75, 90]);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    
+    // Chat State
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { role: 'model', text: "Greetings! Dr. Gem here. 📦 Let's pack some data! Drag those points around and I'll help you make sense of the Quartiles." }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
+
     const svgRef = useRef<SVGSVGElement | null>(null);
 
     // Statistics
@@ -37,13 +40,13 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
         const width = 600;
         const height = 400;
         const margin = { top: 40, right: 50, bottom: 40, left: 100 };
-        
+
         svg.attr('viewBox', `0 0 ${width} ${height}`);
         svg.selectAll('*').remove();
 
         // Scale (Vertical)
         const y = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
-        
+
         // Axis
         const axis = d3.axisLeft(y);
         svg.append('g')
@@ -54,10 +57,10 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
 
         // --- Drag Handling ---
         const drag = d3.drag<SVGCircleElement, number>()
-            .on('drag', function(event, d) {
+            .on('drag', function (event, d) {
                 const newVal = y.invert(event.y);
                 const clamped = Math.max(0, Math.min(100, newVal));
-                
+
                 // Identify which point index we are dragging
                 // Since values can be duplicate, we rely on the index passed to data()
                 // But d3 v6 passes (event, d) where d is datum.
@@ -67,12 +70,12 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
         // We handle data update via index in the render loop below to avoid complex state sync in drag
         // For simplicity in this demo, let's just make points separate from the box plot visualization
         // The Box Plot is calculated from the points.
-        
+
         // --- 1. The Raw Data Points (Left Side) ---
         const pointsGroup = svg.append('g').attr('transform', `translate(${margin.left + 50}, 0)`);
-        
+
         pointsGroup.append('text').attr('x', 0).attr('y', margin.top - 20).text('Raw Data').attr('fill', '#94a3b8').attr('text-anchor', 'middle').style('font-size', '12px');
-        
+
         pointsGroup.selectAll('circle')
             .data(data)
             .join('circle')
@@ -93,16 +96,16 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
                     // Or simpler: Map data to objects in React state.
                 }) as any
             );
-            
+
         // To fix drag properly, let's wrap logic in a way that we can update specific indices.
         // We will just redraw purely based on React state, but D3 drag needs to trigger setState.
         // Let's implement the drag behavior inside the useEffect using index closure if possible
         // OR better: Render circles in React, not D3, for the interactive parts?
         // No, let's stick to D3 for the box plot drawing logic.
-        
+
         // Re-implementing with index-based data binding:
         const indexedData = data.map((val, i) => ({ val, id: i }));
-        
+
         pointsGroup.selectAll('circle')
             .data(indexedData, (d: any) => d.id)
             .join('circle')
@@ -111,7 +114,7 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
             .attr('r', 8)
             .attr('fill', '#38bdf8')
             .style('cursor', 'ns-resize')
-            .call(d3.drag<SVGCircleElement, {val: number, id: number}>()
+            .call(d3.drag<SVGCircleElement, { val: number, id: number }>()
                 .on('drag', (event, d) => {
                     const newVal = Math.max(0, Math.min(100, y.invert(event.y)));
                     // Update state
@@ -166,9 +169,9 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
                 .attr('stroke', 'white')
                 .attr('stroke-width', 1);
         });
-        
+
         // Labels
-        const labelOffset = boxWidth/2 + 10;
+        const labelOffset = boxWidth / 2 + 10;
         const addLabel = (val: number, text: string, color = '#94a3b8') => {
             boxGroup.append('text')
                 .attr('x', boxCenter + labelOffset)
@@ -178,7 +181,7 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
                 .attr('fill', color)
                 .style('font-size', '11px');
         };
-        
+
         addLabel(stats.max, 'Max');
         addLabel(stats.q3, 'Q3');
         addLabel(stats.median, 'Median', '#facc15');
@@ -188,18 +191,30 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
         // Connecting lines (Visualization aid)
         // Draw faint lines from data to box plot if sorted? Too messy.
         // Instead, just dashed lines from stats to axis
-        
+
     }, [data, stats]);
 
-    const handleAskGemini = async () => {
-        setIsLoading(true);
-        const prompt = `I have a dataset: [${data.map(d => d.toFixed(0)).join(', ')}]. 
-        The Median is ${stats.median.toFixed(1)}, Q1 is ${stats.q1.toFixed(1)}, and Q3 is ${stats.q3.toFixed(1)}.
-        Explain what the "Interquartile Range" (IQR) represents in this specific context in one simple sentence.`;
-        
-        const response = await getChatResponse(prompt, "You are a statistics tutor.");
-        setExplanation(response);
-        setIsLoading(false);
+    const handleSendMessage = async (message: string) => {
+        const newHistory = [...chatHistory, { role: 'user' as const, text: message }];
+        setChatHistory(newHistory);
+        setIsChatLoading(true);
+
+        const context = `
+            Current Box Plot Stats:
+            Min: ${stats.min}, Q1: ${stats.q1}, Median: ${stats.median}, Q3: ${stats.q3}, Max: ${stats.max}, IQR: ${stats.iqr}
+            Data Points: [${data.map(d => d.toFixed(0)).join(', ')}]
+            User Context: Learning about Box Plots, Quartiles, and Interquartile Range.
+        `;
+
+        try {
+            const response = await getChatResponse(message, context);
+            setChatHistory(prev => [...prev, { role: 'model' as const, text: response }]);
+        } catch (error) {
+            console.error("Chat error:", error);
+            setChatHistory(prev => [...prev, { role: 'model' as const, text: "Sorry, I encountered an error. Please try again." }]);
+        } finally {
+            setIsChatLoading(false);
+        }
     };
 
     return (
@@ -226,9 +241,14 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
                             <div className="flex justify-between text-yellow-400 font-bold border-t border-slate-700 pt-2"><span>Median:</span> <span>{stats.median.toFixed(1)}</span></div>
                         </div>
                         <button onClick={() => setData(d => d.map(() => Math.random() * 80 + 10))} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 p-2 rounded text-white">Randomize Data</button>
-                        <button onClick={handleAskGemini} className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 p-2 rounded text-white font-bold">Ask Dr. Gem about IQR</button>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
+                    <UnifiedGenAIChat
+                        moduleTitle="The Box Plot Packer"
+                        history={chatHistory}
+                        onSendMessage={handleSendMessage}
+                        isLoading={isChatLoading}
+                        variant="embedded"
+                    />
                 </div>
             </main>
         </div>

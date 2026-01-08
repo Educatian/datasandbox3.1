@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PSMDataPoint } from '../types';
 import { generatePSMData, performMatching } from '../services/statisticsService';
-import { getPSMExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import PSMComparisonPlot from './PSMComparisonPlot';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface PSMAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string}> = ({ label, value, min, max, step, onChange, format }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string }> = ({ label, value, min, max, step, onChange, format }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -31,8 +31,12 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
     const [selectionBias, setSelectionBias] = useState(15);
     const [data, setData] = useState<PSMDataPoint[]>([]);
     const [isMatched, setIsMatched] = useState(false);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Propensity Score Matching. Try adjusting the selection bias and then perform matching to see the effect!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => {
         const newData = generatePSMData(150, selectionBias);
@@ -52,18 +56,33 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
 
     const handleReset = () => {
         setIsMatched(false);
-        setData(prevData => prevData.map(p => ({...p, isMatched: false, matchedWithId: null })));
+        setData(prevData => prevData.map(p => ({ ...p, isMatched: false, matchedWithId: null })));
     };
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getPSMExplanation(isMatched, selectionBias);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
-        return () => clearTimeout(handler);
-    }, [isMatched, selectionBias]);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are simulating Propensity Score Matching (PSM).
+            Selection Bias Level: ${selectionBias} (higher means Treatment group has higher natural propensity scores).
+            Status: ${isMatched ? 'Matched' : 'Unmatched raw data'}.
+            Total Participants: ${data.length}.
+            
+            User Question: ${msg}
+            
+            Explain how matching helps to reduce bias and allow for fairer comparisons between the groups.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the matching result.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [isMatched, selectionBias, data]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -82,7 +101,7 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-green-400 mb-3">Simulation Controls</h3>
-                        <Slider 
+                        <Slider
                             label="Selection Bias"
                             value={selectionBias}
                             min={0} max={40} step={1}
@@ -93,19 +112,17 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
                             <button onClick={handleMatch} disabled={isMatched} className="bg-green-600 hover:bg-green-700 disabled:bg-slate-600 p-2 rounded">Perform Matching</button>
                             <button onClick={handleReset} disabled={!isMatched} className="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 p-2 rounded">Reset Matches</button>
                         </div>
-                         <button onClick={regenerateData} className="w-full mt-3 bg-slate-700 hover:bg-slate-600 p-2 rounded">Regenerate Data</button>
+                        <button onClick={regenerateData} className="w-full mt-3 bg-slate-700 hover:bg-slate-600 p-2 rounded">Regenerate Data</button>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    Imagine students can choose whether to use a new AI tutor (Treatment) or stick with the old system (Control). Motivated students are more likely to choose the new tutor, creating selection bias. PSM allows us to compare outcomes by matching a student who chose the tutor with a student who didn't, but who was just as motivated (i.e., had a similar "propensity" or prior score).
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Propensity Score Matching"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

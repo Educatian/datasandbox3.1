@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { IRTParams } from '../types';
-import { getIrtExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import ICCChart from './ICCChart';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface IRTAnalysisProps {
     onBack: () => void;
@@ -38,21 +38,40 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
         discrimination: 1.0,
         difficulty: 0.0,
     });
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how item difficulty and discrimination affect student performance. Try moving the sliders to see the curve change!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const handleParamChange = (param: keyof IRTParams, value: number) => {
         setIrtParams(prev => ({ ...prev, [param]: value }));
     };
 
-    useEffect(() => {
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getIrtExplanation(irtParams);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
-        return () => clearTimeout(handler);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const context = `
+            We are analyzing Item Response Theory (IRT).
+            Item Parameters:
+            Discrimination (a) = ${irtParams.discrimination.toFixed(2)}
+            Difficulty (b) = ${irtParams.difficulty.toFixed(2)}
+            
+            User Question: ${msg}
+            
+            Explain how these parameters shape the Item Characteristic Curve (ICC) and what that means for testing students.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the IRT curve right now.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
     }, [irtParams]);
 
     return (
@@ -89,17 +108,15 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
                             onChange={(e) => handleParamChange('difficulty', +e.target.value)}
                         />
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                    IRT is the engine behind modern adaptive tests (like CAT). Instead of a fixed set of questions, CAT selects the next question based on the student's performance. If a student answers a medium-difficulty question correctly, the system presents a harder one. This allows for a much more efficient and accurate estimation of a student's true ability level (theta, θ).
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Item Response Theory"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

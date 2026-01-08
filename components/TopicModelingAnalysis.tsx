@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LDAResult, Topic } from '../types';
 import { calculateLda } from '../services/statisticsService';
-import { getTopicModelingExplanation } from '../services/geminiService';
-import GeminiExplanation from './GeminiExplanation';
+import { getTopicModelingExplanation, getChatResponse } from '../services/geminiService';
 import TopicKeywords from './TopicKeywords';
 import DocumentViewer from './DocumentViewer';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface TopicModelingAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void}> = ({ label, value, min, max, step, onChange }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -29,8 +29,12 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
     const [numTopics, setNumTopics] = useState(3);
     const [ldaResult, setLdaResult] = useState<LDAResult | null>(null);
     const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you discover hidden themes in your text data. Try changing the number of topics to see how the grouping changes!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     useEffect(() => {
         const result = calculateLda(numTopics);
@@ -41,31 +45,63 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
     useEffect(() => {
         if (!ldaResult) return;
 
-        setIsLoading(true);
-        const fetchExplanation = async () => {
-            const topicNamesText = await getTopicModelingExplanation(ldaResult.topics);
-            const topicNames = topicNamesText.split('\n').map(line => {
-                const parts = line.split(': ');
-                return parts.length > 1 ? parts[1].trim() : 'Unnamed Topic';
-            });
+        // Auto-label topics using Gemini, but don't clear chat history or anything
+        const fetchTopicLabels = async () => {
+            try {
+                const topicNamesText = await getTopicModelingExplanation(ldaResult.topics);
+                const topicNames = topicNamesText.split('\n').map(line => {
+                    const parts = line.split(': ');
+                    return parts.length > 1 ? parts[1].trim() : 'Unnamed Topic';
+                });
 
-            setLdaResult(prevResult => {
-                if (!prevResult) return null;
-                const newTopics = prevResult.topics.map((topic, i) => ({
-                    ...topic,
-                    name: topicNames[i] || `Topic ${i + 1}`
-                }));
-                return { ...prevResult, topics: newTopics };
-            });
+                setLdaResult(prevResult => {
+                    if (!prevResult) return null;
+                    const newTopics = prevResult.topics.map((topic, i) => ({
+                        ...topic,
+                        name: topicNames[i] || `Topic ${i + 1}`
+                    }));
+                    return { ...prevResult, topics: newTopics };
+                });
 
-            setExplanation("Gemini has assigned a name to each topic. Click a topic to explore related documents.");
-            setIsLoading(false);
+                // Optional: Add a small note to chat history that topics have been named (only once per unique set of topics?)
+                // For now, we'll just let the UI reflect the new names.
+            } catch (e) {
+                console.error("Failed to label topics", e);
+            }
         };
-        
-        const handler = setTimeout(fetchExplanation, 1500);
+
+        const handler = setTimeout(fetchTopicLabels, 1000); // Small delay
         return () => clearTimeout(handler);
 
     }, [ldaResult?.topics.length]); // Re-run only when the number of topics changes
+
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+
+        const activeTopic = ldaResult?.topics[selectedTopicId || 0];
+        const keywords = activeTopic?.keywords.map(k => k.text).join(', ');
+
+        const context = `
+            We are performing Topic Modeling (Latent Dirichlet Allocation).
+            Number of Topics: ${numTopics}
+            Currently Selected Topic: ${activeTopic?.name || 'Unknown'}
+            Keywords for Selected Topic: ${keywords}
+            
+            User Question: ${msg}
+            
+            Explain how these keywords might represent a coherent theme in educational context.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the topics.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [numTopics, ldaResult, selectedTopicId]);
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -83,34 +119,32 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
                         <h3 className="text-lg font-semibold text-orange-400 mb-2">Controls</h3>
                         <Slider label="Number of Topics (K)" value={numTopics} min={2} max={5} step={1} onChange={(e) => setNumTopics(+e.target.value)} />
                     </div>
-                     {ldaResult && (
+                    {ldaResult && (
                         <TopicKeywords
                             topics={ldaResult.topics}
                             selectedTopicId={selectedTopicId}
                             onTopicSelect={setSelectedTopicId}
                         />
-                     )}
+                    )}
+
+                    <div className="h-[400px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Topic Modeling"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
+                    </div>
                 </div>
                 <div className="lg:col-span-3 flex flex-col space-y-8">
                     {ldaResult && (
-                         <DocumentViewer
+                        <DocumentViewer
                             documents={ldaResult.documents}
                             topics={ldaResult.topics}
                             selectedTopicId={selectedTopicId}
                         />
                     )}
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                   Imagine analyzing thousands of student responses to an open-ended question like "What was the most confusing part of this chapter?". Topic modeling can automatically group these responses into themes like 'difficulty with equations,' 'unclear definitions,' or 'lack of examples.' This allows instructors to quickly identify and address common points of confusion at scale without reading every single response.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </main>
         </div>

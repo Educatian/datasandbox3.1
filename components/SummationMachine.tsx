@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface SummationMachineProps {
     onBack: () => void;
@@ -24,15 +23,14 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
     const [startI, setStartI] = useState(1);
     const [endN, setEndN] = useState(4);
     const [result, setResult] = useState<number | null>(null);
-    
+
     // Animation State
     const [isCrunching, setIsCrunching] = useState(false);
-    const [flyingOrbs, setFlyingOrbs] = useState<number[]>([]); 
+    const [flyingOrbs, setFlyingOrbs] = useState<number[]>([]);
 
     // Chat State using shared type
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "OPERATIONAL. I am Dr. Gem, scanning the summation machine.", sender: 'bot' },
-        { text: "Adjust the belt data or the Sigma limits (i and n). Press CRUNCH to calculate.", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Detailed log initiated. I am Dr. Gem. 🤖 Adjust your summation limits (i to n) and I will monitor the calculation.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -57,7 +55,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
     };
 
     const addBotMessage = (text: string) => {
-        setChatHistory(prev => [...prev, { text, sender: 'bot' }]);
+        setChatHistory(prev => [...prev, { text, role: 'model' }]);
     };
 
     const runSimulation = () => {
@@ -69,7 +67,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
         for (let i = startI; i <= endN; i++) {
             if (i <= data.length && i >= 1) indicesToSum.push(i - 1);
         }
-        
+
         setFlyingOrbs(indicesToSum);
 
         setTimeout(() => {
@@ -77,7 +75,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
             setResult(sum);
             setIsCrunching(false);
             setFlyingOrbs([]);
-            
+
             if (indicesToSum.length === 0) {
                 addBotMessage(`Error: Range i=${startI} to n=${endN} is invalid or empty.`);
             } else {
@@ -90,7 +88,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
 
     const processCommand = (cmd: string): string | null => {
         const lower = cmd.toLowerCase();
-        
+
         if (lower.startsWith('data')) {
             const numbers = lower.replace('data', '').trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
             if (numbers.length > 0) {
@@ -115,7 +113,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
     };
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const localResponse = processCommand(msg);
@@ -162,10 +160,10 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 {/* LEFT: Factory Floor */}
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl relative overflow-hidden min-h-[500px] flex flex-col">
-                    
+
                     <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,#1e293b_25%,transparent_25%,transparent_75%,#1e293b_75%,#1e293b),linear-gradient(45deg,#1e293b_25%,transparent_25%,transparent_75%,#1e293b_75%,#1e293b)] [background-size:20px_20px] [background-position:0_0,10px_10px]"></div>
 
                     {/* 1. The Machine (Center) */}
@@ -207,7 +205,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
                                         </div>
                                         <button onClick={() => handleRemoveOrb(orb.id)} className="absolute -bottom-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                                         {isFlying && (
-                                            <div className="fixed z-50 w-12 h-12 bg-indigo-400 rounded-full flex items-center justify-center text-white font-bold animate-suck-in pointer-events-none" style={{ left: `calc(50% + ${(index - (data.length-1)/2) * 60}px)` }}>{orb.value}</div>
+                                            <div className="fixed z-50 w-12 h-12 bg-indigo-400 rounded-full flex items-center justify-center text-white font-bold animate-suck-in pointer-events-none" style={{ left: `calc(50% + ${(index - (data.length - 1) / 2) * 60}px)` }}>{orb.value}</div>
                                         )}
                                     </div>
                                 );
@@ -226,16 +224,12 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
 
                 {/* RIGHT: Unified Chatbot Interface */}
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="Summation Machine"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "data 1 2 3", action: () => handleSendMessage("data 1 2 3") },
-                            { label: "range 1 5", action: () => handleSendMessage("range 1 5") },
-                            { label: "What is i?", action: () => handleSendMessage("What is i?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
 

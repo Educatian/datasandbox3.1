@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from './supabaseService';
 const APPS_SCRIPT_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlvgEYSzLz4viRYAKXGi0hAbd1eGE7ccvRw46532Sw_GUpUClA51IWgUmjTFCplmr1/exec";
 
 // Enable/disable logging destinations
-const ENABLE_GOOGLE_SHEETS = true;
+const ENABLE_GOOGLE_SHEETS = false;
 const ENABLE_SUPABASE = true;
 
 export interface LogPayload {

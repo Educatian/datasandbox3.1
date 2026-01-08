@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface SignalNoiseRadioProps {
     onBack: () => void;
@@ -12,11 +11,10 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
     // Parameters
     const [signal, setSignal] = useState(20); // Mean Difference (Numerator)
     const [noise, setNoise] = useState(10);   // Standard Error (Denominator)
-    
+
     // Chat State
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to The Signal Radio! 📻", sender: 'bot' },
-        { text: "The t-statistic is just a Signal-to-Noise ratio. Turn up the Signal or turn down the Noise to get a clear reception (Significant Result).", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to The Signal Radio! 📻 I'm Dr. Gem. Turn up the Signal or turn down the Noise to get a clear reception (Significant Result).", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -33,32 +31,32 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
         const width = 600;
         const height = 300;
         const svg = d3.select(svgRef.current);
-        
+
         svg.attr('viewBox', `0 0 ${width} ${height}`);
         svg.selectAll('*').remove();
 
         // Background (Oscilloscope grid)
         svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#0f172a');
-        
+
         // Grid lines
         const gridGroup = svg.append('g').attr('stroke', '#1e293b').attr('stroke-width', 1);
-        for(let x=0; x<width; x+=40) gridGroup.append('line').attr('x1', x).attr('x2', x).attr('y1', 0).attr('y2', height);
-        for(let y=0; y<height; y+=40) gridGroup.append('line').attr('x1', 0).attr('x2', width).attr('y1', y).attr('y2', y);
+        for (let x = 0; x < width; x += 40) gridGroup.append('line').attr('x1', x).attr('x2', x).attr('y1', 0).attr('y2', height);
+        for (let y = 0; y < height; y += 40) gridGroup.append('line').attr('x1', 0).attr('x2', width).attr('y1', y).attr('y2', y);
 
         // Generate Wave Data
         // Signal = Amplitude of Sine
         // Noise = Random vertical jitter
         const points = [];
         const frequency = 0.05;
-        
-        for (let x = 0; x < width; x+=2) {
+
+        for (let x = 0; x < width; x += 2) {
             // Base Signal (The "Truth")
             const sineY = Math.sin(x * frequency) * signal;
-            
+
             // Noise (The "Error")
-            const randomY = (Math.random() - 0.5) * noise * 5; 
-            
-            points.push([x, height/2 + sineY + randomY]);
+            const randomY = (Math.random() - 0.5) * noise * 5;
+
+            points.push([x, height / 2 + sineY + randomY]);
         }
 
         const line = d3.line().curve(d3.curveMonotoneX);
@@ -74,10 +72,10 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
 
         // Draw "True" Signal (Ghost line)
         const truePoints = [];
-        for (let x = 0; x < width; x+=2) {
-            truePoints.push([x, height/2 + Math.sin(x * frequency) * signal]);
+        for (let x = 0; x < width; x += 2) {
+            truePoints.push([x, height / 2 + Math.sin(x * frequency) * signal]);
         }
-        
+
         svg.append('path')
             .datum(truePoints as [number, number][])
             .attr('fill', 'none')
@@ -89,7 +87,7 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
     }, [signal, noise, tValue, isSignificant]);
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const context = `
@@ -107,9 +105,9 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
         } catch {
-            setChatHistory(prev => [...prev, { text: "Connection error.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -137,22 +135,22 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
                     <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 grid grid-cols-2 gap-8">
                         <div>
                             <label className="block text-cyan-400 font-bold mb-2 uppercase tracking-wider">Signal Strength (Mean Diff)</label>
-                            <input 
-                                type="range" 
-                                min="0" max="100" 
-                                value={signal} 
-                                onChange={(e) => setSignal(parseInt(e.target.value))} 
+                            <input
+                                type="range"
+                                min="0" max="100"
+                                value={signal}
+                                onChange={(e) => setSignal(parseInt(e.target.value))}
                                 className="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                             />
                             <div className="text-right font-mono text-slate-400 mt-1">{signal} units</div>
                         </div>
                         <div>
                             <label className="block text-rose-400 font-bold mb-2 uppercase tracking-wider">Static Noise (Std Error)</label>
-                            <input 
-                                type="range" 
-                                min="5" max="100" 
-                                value={noise} 
-                                onChange={(e) => setNoise(parseInt(e.target.value))} 
+                            <input
+                                type="range"
+                                min="5" max="100"
+                                value={noise}
+                                onChange={(e) => setNoise(parseInt(e.target.value))}
                                 className="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-rose-500"
                             />
                             <div className="text-right font-mono text-slate-400 mt-1">{noise} units</div>
@@ -172,15 +170,12 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
 
                 {/* Chatbot */}
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="The Signal Radio"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "What is t-value?", action: () => handleSendMessage("What does the t-value represent?") },
-                            { label: "How to increase t?", action: () => handleSendMessage("How can I get a higher t-value?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </main>

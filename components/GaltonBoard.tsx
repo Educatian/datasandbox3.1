@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { getChatResponse } from '../services/geminiService';
 
 interface GaltonBoardProps {
@@ -22,11 +22,10 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
     const [balls, setBalls] = useState<Ball[]>([]);
     const [bins, setBins] = useState<number[]>(Array(11).fill(0));
     const [isRunning, setIsRunning] = useState(false);
-    
+
     // Chat State
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to the Galton Board! 🟢", sender: 'bot' },
-        { text: "Watch how randomness creates order. Balls fall left or right by chance, but together they form a Normal Distribution (Bell Curve).", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to the Galton Board! 🟢 I'm Dr. Gem. Watch how randomness creates order.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -46,7 +45,7 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
         const rows = 10;
         const startY = 50;
         const gapY = 30;
-        
+
         let animationFrameId: number;
 
         const update = () => {
@@ -72,7 +71,7 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
             for (let i = 0; i <= rows; i++) {
                 const x = width / 2 - (rows * 30) / 2 + i * 30 - 15; // Shift to align between pegs
                 ctx.fillRect(x, binY, 2, height - binY);
-                
+
                 // Draw stack count
                 const count = bins[i] || 0;
                 if (count > 0) {
@@ -99,24 +98,24 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
                     // Peg Collision (Simple logic: if close to a peg row Y, decide L/R)
                     // We calculate purely based on discrete steps for simulation stability or simple distance check
                     // Let's use simple logic: if y matches a peg row, random perturb vx
-                    
+
                     const row = Math.round((ball.y - startY) / gapY);
                     if (row >= 0 && row < rows && Math.abs(ball.y - (startY + row * gapY)) < 5) {
                         // Check if close to an actual peg X
                         const cols = row + 1;
                         const rowWidth = (cols - 1) * 30;
                         const startX = width / 2 - rowWidth / 2;
-                        
+
                         // Find nearest peg X
                         const col = Math.round((ball.x - startX) / 30);
                         const pegX = startX + col * 30;
-                        
+
                         if (Math.abs(ball.x - pegX) < 10) {
                             // Hit!
                             ball.vy *= 0.6; // Lose energy
                             ball.y = startY + row * gapY + 6; // Push out
                             // Random bounce
-                            if (Math.random() > 0.5) ball.vx = 1.5; 
+                            if (Math.random() > 0.5) ball.vx = 1.5;
                             else ball.vx = -1.5;
                         }
                     }
@@ -135,7 +134,7 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
                         activeBalls.push(ball);
                     }
                 }
-                
+
                 if (binsChanged) setBins(newBins);
                 return activeBalls;
             });
@@ -187,18 +186,18 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
 
     // Chat Logic
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
         const context = `Dr. Gem describing Galton Board. 
         Balls fall, hit pegs, go left/right 50/50. 
         Result is Binomial Distribution -> Normal Distribution. 
         Central Limit Theorem in action.`;
-        
+
         try {
             const res = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: res, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: res, role: 'model' as const }]);
         } catch {
-            setChatHistory(prev => [...prev, { text: "Error.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -227,15 +226,12 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
                 </div>
 
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="Galton Board"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "Why bell curve?", action: () => handleSendMessage("Why do they form a bell shape?") },
-                            { label: "What is CLT?", action: () => handleSendMessage("What is the Central Limit Theorem?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </main>

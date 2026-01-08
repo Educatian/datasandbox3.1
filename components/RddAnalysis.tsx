@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RddPoint, RddResult } from '../types';
 import { generateRddData, calculateRddEffect } from '../services/statisticsService';
-import { getRddExplanation } from '../services/geminiService';
+import { getChatResponse } from '../services/geminiService';
 import RddPlot from './RddPlot';
-import GeminiExplanation from './GeminiExplanation';
+import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
 
 interface RddAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void}> = ({ label, value, min, max, step, onChange }) => (
+const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
     <div>
         <label className="flex justify-between text-sm text-slate-400">
             <span>{label}</span>
@@ -35,8 +35,12 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
     const [bandwidth, setBandwidth] = useState(15);
     const [data, setData] = useState<RddPoint[]>([]);
     const [rddResult, setRddResult] = useState<RddResult | null>(null);
-    const [explanation, setExplanation] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Chat state
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how Regression Discontinuity Design works. Try changing the cutoff or bandwidth to see how the estimated effect changes!", sender: 'bot' }
+    ]);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const regenerateData = useCallback(() => {
         // We generate data based on the initial cutoff to have a consistent "true" model
@@ -53,17 +57,31 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
         setRddResult(result);
     }, [data, cutoff, bandwidth]);
 
-    useEffect(() => {
-        if (!rddResult) return;
-        setIsLoading(true);
-        const handler = setTimeout(async () => {
-            const exp = await getRddExplanation(rddResult.effect, cutoff);
-            setExplanation(exp);
-            setIsLoading(false);
-        }, 1500);
+    const handleSendMessage = useCallback(async (msg: string) => {
+        setIsChatLoading(true);
+        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
 
-        return () => clearTimeout(handler);
-    }, [rddResult, cutoff]);
+        const context = `
+            We are analyzing Regression Discontinuity Design (RDD).
+            Current Cutoff Score: ${cutoff}
+            Bandwidth: ${bandwidth}
+            Estimated Local Average Treatment Effect (LATE): ${rddResult?.effect.toFixed(2) || 'N/A'}
+            True Effect Size: ${TRUE_EFFECT}
+            
+            User Question: ${msg}
+            
+            Explain how the 'jump' at the cutoff allows for causal inference despite non-random assignment.
+        `;
+
+        try {
+            const response = await getChatResponse(context);
+            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+        } catch (error) {
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the regression discontinuity.", sender: 'bot' }]);
+        } finally {
+            setIsChatLoading(false);
+        }
+    }, [cutoff, bandwidth, rddResult]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -90,7 +108,7 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
                             Regenerate Data
                         </button>
                     </div>
-                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-amber-400 mb-3">Estimated Effect</h3>
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">"Jump" at Cutoff:</span>
@@ -99,17 +117,15 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
                             </span>
                         </div>
                     </div>
-                    <GeminiExplanation explanation={explanation} isLoading={isLoading} />
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-start space-x-4 w-full">
-                            <div className="text-3xl">🎓</div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-teal-400 mb-2">Context for Learning Sciences</h3>
-                                <p className="text-slate-300 text-sm leading-relaxed">
-                                   Imagine a tutoring program is offered to all students who score below 50 on a pre-test. This creates a sharp cutoff. RDD allows us to estimate the program's true causal effect by comparing the post-test scores of students just below 50 (who received tutoring) to those just above 50 (who didn't). We can assume these two groups were very similar, making this a powerful quasi-experimental method.
-                                </p>
-                            </div>
-                        </div>
+
+                    <div className="h-[500px]">
+                        <UnifiedGenAIChat
+                            moduleTitle="Regression Discontinuity Design"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                        />
                     </div>
                 </div>
             </main>

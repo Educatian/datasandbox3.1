@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import AITutor, { ChatMessage } from './AITutor';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface EffectSizeMagnifierProps {
     onBack: () => void;
@@ -26,10 +25,10 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
     const [particles, setParticles] = useState<Particle[]>([]);
 
     // Chat
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Welcome to the Petri Dish! 🧫", sender: 'bot' },
-        { text: "Here, 'Effect Size' is how different the two bacteria strains look. 'Sample Size' is how many you collect.", sender: 'bot' },
-        { text: "Try to make the difference 'Statistically Significant'!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
+        { text: "Welcome to the Petri Dish! 🧫 I'm Dr. Gem.", role: 'model' },
+        { text: "Here, 'Effect Size' is how different the two bacteria strains look. 'Sample Size' is how many you collect.", role: 'model' },
+        { text: "Try to make the difference 'Statistically Significant'!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -49,7 +48,7 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
         }
         // Group B: Centered at 30% + EffectSize shift
         // We map d=0 -> 0 shift, d=2 -> 40 shift
-        const shift = effectSize * 20; 
+        const shift = effectSize * 20;
         for (let i = 0; i < sampleSize; i++) {
             newParticles.push({
                 id: i + sampleSize,
@@ -73,9 +72,9 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
 
         // Petri Dish Background
         svg.append('circle')
-            .attr('cx', width/2)
-            .attr('cy', height/2)
-            .attr('r', height/2 - 10)
+            .attr('cx', width / 2)
+            .attr('cy', height / 2)
+            .attr('r', height / 2 - 10)
             .attr('fill', '#0f172a')
             .attr('stroke', '#334155')
             .attr('stroke-width', 4);
@@ -120,27 +119,27 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
         setIsScanning(true);
         setTimeout(() => {
             setIsScanning(false);
-            
+
             // Calculate pseudo t-test stats
             const groupA = particles.filter(p => p.group === 'A').map(p => p.x);
             const groupB = particles.filter(p => p.group === 'B').map(p => p.x);
-            
+
             const meanA = d3.mean(groupA) || 0;
             const meanB = d3.mean(groupB) || 0;
             const varA = d3.variance(groupA) || 1;
             const varB = d3.variance(groupB) || 1;
-            
+
             // t = (mean1 - mean2) / sqrt(var1/n1 + var2/n2)
-            const pooledSE = Math.sqrt((varA/sampleSize) + (varB/sampleSize));
+            const pooledSE = Math.sqrt((varA / sampleSize) + (varB / sampleSize));
             const t = Math.abs(meanA - meanB) / pooledSE;
-            
+
             // Rough p-value approx from t
             // t > 2 is approx significant for reasonable N
             const isSig = t > 2.0;
             const pVal = isSig ? 0.01 : 0.2; // Dummy values for display logic
-            
+
             setScanResult({ detected: isSig, pValue: pVal });
-            
+
             if (isSig) {
                 addBotMessage(`Analysis Complete. Difference DETECTED! (t=${t.toFixed(2)}). The Effect Size or Sample Size was large enough.`);
             } else {
@@ -151,11 +150,11 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
     };
 
     const addBotMessage = (text: string) => {
-        setChatHistory(prev => [...prev, { text, sender: 'bot' }]);
+        setChatHistory(prev => [...prev, { text, role: 'model' }]);
     };
 
     const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
 
         const context = `
@@ -173,9 +172,9 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
         } catch {
-            setChatHistory(prev => [...prev, { text: "Connection error.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -192,12 +191,12 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 {/* Left: Visualization */}
                 <div className="lg:col-span-2 flex flex-col space-y-6">
                     <div className="bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center relative">
                         <svg ref={svgRef} className="w-full h-full min-h-[300px]" style={{ overflow: 'visible' }}></svg>
-                        
+
                         {scanResult && (
                             <div className={`absolute top-4 right-4 px-4 py-2 rounded font-bold text-white shadow-lg ${scanResult.detected ? 'bg-green-600' : 'bg-red-600'}`}>
                                 {scanResult.detected ? "DIFFERENCE DETECTED" : "INCONCLUSIVE"}
@@ -211,10 +210,10 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
                                 <span>Effect Size (Contrast)</span>
                                 <span className="font-mono text-pink-400">{effectSize.toFixed(2)}</span>
                             </label>
-                            <input 
-                                type="range" min="0" max="2" step="0.1" 
-                                value={effectSize} 
-                                onChange={(e) => setEffectSize(parseFloat(e.target.value))} 
+                            <input
+                                type="range" min="0" max="2" step="0.1"
+                                value={effectSize}
+                                onChange={(e) => setEffectSize(parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                             />
                             <div className="flex justify-between text-xs text-slate-500 mt-1">
@@ -228,16 +227,16 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
                                 <span>Sample Size (Resolution)</span>
                                 <span className="font-mono text-cyan-400">n = {sampleSize}</span>
                             </label>
-                            <input 
-                                type="range" min="5" max="200" step="5" 
-                                value={sampleSize} 
-                                onChange={(e) => setSampleSize(parseInt(e.target.value))} 
+                            <input
+                                type="range" min="5" max="200" step="5"
+                                value={sampleSize}
+                                onChange={(e) => setSampleSize(parseInt(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                             />
                         </div>
 
-                        <button 
-                            onClick={runScan} 
+                        <button
+                            onClick={runScan}
                             disabled={isScanning}
                             className="w-full py-4 bg-gradient-to-r from-pink-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 disabled:opacity-50"
                         >
@@ -248,15 +247,12 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
 
                 {/* Right: Chatbot */}
                 <div className="lg:col-span-1 h-[600px]">
-                    <AITutor 
+                    <UnifiedGenAIChat
+                        moduleTitle="Effect Size Magnifier"
                         history={chatHistory}
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
-                        className="h-full"
-                        suggestedActions={[
-                            { label: "What is Power?", action: () => handleSendMessage("What is Statistical Power?") },
-                            { label: "Small Effect vs N", action: () => handleSendMessage("How does Sample Size help with small effects?") },
-                        ]}
+                        variant="embedded"
                     />
                 </div>
             </main>
