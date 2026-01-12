@@ -174,13 +174,15 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                     </div>
 
                     {/* Chat - constrained height with internal scroll */}
-                    <div className="max-h-[300px] overflow-hidden rounded-lg">
+                    {/* Chat - fixed height to prevent clipping */}
+                    <div className="h-[300px] rounded-lg">
                         <UnifiedGenAIChat
                             moduleTitle={customTitle || "Z-Test Analysis"}
                             history={chatHistory}
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
 

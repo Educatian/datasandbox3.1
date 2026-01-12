@@ -121,6 +121,7 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

@@ -133,6 +133,7 @@ const LogisticRegressionAnalysis: React.FC<LogisticRegressionAnalysisProps> = ({
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

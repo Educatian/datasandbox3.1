@@ -150,6 +150,7 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

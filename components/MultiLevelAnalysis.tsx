@@ -129,6 +129,7 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

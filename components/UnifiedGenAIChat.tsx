@@ -121,7 +121,8 @@ const UnifiedGenAIChat: React.FC<UnifiedGenAIChatProps> = ({
                 </div>
             ) : (
                 // --- Embedded Layout ---
-                <div className={`w-full bg-slate-900/50 border border-slate-700/50 rounded-2xl flex flex-col h-[600px] ${className}`}>
+                // Default to h-[600px] unless a height class is provided in className
+                <div className={`w-full bg-slate-900/50 border border-slate-700/50 rounded-2xl flex flex-col ${className?.includes('h-') ? '' : 'h-[600px]'} ${className}`}>
                     {renderChatContent()}
                 </div>
             )}

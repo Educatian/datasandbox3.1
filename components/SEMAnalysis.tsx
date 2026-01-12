@@ -146,6 +146,7 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

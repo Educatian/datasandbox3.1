@@ -219,13 +219,15 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
                     </div>
 
                     {/* Unified Chat Interface - constrained height with internal scroll */}
-                    <div className="max-h-[320px] overflow-hidden rounded-xl bg-slate-800 mb-4">
+                    {/* Unified Chat Interface - fixed height matched to container */}
+                    <div className="rounded-xl bg-slate-800 mb-4 h-[320px]">
                         <UnifiedGenAIChat
                             moduleTitle="God Mode Switch"
                             history={chatHistory}
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

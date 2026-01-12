@@ -242,6 +242,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

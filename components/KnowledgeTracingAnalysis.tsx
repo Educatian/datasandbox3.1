@@ -120,6 +120,7 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

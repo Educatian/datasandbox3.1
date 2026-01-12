@@ -105,6 +105,7 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </aside>

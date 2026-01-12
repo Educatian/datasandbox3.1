@@ -103,6 +103,7 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

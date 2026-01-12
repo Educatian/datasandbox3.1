@@ -122,6 +122,7 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

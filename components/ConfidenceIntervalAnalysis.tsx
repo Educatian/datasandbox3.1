@@ -155,6 +155,7 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

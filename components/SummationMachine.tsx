@@ -231,6 +231,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
                         variant="embedded"
+                        className="h-full"
                     />
                 </div>
 

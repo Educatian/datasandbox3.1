@@ -109,6 +109,7 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
                         variant="embedded"
+                        className="h-full"
                     />
                 </div>
             </main>
