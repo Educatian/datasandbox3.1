@@ -3,7 +3,7 @@ import { SEMModel, FitIndices, SEMPath } from '../types';
 import { calculateModelFit } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import PathDiagram from './PathDiagram';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface SEMAnalysisProps {
     onBack: () => void;
@@ -52,8 +52,8 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
     const [lastChangedPath, setLastChangedPath] = useState<SEMPath | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. Connect the variables to build a model, and I'll tell you how well it fits the data.", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. Connect the variables to build a model, and I'll tell you how well it fits the data.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -88,7 +88,7 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are performing Structural Equation Modeling (SEM).
@@ -105,10 +105,10 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the model fit right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the model fit right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

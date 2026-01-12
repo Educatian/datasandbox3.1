@@ -4,7 +4,7 @@ import { generateMultimodalData, findBookmarks } from '../services/statisticsSer
 import { getChatResponse } from '../services/geminiService';
 import MultimodalDisplay from './MultimodalDisplay';
 import MultimodalTimeline from './MultimodalTimeline';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface MultimodalAnalysisProps {
     onBack: () => void;
@@ -17,8 +17,8 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
     const [isPlaying, setIsPlaying] = useState(false);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you analyze the synchronized video, speech, and eye-tracking traces. Click on a bookmark to explore specific events!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you analyze the synchronized video, speech, and eye-tracking traces. Click on a bookmark to explore specific events!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -79,7 +79,7 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
         // Auto-send a message for the bookmark
         setIsChatLoading(true);
         const msg = `What is happening at ${bookmark.time.toFixed(1)}s?`;
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are looking at a Multimodal Analysis of a learning session.
@@ -93,10 +93,10 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing this event right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing this event right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -104,7 +104,7 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are analyzing synchronized multimodal data (speech, gaze, clicks).
@@ -116,10 +116,10 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the multimodal stream.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the multimodal stream.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -179,3 +179,4 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
 };
 
 export default MultimodalAnalysis;
+

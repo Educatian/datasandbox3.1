@@ -3,7 +3,7 @@ import { Interaction } from '../types';
 import { generateSNAData, processSNAData } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import SNAGraph from './SNAGraph';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface SNAAnalysisProps {
     onBack: () => void;
@@ -19,8 +19,8 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help visualize the social dynamics here. Play the animation to see how the network evolves!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help visualize the social dynamics here. Play the animation to see how the network evolves!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -68,7 +68,7 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are performing Social Network Analysis (SNA).
@@ -82,10 +82,10 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the network right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the network right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -136,3 +136,4 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
 };
 
 export default SNAAnalysis;
+

@@ -164,3 +164,4 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
 };
 
 export default ConfidenceIntervalAnalysis;
+

@@ -3,7 +3,7 @@ import { Point, RegressionLine } from '../types';
 import { calculateCorrelation, calculateLinearRegression, generateCorrelatedData } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import ScatterPlot from './ScatterPlot';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 import ReactionTimeVisualizer from './ReactionTimeVisualizer';
 
 interface CorrelationAnalysisProps {
@@ -37,8 +37,8 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
     const [regressionLine, setRegressionLine] = useState<RegressionLine>({ slope: 0, intercept: 0 });
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you analyze the correlation between these variables. Generate some data or run an experiment to get started!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you analyze the correlation between these variables. Generate some data or run an experiment to get started!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -57,10 +57,10 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
     useEffect(() => {
         if (scenario === 'abstract') {
             generateAbstractData();
-            setChatHistory(prev => [...prev, { text: "I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.", role: 'model' }]);
         } else {
             setPoints([]); // Clear for experiment
-            setChatHistory(prev => [...prev, { text: "We're running a Reaction Time experiment now. Set the distraction level and click 'Measure Reaction' to collect data points.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "We're running a Reaction Time experiment now. Set the distraction level and click 'Measure Reaction' to collect data points.", role: 'model' }]);
         }
     }, [scenario, generateAbstractData]);
 
@@ -108,7 +108,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are analyzing Correlation.
@@ -124,10 +124,10 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the correlation right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the correlation right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -260,3 +260,4 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
 };
 
 export default CorrelationAnalysis;
+

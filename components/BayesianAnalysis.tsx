@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getChatResponse } from '../services/geminiService';
 import ProbabilityDistributionChart from './ProbabilityDistributionChart';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface BayesianAnalysisProps {
     onBack: () => void;
@@ -32,8 +32,8 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
     const [data, setData] = useState({ heads: 0, tails: 0 });
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand Bayesian inference. Adjust your prior beliefs and add some data to see how your knowledge updates!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Bayesian inference. Adjust your prior beliefs and add some data to see how your knowledge updates!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -54,12 +54,12 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
 
     const resetData = () => {
         setData({ heads: 0, tails: 0 });
-        setChatHistory(prev => [...prev, { text: "Data reset. Back to our prior belief.", sender: 'bot' }]);
+        setChatHistory(prev => [...prev, { text: "Data reset. Back to our prior belief.", role: 'model' }]);
     };
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are simulating Bayesian Inference (Beta-Binomial Conjugate Prior).
@@ -73,10 +73,10 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the probability distributions.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the probability distributions.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 // --- Types ---
 
-interface Message {
+export interface Message {
     role: 'user' | 'model';
     text: string;
 }

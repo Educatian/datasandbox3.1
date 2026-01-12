@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface AnscombeQuartetProps {
     onBack: () => void;
@@ -36,8 +36,8 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain the importance of visualizing data. Check out these datasets—they all have the same stats but look totally different!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain the importance of visualizing data. Check out these datasets—they all have the same stats but look totally different!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -91,7 +91,7 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are looking at Anscombe's Quartet.
@@ -109,10 +109,10 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing this dataset.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing this dataset.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -172,3 +172,4 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
 };
 
 export default AnscombeQuartet;
+

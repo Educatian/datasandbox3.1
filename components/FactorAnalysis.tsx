@@ -4,7 +4,7 @@ import { SURVEY_ITEMS, generateFactorData, calculateFactorAnalysis } from '../se
 import { getChatResponse } from '../services/geminiService';
 import FactorLoadingPlot from './FactorLoadingPlot';
 import CorrelationHeatmap from './CorrelationHeatmap';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface FactorAnalysisProps {
     onBack: () => void;
@@ -19,8 +19,8 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
     const [analysisResult, setAnalysisResult] = useState<FactorAnalysisResult | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you interpret these factor loadings and identify the underlying constructs. Try changing the number of factors!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you interpret these factor loadings and identify the underlying constructs. Try changing the number of factors!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -42,7 +42,7 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are performing Factor Analysis.
@@ -56,10 +56,10 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the factor structure right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the factor structure right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

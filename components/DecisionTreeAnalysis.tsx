@@ -4,7 +4,7 @@ import { calculateDecisionTree } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import DecisionTreeVisualizer from './DecisionTreeVisualizer';
 import DecisionBoundaryPlot from './DecisionBoundaryPlot';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface DecisionTreeAnalysisProps {
     onBack: () => void;
@@ -68,8 +68,8 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
     const [tree, setTree] = useState<DecisionTreeNode | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain how this decision tree makes classifications. Click on any node, and I'll analyze the split logic for you!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how this decision tree makes classifications. Click on any node, and I'll analyze the split logic for you!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -82,7 +82,7 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are analyzing a Decision Tree Classifier.
@@ -95,10 +95,10 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the tree right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the tree right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

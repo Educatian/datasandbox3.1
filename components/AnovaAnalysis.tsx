@@ -3,7 +3,7 @@ import { DistributionParams } from '../types';
 import { calculateAnova } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import DistributionChart from './DistributionChart';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface AnovaAnalysisProps {
     onBack: () => void;
@@ -52,8 +52,8 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
     const [anovaResult, setAnovaResult] = useState({ fStatistic: 0, pValue: 1 });
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you interpret these ANOVA results. Try adjusting the group means to see how the F-statistic changes!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you interpret these ANOVA results. Try adjusting the group means to see how the F-statistic changes!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -70,7 +70,7 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are performing a One-Way ANOVA test.
@@ -88,10 +88,10 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the variance right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the variance right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

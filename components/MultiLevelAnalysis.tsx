@@ -3,7 +3,7 @@ import { GroupPoint, RegressionLine } from '../types';
 import { generateMultiLevelData, calculateLinearRegression } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import MultiLevelScatterPlot from './MultiLevelScatterPlot';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface MultiLevelAnalysisProps {
     onBack: () => void;
@@ -39,8 +39,8 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
     const [groupLines, setGroupLines] = useState<(RegressionLine & { groupId: number })[]>([]);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand Multi-level Modeling. Adjust the variances to see how group-level effects differ from the overall trend!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Multi-level Modeling. Adjust the variances to see how group-level effects differ from the overall trend!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -69,7 +69,7 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are analyzing Multi-level Modeling.
@@ -83,10 +83,10 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the multi-level effects right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the multi-level effects right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

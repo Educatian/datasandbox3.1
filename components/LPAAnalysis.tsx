@@ -3,7 +3,7 @@ import { LPAPoint, Profile } from '../types';
 import { initializeLPA, expectationStep, maximizationStep } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import LPAScatterPlot from './LPAScatterPlot';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface LPAAnalysisProps {
     onBack: () => void;
@@ -28,8 +28,8 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you uncover hidden subgroups (profiles) in this data using Latent Profile Analysis. Set the number of profiles and run the analysis!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you uncover hidden subgroups (profiles) in this data using Latent Profile Analysis. Set the number of profiles and run the analysis!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -106,7 +106,7 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are performing Latent Profile Analysis (LPA).
@@ -120,10 +120,10 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the latent profiles right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the latent profiles right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -179,3 +179,4 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
 };
 
 export default LPAAnalysis;
+

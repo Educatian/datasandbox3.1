@@ -4,7 +4,7 @@ import { generateMixedMethodsData } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import QuantitativeBarChart from './QuantitativeBarChart';
 import QualitativeThemeCloud from './QualitativeThemeCloud';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface MixedMethodsAnalysisProps {
     onBack: () => void;
@@ -16,8 +16,8 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
     const [selectedTheme, setSelectedTheme] = useState<QualitativeTheme | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain how these qualitative themes explain the quantitative trends. Select a theme to get started!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how these qualitative themes explain the quantitative trends. Select a theme to get started!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -38,7 +38,7 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const subgroup = selectedTheme ? participants.filter(p => p.themes.includes(selectedTheme.text)) : [];
         const avgScore = subgroup.length > 0 ? subgroup.reduce((acc, p) => acc + p.surveyScore, 0) / subgroup.length : 0;
@@ -55,10 +55,10 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble synthesizing the data right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble synthesizing the data right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -112,3 +112,4 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
 };
 
 export default MixedMethodsAnalysis;
+

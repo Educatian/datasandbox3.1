@@ -3,7 +3,7 @@ import { PSMDataPoint } from '../types';
 import { generatePSMData, performMatching } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import PSMComparisonPlot from './PSMComparisonPlot';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface PSMAnalysisProps {
     onBack: () => void;
@@ -33,8 +33,8 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
     const [isMatched, setIsMatched] = useState(false);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand Propensity Score Matching. Try adjusting the selection bias and then perform matching to see the effect!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Propensity Score Matching. Try adjusting the selection bias and then perform matching to see the effect!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -61,7 +61,7 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are simulating Propensity Score Matching (PSM).
@@ -75,10 +75,10 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the matching result.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the matching result.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

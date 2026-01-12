@@ -3,7 +3,7 @@ import { HMMSequenceItem } from '../types';
 import { generateHMMSequence } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import HMMSequenceVisualizer from './HMMSequenceVisualizer';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface HMMAnalysisProps {
     onBack: () => void;
@@ -32,8 +32,8 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
     const [sequence, setSequence] = useState<HMMSequenceItem[]>([]);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand how hidden states (like weather) cause the observations you see (like activities). Adjust the probabilities to see what happens!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand how hidden states (like weather) cause the observations you see (like activities). Adjust the probabilities to see what happens!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -49,7 +49,7 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are analyzing a Hidden Markov Model (HMM).
@@ -64,10 +64,10 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the HMM sequence.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the HMM sequence.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

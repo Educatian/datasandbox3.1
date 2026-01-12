@@ -3,7 +3,7 @@ import { PCA3DPoint, PCAResult } from '../types';
 import { calculatePCA } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import PCAVisualizer from './PCAVisualizer';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface PCAAnalysisProps {
     onBack: () => void;
@@ -35,8 +35,8 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
     const [pcaResult, setPcaResult] = useState<PCAResult | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand Principal Component Analysis. I can explain how we simplify 3D data into 2D while keeping the most important information!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you understand Principal Component Analysis. I can explain how we simplify 3D data into 2D while keeping the most important information!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -56,7 +56,7 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are performing Principal Component Analysis (PCA).
@@ -70,10 +70,10 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the principal components right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the principal components right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

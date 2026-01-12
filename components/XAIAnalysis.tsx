@@ -4,7 +4,7 @@ import { calculateXaiPrediction } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import PredictionGauge from './PredictionGauge';
 import ContributionBars from './ContributionBars';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface XAIAnalysisProps {
     onBack: () => void;
@@ -46,8 +46,8 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
     const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain why the AI predicts this student's success probability. Try changing the student's profile to see how the factors change!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain why the AI predicts this student's success probability. Try changing the student's profile to see how the factors change!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -70,7 +70,7 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const topPositive = positiveContributions.slice(0, 2).map(c => c.feature).join(', ');
         const topNegative = negativeContributions.slice(0, 2).map(c => c.feature).join(', ');
@@ -92,10 +92,10 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the prediction factors.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the prediction factors.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

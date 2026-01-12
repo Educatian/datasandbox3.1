@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { IRTParams } from '../types';
 import { getChatResponse } from '../services/geminiService';
 import ICCChart from './ICCChart';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface IRTAnalysisProps {
     onBack: () => void;
@@ -40,8 +40,8 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
     });
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain how item difficulty and discrimination affect student performance. Try moving the sliders to see the curve change!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can explain how item difficulty and discrimination affect student performance. Try moving the sliders to see the curve change!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -51,7 +51,7 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const context = `
             We are analyzing Item Response Theory (IRT).
@@ -65,10 +65,10 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the IRT curve right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the IRT curve right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

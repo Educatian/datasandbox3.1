@@ -4,7 +4,7 @@ import { calculateLda } from '../services/statisticsService';
 import { getTopicModelingExplanation, getChatResponse } from '../services/geminiService';
 import TopicKeywords from './TopicKeywords';
 import DocumentViewer from './DocumentViewer';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface TopicModelingAnalysisProps {
     onBack: () => void;
@@ -31,8 +31,8 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
     const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you discover hidden themes in your text data. Try changing the number of topics to see how the grouping changes!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. I can help you discover hidden themes in your text data. Try changing the number of topics to see how the grouping changes!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -77,7 +77,7 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const activeTopic = ldaResult?.topics[selectedTopicId || 0];
         const keywords = activeTopic?.keywords.map(k => k.text).join(', ');
@@ -94,10 +94,10 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the topics.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the topics.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }

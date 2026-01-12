@@ -4,7 +4,7 @@ import { assignToClusters, updateCentroids, calculateKMeansInertia } from '../se
 import { getChatResponse } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import KMeansPlot from './KMeansPlot';
-import UnifiedGenAIChat, { ChatMessage } from './UnifiedGenAIChat';
+import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
 interface KMeansAnalysisProps {
     onBack: () => void;
@@ -29,8 +29,8 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
     const [isAnimating, setIsAnimating] = useState(false);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { text: "Hello! I'm Dr. Gem. Set your initial centroids by clicking on the plot, then let the algorithm assist you in clustering the data!", sender: 'bot' }
+    const [chatHistory, setChatHistory] = useState<Message[]>([
+        { text: "Hello! I'm Dr. Gem. Set your initial centroids by clicking on the plot, then let the algorithm assist you in clustering the data!", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -113,7 +113,7 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, sender: 'user' }]);
+        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
 
         const inertia = calculateKMeansInertia(points, centroids);
         const context = `
@@ -129,10 +129,10 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
         `;
 
         try {
-            const response = await getChatResponse(context);
-            setChatHistory(prev => [...prev, { text: response, sender: 'bot' }]);
+            const response = await getChatResponse(msg, context);
+            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
         } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the clusters right now.", sender: 'bot' }]);
+            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the clusters right now.", role: 'model' }]);
         } finally {
             setIsChatLoading(false);
         }
@@ -194,3 +194,4 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
 };
 
 export default KMeansAnalysis;
+

@@ -135,3 +135,4 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
 };
 
 export default TimeSeriesAnalysis;
+
