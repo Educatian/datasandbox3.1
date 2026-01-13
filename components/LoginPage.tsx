@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { signIn } from '../services/supabaseService';
+import { logLogin, setUser } from '../services/loggingService';
 import MinimalBackground from './MinimalBackground';
 
 interface LoginPageProps {
@@ -22,6 +23,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         if (error) {
             setError(error.message);
         } else if (user) {
+            // Log the successful login
+            setUser(user.email || user.id);
+            logLogin(user.email || user.id, 'login_form');
             onLoginSuccess();
         }
 
