@@ -121,13 +121,9 @@ const sendToSupabase = async (payload: LogPayload) => {
   try {
     const entry = toSupabaseFormat(payload);
 
-    // Remove context_label if it might cause issues with older schemas
-    const safeEntry = { ...entry };
-    delete safeEntry.context_label; // Remove optional field to ensure compatibility
-
     const { error } = await supabase
       .from('user_logs')
-      .insert([safeEntry]);
+      .insert([entry]);
 
     if (error) {
       console.error('[Logging] Supabase insert error:', error.message, error.details);
