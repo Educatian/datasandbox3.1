@@ -24,6 +24,9 @@ import ModeVisualizer from './components/ModeVisualizer';
 import GaltonBoard from './components/GaltonBoard';
 import PHackingSim from './components/PHackingSim';
 import AnscombeQuartet from './components/AnscombeQuartet';
+import PowerAnalysisGame from './components/PowerAnalysisGame';
+import ProbabilityScannerGame from './components/ProbabilityScannerGame';
+import PredictionPainterGame from './components/PredictionPainterGame';
 
 //================================================
 // Curriculum Data Structure
@@ -34,7 +37,7 @@ interface ModuleDef {
     title: string;
     description: string;
     manipulation: string;
-    component: 'z-test' | 'regression' | 'correlation' | 'confidence' | 'game' | 'god-mode' | 'summation' | 'rank-line' | 'balance-beam' | 'dart-board' | 'coin-flipper' | 'signal-noise' | 'effect-magnifier' | 'prediction-laser' | 'box-plot' | 'mode-viz' | 'galton-board' | 'p-hacking' | 'anscombe' | 'placeholder';
+    component: 'z-test' | 'regression' | 'correlation' | 'confidence' | 'game' | 'god-mode' | 'summation' | 'rank-line' | 'balance-beam' | 'dart-board' | 'coin-flipper' | 'signal-noise' | 'effect-magnifier' | 'prediction-laser' | 'box-plot' | 'mode-viz' | 'galton-board' | 'p-hacking' | 'anscombe' | 'power-game' | 'prob-scanner-game' | 'painter-game' | 'placeholder';
 }
 
 interface AssessmentDef {
@@ -129,7 +132,7 @@ const CURRICULUM: AssessmentDef[] = [
                 id: 'prob-scanner', title: 'The Probability Scanner',
                 description: 'Z-Scores and Area under the curve.',
                 manipulation: 'Drag the laser scanner across the curve to paint the area and calculate probability.',
-                component: 'z-test'
+                component: 'prob-scanner-game'
             },
             {
                 id: 'sample-pumper', title: 'The Sample Size Pumper',
@@ -214,10 +217,10 @@ const CURRICULUM: AssessmentDef[] = [
         subTitle: 'Designing for Success',
         modules: [
             {
-                id: 'power-triangle', title: 'The Power Triangle',
-                description: 'G*Power relationships.',
-                manipulation: 'Adjust Alpha, Sample Size, and Effect Size to maximize the "Power" area.',
-                component: 'z-test'
+                id: 'power-triangle', title: 'The Power Station',
+                description: 'G*Power relationships gamified.',
+                manipulation: 'Manage Sample Size (Fuel) and Alpha (Safety) to generate enough statistical Power to light the city.',
+                component: 'power-game'
             },
             {
                 id: 'effect-magnifier', title: 'The Effect Size Magnifier',
@@ -267,7 +270,7 @@ const CURRICULUM: AssessmentDef[] = [
                 id: 'prediction-painter', title: 'The Prediction Painter',
                 description: 'R-squared and Explained Variance.',
                 manipulation: 'Tighten the points to the line to fill the R-squared gauge.',
-                component: 'regression'
+                component: 'painter-game'
             }
         ]
     }
@@ -361,7 +364,8 @@ const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void, setting
 
                                     const isVisible = isAdmin
                                         || state === 'visible'
-                                        || (state === 'scheduled' && isScheduledReleased);
+                                        || (state === 'scheduled' && isScheduledReleased)
+                                        || mod.id === 'power-triangle'; // Force visible for dev
 
                                     // If hidden for student, don't render
                                     if (!isVisible) return null;
@@ -575,6 +579,15 @@ const App: React.FC = () => {
         }
         if (moduleDef.id === 'anscombe') {
             return <AnscombeQuartet onBack={() => setActiveModuleId(null)} />;
+        }
+        if (moduleDef.id === 'power-triangle') {
+            return <PowerAnalysisGame onBack={() => setActiveModuleId(null)} />;
+        }
+        if (moduleDef.id === 'prob-scanner') {
+            return <ProbabilityScannerGame onBack={() => setActiveModuleId(null)} />;
+        }
+        if (moduleDef.id === 'prediction-painter') {
+            return <PredictionPainterGame onBack={() => setActiveModuleId(null)} />;
         }
 
         // --- Generic Wrapper Components ---

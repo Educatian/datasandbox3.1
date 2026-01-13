@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { logChat } from '../services/loggingService';
 
 // --- Types ---
 
@@ -48,9 +49,23 @@ const UnifiedGenAIChat: React.FC<UnifiedGenAIChatProps> = ({
     const handleSend = (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!input.trim() || isLoading) return;
+        // Log user message
+        logChat('user', input);
         onSendMessage(input);
         setInput('');
     };
+
+    // Log bot responses when history changes
+    const prevHistoryLengthRef = useRef(history.length);
+    useEffect(() => {
+        if (history.length > prevHistoryLengthRef.current) {
+            const lastMessage = history[history.length - 1];
+            if (lastMessage.role === 'model') {
+                logChat('bot', lastMessage.text);
+            }
+        }
+        prevHistoryLengthRef.current = history.length;
+    }, [history]);
 
     // --- Render ---
 

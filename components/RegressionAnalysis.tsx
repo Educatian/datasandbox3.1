@@ -11,6 +11,7 @@ interface RegressionAnalysisProps {
     onBack: () => void;
     customTitle?: string;
     customContext?: string;
+    moduleId?: string;
 }
 
 const generateInitialData = (count: number): ResidualPoint[] => {
@@ -21,6 +22,20 @@ const generateInitialData = (count: number): ResidualPoint[] => {
             id: i,
             x: x,
             y: Math.max(0, Math.min(100, y)),
+            yHat: 0,
+            residual: 0,
+        };
+    });
+};
+
+const generateRandomCloud = (count: number): ResidualPoint[] => {
+    return Array.from({ length: count }, (_, i) => {
+        const x = Math.random() * 80 + 10;
+        const y = Math.random() * 80 + 10; // Pure chaos
+        return {
+            id: i,
+            x: x,
+            y: y,
             yHat: 0,
             residual: 0,
         };
@@ -46,7 +61,7 @@ const Slider: React.FC<{ label: string, value: number, min: number, max: number,
 );
 
 
-const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customTitle, customContext }) => {
+const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customTitle, customContext, moduleId }) => {
     const [points, setPoints] = useState<ResidualPoint[]>(() => generateInitialData(25));
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
@@ -70,6 +85,22 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     // Prediction Tool State
     const [predictX, setPredictX] = useState<number>(50);
 
+    // Initial Setup based on Module ID
+    useEffect(() => {
+        if (moduleId === 'residual-rain') {
+            setIsManualMode(true);
+            setShowSquares(true);
+            setScenario('abstract');
+            setPoints(generateInitialData(25));
+            setChatHistory([{ role: 'model', text: "Welcome to Residual Rain! ☔ Tilt the line to minimize the squared errors (the rain)!" }]);
+        } else if (moduleId === 'prediction-painter') {
+            setIsManualMode(false);
+            setScenario('abstract');
+            setPoints(generateRandomCloud(25));
+            setChatHistory([{ role: 'model', text: "Welcome to The Prediction Painter! 🎨 The data is a mess. Drag the dots to *create* a linear relationship and increase the R-Squared score!" }]);
+        }
+    }, [moduleId]);
+
     const handlePointUpdate = useCallback((id: number, newX: number, newY: number) => {
         setPoints(prevPoints =>
             prevPoints.map(p => (p.id === id ? { ...p, x: newX, y: newY } : p))
@@ -86,6 +117,8 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     const resetData = () => {
         if (scenario === 'physics') {
             setPoints([]);
+        } else if (moduleId === 'prediction-painter') {
+            setPoints(generateRandomCloud(25));
         } else {
             setPoints(generateInitialData(25));
         }
@@ -187,7 +220,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                 </div>
             )}
 
-            <div className="flex justify-center mb-6">
+            <div className={`flex justify-center mb-6 ${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
                 <div className="bg-slate-800 p-1 rounded-lg inline-flex">
                     <button
                         onClick={() => setScenario('abstract')}
@@ -225,6 +258,8 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         showMeanLine={showMeanLine}
                         xAxisLabel={scenario === 'physics' ? "Mass (grams)" : "Independent Variable (X)"}
                         yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : "Dependent Variable (Y)"}
+                        pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined} // Fuchsia-600 for Painter
+                        lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined} // Orange-500 for Painter
                     />
                 </div>
 
@@ -235,7 +270,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-yellow-400">Analysis Model</h3>
-                            <div className="flex bg-slate-700 rounded-lg p-1">
+                            <div className={`flex bg-slate-700 rounded-lg p-1 ${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
                                 <button
                                     onClick={() => setIsManualMode(false)}
                                     className={`px-3 py-1 rounded-md text-sm transition-colors ${!isManualMode ? 'bg-yellow-600 text-white' : 'text-slate-300 hover:text-white'}`}
@@ -346,6 +381,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
                         variant="embedded"
+                        className="h-full"
                     />
                 </div>
             </main>

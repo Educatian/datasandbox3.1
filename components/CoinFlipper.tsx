@@ -106,7 +106,8 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
             - P-Value: Probability of seeing this data IF H0 is true.
             - Low P-Value (< 0.05): Evidence against H0.
             
-            Persona: Suspicious detective investigating a coin.
+            
+
         `;
 
         try {
@@ -212,6 +213,7 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
                         onSendMessage={handleSendMessage}
                         isLoading={isChatLoading}
                         variant="embedded"
+                        className="h-full"
                     />
                 </div>
             </main>

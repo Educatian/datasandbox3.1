@@ -12,11 +12,14 @@ interface RegressionScatterPlotProps {
     showMeanLine: boolean;
     xAxisLabel?: string;
     yAxisLabel?: string;
+    pointColor?: string;
+    lineColor?: string;
 }
 
-const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({ 
+const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
     data, line, onPointUpdate, onAddPoint, showSquares, showMeanLine,
-    xAxisLabel = "Independent Variable (X)", yAxisLabel = "Dependent Variable (Y)"
+    xAxisLabel = "Independent Variable (X)", yAxisLabel = "Dependent Variable (Y)",
+    pointColor = "rgb(34 211 238)", lineColor = "rgb(250 204 21)"
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -58,12 +61,12 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                 .attr('height', height)
                 .attr('fill', 'rgb(30 41 59)')
                 .style('cursor', 'crosshair');
-            
+
             svg.append('g').attr('class', 'grid-x');
             svg.append('g').attr('class', 'grid-y');
             svg.append('g').attr('class', 'x-axis');
             svg.append('g').attr('class', 'y-axis');
-            
+
             // Axis Labels
             svg.append('text').attr('class', 'x-label')
                 .attr('text-anchor', 'middle')
@@ -85,9 +88,9 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                 .attr('height', height - margin.top - margin.bottom)
                 .attr('x', margin.left)
                 .attr('y', margin.top);
-            
+
             chartArea.attr('clip-path', 'url(#clip)');
-            
+
             // Layer Order: Squares -> Mean Line -> Residuals -> Reg Line -> Points
             chartArea.append('g').attr('class', 'squares-layer');
             chartArea.append('line').attr('class', 'mean-line').attr('opacity', 0);
@@ -124,14 +127,14 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
         // Update Axes and Grid
         svg.select<SVGGElement>('.x-axis').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x)).attr('color', 'rgb(100 116 139)');
         svg.select<SVGGElement>('.y-axis').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y)).attr('color', 'rgb(100 116 139)');
-        
+
         svg.select<SVGGElement>('.grid-x').attr('transform', `translate(0,${height - margin.bottom})`)
-           .call(d3.axisBottom(x).ticks(10).tickSize(-height + margin.top + margin.bottom).tickFormat(() => ''))
-           .selectAll('line').attr('stroke', 'rgba(100, 116, 139, 0.2)');
-           
+            .call(d3.axisBottom(x).ticks(10).tickSize(-height + margin.top + margin.bottom).tickFormat(() => ''))
+            .selectAll('line').attr('stroke', 'rgba(100, 116, 139, 0.2)');
+
         svg.select<SVGGElement>('.grid-y').attr('transform', `translate(${margin.left},0)`)
-           .call(d3.axisLeft(y).ticks(10).tickSize(-width + margin.left + margin.right).tickFormat(() => ''))
-           .selectAll('line').attr('stroke', 'rgba(100, 116, 139, 0.2)');
+            .call(d3.axisLeft(y).ticks(10).tickSize(-width + margin.left + margin.right).tickFormat(() => ''))
+            .selectAll('line').attr('stroke', 'rgba(100, 116, 139, 0.2)');
 
         const chartArea = svg.select('.chart-area');
 
@@ -160,7 +163,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                 .attr('fill', 'rgba(234, 179, 8, 0.15)') // Yellow with low opacity
                 .attr('stroke', 'rgba(234, 179, 8, 0.3)')
                 .attr('stroke-width', 1)
-                .attr('x', d => x(d.x)) 
+                .attr('x', d => x(d.x))
                 .attr('y', d => Math.min(y(d.y), y(d.yHat)))
                 .attr('width', d => Math.abs(y(d.y) - y(d.yHat))) // visual width in pixels
                 .attr('height', d => Math.abs(y(d.y) - y(d.yHat))); // visual height in pixels
@@ -184,26 +187,26 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
         // Update Regression Line
         const x1 = 0, y1 = line.slope * x1 + line.intercept;
         const x2 = 100, y2 = line.slope * x2 + line.intercept;
-        
+
         chartArea.select('.regression-line')
             .transition().duration(50) // Fast transition for drag responsiveness
             .attr('x1', x(x1)).attr('y1', y(y1))
             .attr('x2', x(x2)).attr('y2', y(y2))
-            .attr('stroke', 'rgb(250 204 21)') // Yellow-400
+            .attr('stroke', lineColor) // Yellow-400
             .attr('stroke-width', 3);
-            
+
         // Update Equation Text
         const slopeText = line.slope.toFixed(2);
         const interceptText = line.intercept >= 0 ? `+ ${line.intercept.toFixed(2)}` : `- ${Math.abs(line.intercept).toFixed(2)}`;
-        
+
         // Position text along the line but keep it within view
         let textX = 70;
         let textY = line.slope * 70 + line.intercept;
-        
+
         // Clamp Y to stay in chart area
         if (textY > 90) { textY = 90; textX = (90 - line.intercept) / (line.slope || 0.001); }
         if (textY < 10) { textY = 10; textX = (10 - line.intercept) / (line.slope || 0.001); }
-        
+
         // Clamp X
         textX = Math.max(10, Math.min(90, textX));
 
@@ -212,7 +215,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             .attr('x', x(textX))
             .attr('y', y(textY) - 15)
             .attr('text-anchor', 'middle')
-            .attr('fill', 'rgb(250 204 21)')
+            .attr('fill', lineColor)
             .style('font-family', 'monospace')
             .style('font-weight', 'bold')
             .style('font-size', '14px')
@@ -222,11 +225,11 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
 
         // Drag Behavior
         const drag = d3.drag<SVGCircleElement, ResidualPoint>()
-            .subject(function(event, d) {
+            .subject(function (event, d) {
                 // Fix for jumping issue: define subject in pixel coordinates
                 return { x: x(d.x), y: y(d.y) };
             })
-            .on('start', function() {
+            .on('start', function () {
                 d3.select(this).attr('r', 8).attr('stroke', 'white');
                 tooltip.style('visibility', 'hidden');
             })
@@ -234,9 +237,9 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                 const newX = Math.max(0, Math.min(100, x.invert(event.x)));
                 const newY = Math.max(0, Math.min(100, y.invert(event.y)));
                 d3.select(this).attr('cx', x(newX)).attr('cy', y(newY));
-                onPointUpdate(d.id, newX, newY); 
+                onPointUpdate(d.id, newX, newY);
             })
-            .on('end', function() { d3.select(this).attr('r', 6).attr('stroke', 'rgb(15 23 42)'); });
+            .on('end', function () { d3.select(this).attr('r', 6).attr('stroke', 'rgb(15 23 42)'); });
 
         // Update Points
         chartArea.select('.points-layer')
@@ -245,7 +248,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             .join(
                 enter => enter.append('circle')
                     .attr('r', 6)
-                    .attr('fill', 'rgb(34 211 238)')
+                    .attr('fill', pointColor)
                     .attr('stroke', 'rgb(15 23 42)')
                     .attr('stroke-width', 2)
                     .style('cursor', 'grab'),
@@ -256,10 +259,10 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             )
             // Attach drag and events on the merged selection
             .call(drag)
-            .on('mouseover', function(event, d) {
+            .on('mouseover', function (event, d) {
                 const yHat = line.slope * d.x + line.intercept;
                 const residual = d.y - yHat;
-                
+
                 d3.select(this)
                     .transition().duration(200)
                     .attr('r', 9)
@@ -281,11 +284,11 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                     .style('top', (event.pageY - 10) + 'px')
                     .style('left', (event.pageX + 10) + 'px');
             })
-            .on('mouseout', function() {
+            .on('mouseout', function () {
                 d3.select(this)
                     .transition().duration(200)
                     .attr('r', 6)
-                    .attr('fill', 'rgb(34 211 238)');
+                    .attr('fill', pointColor);
                 tooltip.style('visibility', 'hidden');
             });
 

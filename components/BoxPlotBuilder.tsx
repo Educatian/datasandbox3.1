@@ -243,13 +243,14 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
                         <button onClick={() => setData(d => d.map(() => Math.random() * 80 + 10))} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 p-2 rounded text-white">Randomize Data</button>
                     </div>
                     {/* Chat - constrained height to improve graph visibility */}
-                    <div className="max-h-[280px] overflow-hidden rounded-lg">
+                    <div className="h-[300px] rounded-lg">
                         <UnifiedGenAIChat
                             moduleTitle="The Box Plot Packer"
                             history={chatHistory}
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
+                            className="h-full"
                         />
                     </div>
                 </div>

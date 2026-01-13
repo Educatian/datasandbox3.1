@@ -86,8 +86,13 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
             currentDeck = [...refill];
         }
         const randomIndex = Math.floor(Math.random() * currentDeck.length);
-        setCurrentItem(currentDeck[randomIndex]);
-        setDeck(currentDeck);
+        const nextItem = currentDeck[randomIndex];
+
+        // Remove the picked item from the deck to prevent repeats
+        const remainingDeck = currentDeck.filter((_, i) => i !== randomIndex);
+
+        setCurrentItem(nextItem);
+        setDeck(remainingDeck);
 
         // Reset visual position
         setCapsulePos({ x: 0, y: 0 });
