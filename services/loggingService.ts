@@ -6,6 +6,47 @@ const APPS_SCRIPT_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlvgEYSzL
 const ENABLE_GOOGLE_SHEETS = false;
 const ENABLE_SUPABASE = true;
 
+// =============================================
+// CONCEPT MAPPING - Statistical Learning Concepts
+// =============================================
+const CONCEPT_MAP: Record<string, string> = {
+  // Portal & Navigation
+  'portal': 'Navigation',
+
+  // Descriptive Statistics (Assessment 1-3)
+  'data-sorter': 'MeasurementScales',
+  'mode-viz': 'CentralTendency',
+  'rank-line': 'Median_Rank',
+  'balance-beam': 'Mean_Balance',
+  'box-plot': 'Quartiles_IQR',
+  'dart-board': 'SD_Variance',
+  'bin-squeezer': 'Histogram_Binning',
+
+  // Probability & Distributions (Assessment 4-5)
+  'galton-board': 'NormalDistribution',
+  'coin-flipper': 'Probability_Binomial',
+  'prob-scanner': 'ZScore_CumulativeProb',
+
+  // Sampling & Inference (Assessment 6-8)
+  'signal-noise': 'SamplingVariability',
+  'summation-machine': 'SamplingDistribution',
+  'confidence-interval': 'ConfidenceInterval',
+  'power-station': 'Power_SampleSize',
+
+  // Experimental Design (Assessment 9)
+  'god-mode': 'Causality_Experiment',
+  'p-hacking': 'PHacking_Ethics',
+
+  // Regression & Correlation (Assessment 10)
+  'prediction-painter': 'LeastSquares_Rsquared',
+  'residual-rain': 'Residuals_Error',
+  'prediction-laser': 'Prediction_Regression',
+  'anscombe': 'Anscombe_Outliers',
+
+  // Effect Size & Advanced
+  'effect-magnifier': 'EffectSize_Cohen',
+};
+
 export interface LogPayload {
   userId: string;
   timestamp: string;
@@ -23,11 +64,11 @@ export interface LogPayload {
 }
 
 // Supabase table structure (flattened for easier querying)
-// NOTE: context_label is optional - may not exist in older table schemas
 interface SupabaseLogEntry {
   user_id: string;
   timestamp: string;
   page: string;
+  concept: string; // Statistical concept tag
   click_type: string;
   coord_x: number;
   coord_y: number;
@@ -38,7 +79,7 @@ interface SupabaseLogEntry {
   target_tag: string;
   target_id: string;
   target_class: string;
-  context_label?: string; // Optional - may not exist in DB
+  context_label?: string;
   viewport_width: number;
   viewport_height: number;
   screen_width: number;
@@ -63,6 +104,12 @@ export const setPage = (page: string) => {
   currentPage = page || 'portal';
 };
 
+// Get concept for current page
+export const getConcept = (page?: string): string => {
+  const p = page || currentPage;
+  return CONCEPT_MAP[p] || 'Unknown';
+};
+
 export const getSessionId = () => sessionId;
 
 const getScreenSize = () => ({
@@ -77,6 +124,7 @@ const toSupabaseFormat = (payload: LogPayload): SupabaseLogEntry => ({
   user_id: payload.userId,
   timestamp: payload.timestamp,
   page: payload.page,
+  concept: getConcept(payload.page),
   click_type: payload.clickType,
   coord_x: payload.coordinates.x,
   coord_y: payload.coordinates.y,
