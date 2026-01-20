@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { getChatResponse } from '../services/geminiService';
+import { logEvent } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface ModeVisualizerProps {
@@ -54,13 +55,19 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
 
     const handleAdd = (index: number) => {
         const newCounts = [...counts];
-        if (newCounts[index] < 10) newCounts[index]++;
+        if (newCounts[index] < 10) {
+            newCounts[index]++;
+            logEvent('add_block', 'ModeVisualizer', { category: CATEGORIES[index], newCount: newCounts[index] });
+        }
         setCounts(newCounts);
     };
 
     const handleRemove = (index: number) => {
         const newCounts = [...counts];
-        if (newCounts[index] > 0) newCounts[index]--;
+        if (newCounts[index] > 0) {
+            newCounts[index]--;
+            logEvent('remove_block', 'ModeVisualizer', { category: CATEGORIES[index], newCount: newCounts[index] });
+        }
         setCounts(newCounts);
     };
 

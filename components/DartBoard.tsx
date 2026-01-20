@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
+import { logEvent } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { generateSampleData } from '../services/statisticsService';
 
@@ -188,11 +189,13 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value);
         setStdDev(val);
+        logEvent('sd_change', 'DartBoard', { player: 'A', stdDev: val, skillLevel: getSkillLabel(val).label });
     };
 
     const handlePlayer2SliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value);
         setPlayer2StdDev(val);
+        logEvent('sd_change', 'DartBoard', { player: 'B', stdDev: val, skillLevel: getSkillLabel(val).label });
     };
 
     useEffect(() => {
@@ -209,8 +212,10 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
 
     // Toggle comparison mode
     const toggleComparisonMode = () => {
-        setComparisonMode(!comparisonMode);
-        if (!comparisonMode) {
+        const newMode = !comparisonMode;
+        logEvent('comparison_mode', 'DartBoard', { enabled: newMode });
+        setComparisonMode(newMode);
+        if (newMode) {
             handleShoot(player2StdDev, true);
         }
     };

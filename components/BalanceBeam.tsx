@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
+import { logEvent } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface BalanceBeamProps {
@@ -151,11 +152,11 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
             .attr('transform', d => `translate(${x(d.val)}, ${height / 2 - 25})`)
             .attr('cursor', 'grab')
             .call(d3.drag<SVGGElement, { val: number, id: number, offsetX?: number }>()
-                .subject(function(event, d) {
+                .subject(function (event, d) {
                     // Set subject to current position for stable drag start
                     return { x: x(d.val), y: height / 2 - 25 };
                 })
-                .on('start', function(event, d) {
+                .on('start', function (event, d) {
                     // Store offset between mouse and box center at drag start
                     const [mx] = d3.pointer(event, svg.node());
                     d.offsetX = mx - x(d.val);
@@ -176,7 +177,7 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
                         return next;
                     });
                 })
-                .on('end', function() {
+                .on('end', function () {
                     d3.select(this).attr('cursor', 'grab');
                 }) as any
             );
@@ -230,14 +231,19 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
         }
     };
 
-    const handleReset = () => setWeights(INITIAL_WEIGHTS);
+    const handleReset = () => {
+        logEvent('reset', 'BalanceBeam', { action: 'reset_weights' });
+        setWeights(INITIAL_WEIGHTS);
+    };
     const handleOutlier = () => {
         const sorted = [...weights].sort((a, b) => a - b);
         const q1 = d3.quantile(sorted, 0.25) || 0;
         const q3 = d3.quantile(sorted, 0.75) || 0;
         const iqr = q3 - q1;
         const outlierValue = Math.min(q3 + 1.5 * iqr, 100);
-        
+
+        logEvent('create_outlier', 'BalanceBeam', { outlierValue, q1, q3, iqr });
+
         const newWeights = [...weights];
         newWeights[newWeights.length - 1] = outlierValue;
         setWeights(newWeights);
