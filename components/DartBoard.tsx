@@ -390,7 +390,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                <div className="lg:col-span-1 h-[600px]">
+                <div className="lg:col-span-1 h-full min-h-[600px]">
                     <UnifiedGenAIChat
                         moduleTitle="The Dart Board"
                         history={chatHistory}

@@ -141,7 +141,7 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
                                         <button onClick={() => handleAdd(i)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white">+</button>
                                     </div>
                                     {isMode && (
-                                        <div className="absolute -top-10 font-bold text-amber-400 animate-bounce">MODE</div>
+                                        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full font-bold text-amber-400 animate-bounce whitespace-nowrap">MODE</div>
                                     )}
                                 </div>
                             );
