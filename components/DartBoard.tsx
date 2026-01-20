@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
@@ -12,11 +12,24 @@ interface Shot {
     id: number;
     x: number;
     y: number;
+    distance: number;
 }
+
+// Educational context labels based on relative SD position
+const getSkillLabel = (stdDev: number, max: number = 50): { emoji: string; label: string; example: string } => {
+    const ratio = stdDev / max;
+    if (ratio <= 0.2) return { emoji: '🎯', label: '올림픽 선수', example: '시험: 대부분 70-80점' };
+    if (ratio <= 0.5) return { emoji: '🏹', label: '숙련자', example: '버스: ±5분 오차' };
+    if (ratio <= 0.8) return { emoji: '🎪', label: '초보자', example: '제조: 불량률 증가' };
+    return { emoji: '🌪️', label: '무작위', example: '예측 불가능' };
+};
 
 const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
     const [stdDev, setStdDev] = useState(10);
     const [shots, setShots] = useState<Shot[]>([]);
+    const [comparisonMode, setComparisonMode] = useState(false);
+    const [player2StdDev, setPlayer2StdDev] = useState(30);
+    const [player2Shots, setPlayer2Shots] = useState<Shot[]>([]);
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
@@ -25,48 +38,87 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
     const [isChatLoading, setIsChatLoading] = useState(false);
 
     const svgRef = useRef<SVGSVGElement | null>(null);
+    const svg2Ref = useRef<SVGSVGElement | null>(null);
+
+    // Calculate coverage statistics
+    const calculateCoverage = (shotList: Shot[], coveragePercent: number): { radius: number; count: number } => {
+        if (shotList.length === 0) return { radius: 0, count: 0 };
+        const sortedDistances = shotList.map(s => s.distance).sort((a, b) => a - b);
+        const targetIndex = Math.floor(shotList.length * coveragePercent) - 1;
+        const radius = sortedDistances[Math.max(0, targetIndex)] || 0;
+        const count = shotList.filter(s => s.distance <= radius).length;
+        return { radius, count };
+    };
+
+    // Coverage stats for player 1
+    const coverage50 = useMemo(() => calculateCoverage(shots, 0.5), [shots]);
+    const coverage80 = useMemo(() => calculateCoverage(shots, 0.8), [shots]);
+    const coverage95 = useMemo(() => calculateCoverage(shots, 0.95), [shots]);
+
+    // Coverage stats for player 2
+    const p2Coverage50 = useMemo(() => calculateCoverage(player2Shots, 0.5), [player2Shots]);
+    const p2Coverage80 = useMemo(() => calculateCoverage(player2Shots, 0.8), [player2Shots]);
+
+    // Average distance from center
+    const avgDistance = useMemo(() => {
+        if (shots.length === 0) return 0;
+        return shots.reduce((sum, s) => sum + s.distance, 0) / shots.length;
+    }, [shots]);
+
+    const p2AvgDistance = useMemo(() => {
+        if (player2Shots.length === 0) return 0;
+        return player2Shots.reduce((sum, s) => sum + s.distance, 0) / player2Shots.length;
+    }, [player2Shots]);
 
     // Initial Shots
     useEffect(() => {
         handleShoot();
     }, []);
 
-    // Generate new shots when SD changes drastically or on demand
-    const handleShoot = () => {
+    // Generate new shots when SD changes
+    const handleShoot = (sd: number = stdDev, isPlayer2: boolean = false) => {
         const count = 50;
-        // Generate X and Y normally distributed around center (0,0 visual offset)
-        // using our service helper which returns 1D array. We call it twice.
-        const xs = generateSampleData(0, stdDev, count);
-        const ys = generateSampleData(0, stdDev, count);
+        const xs = generateSampleData(0, sd, count);
+        const ys = generateSampleData(0, sd, count);
 
         const newShots = xs.map((x, i) => ({
-            id: Date.now() + i,
+            id: Date.now() + i + (isPlayer2 ? 1000 : 0),
             x: x,
-            y: ys[i]
+            y: ys[i],
+            distance: Math.hypot(x, ys[i])
         }));
 
-        setShots(newShots);
+        if (isPlayer2) {
+            setPlayer2Shots(newShots);
+        } else {
+            setShots(newShots);
+        }
     };
 
     // Render D3
-    useEffect(() => {
-        if (!svgRef.current) return;
+    const renderBoard = (
+        svgElement: SVGSVGElement | null,
+        shotList: Shot[],
+        sd: number,
+        cov50: { radius: number; count: number },
+        cov80: { radius: number; count: number },
+        cov95?: { radius: number; count: number }
+    ) => {
+        if (!svgElement) return;
 
-        const width = 500;
-        const height = 500;
+        const width = comparisonMode ? 350 : 500;
+        const height = comparisonMode ? 350 : 500;
         const center = width / 2;
-        const svg = d3.select(svgRef.current);
+        const svg = d3.select(svgElement);
 
         svg.attr('viewBox', `0 0 ${width} ${height}`);
         svg.selectAll('*').remove();
 
-        // --- The Board (Static) ---
         const boardGroup = svg.append('g').attr('transform', `translate(${center}, ${center})`);
+        const scale = comparisonMode ? 3 : 4;
 
-        // Rings
-        const rings = [140, 100, 60, 20]; // Arbitrary visual rings
-        const colors = ['#fecaca', '#fde047', '#86efac', '#ef4444']; // Red-100, Yellow-300, Green-300, Red-500
-
+        // Background rings (faint)
+        const rings = [140, 100, 60, 20].map(r => r * (comparisonMode ? 0.7 : 1));
         boardGroup.selectAll('circle.board-ring')
             .data(rings)
             .join('circle')
@@ -75,97 +127,96 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
             .attr('fill', (d, i) => i % 2 === 0 ? 'white' : 'black')
             .attr('stroke', '#cbd5e1')
             .attr('stroke-width', 1)
-            .attr('opacity', 0.1); // Faint background guide
+            .attr('opacity', 0.1);
 
         // Crosshairs
         boardGroup.append('line').attr('x1', -center).attr('x2', center).attr('y1', 0).attr('y2', 0).attr('stroke', '#475569').attr('stroke-dasharray', '4,4');
         boardGroup.append('line').attr('y1', -center).attr('y2', center).attr('x1', 0).attr('x2', 0).attr('stroke', '#475569').attr('stroke-dasharray', '4,4');
 
-        // --- The SD Visualizers (Dynamic Rings) ---
-        // 1 SD Ring (68% of shots should be inside)
-        // Note: In 2D, it's actually 39% for 1 sigma radius, but conceptually we show the radius.
-        // We scale the visual SD to match the board pixels. Let's say 1 data unit = 3 pixels.
-        const scale = 4;
+        // Coverage circles (50%, 80%, 95%)
+        const coverageData = [
+            { pct: 50, data: cov50, color: '#22c55e', label: '50%' },
+            { pct: 80, data: cov80, color: '#3b82f6', label: '80%' },
+            ...(cov95 ? [{ pct: 95, data: cov95, color: '#8b5cf6', label: '95%' }] : [])
+        ];
 
-        boardGroup.append('circle')
-            .attr('r', stdDev * scale)
-            .attr('fill', 'none')
-            .attr('stroke', '#3b82f6') // Blue
-            .attr('stroke-width', 2)
-            .attr('stroke-dasharray', '5,5');
+        coverageData.forEach(({ data, color, label }) => {
+            boardGroup.append('circle')
+                .attr('r', data.radius * scale)
+                .attr('fill', 'none')
+                .attr('stroke', color)
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '5,5');
 
-        boardGroup.append('text')
-            .attr('x', stdDev * scale)
-            .attr('y', -stdDev * scale)
-            .attr('fill', '#3b82f6')
-            .attr('font-size', '12px')
-            .text('1 SD');
+            boardGroup.append('text')
+                .attr('x', data.radius * scale + 5)
+                .attr('y', -5)
+                .attr('fill', color)
+                .attr('font-size', '11px')
+                .attr('font-weight', 'bold')
+                .text(label);
+        });
 
-        boardGroup.append('circle')
-            .attr('r', stdDev * 2 * scale)
-            .attr('fill', 'none')
-            .attr('stroke', '#6366f1') // Indigo
-            .attr('stroke-width', 1)
-            .attr('stroke-dasharray', '2,2');
-
-        // --- The Shots (Data Points) ---
+        // Shots
         const shotsGroup = svg.append('g').attr('transform', `translate(${center}, ${center})`);
-
         shotsGroup.selectAll('circle.shot')
-            .data(shots, (d: any) => d.id)
+            .data(shotList, (d: any) => d.id)
             .join(
                 enter => enter.append('circle')
                     .attr('r', 0)
                     .attr('fill', '#ef4444')
                     .attr('cx', d => d.x * scale)
                     .attr('cy', d => d.y * scale)
-                    .call(enter => enter.transition().duration(400).ease(d3.easeBounceOut).attr('r', 4)),
+                    .call(enter => enter.transition().duration(400).ease(d3.easeBounceOut).attr('r', comparisonMode ? 3 : 4)),
                 update => update.transition().duration(500)
                     .attr('cx', d => d.x * scale)
                     .attr('cy', d => d.y * scale),
                 exit => exit.remove()
             );
+    };
 
-    }, [shots, stdDev]);
+    useEffect(() => {
+        renderBoard(svgRef.current, shots, stdDev, coverage50, coverage80, coverage95);
+    }, [shots, stdDev, coverage50, coverage80, coverage95, comparisonMode]);
+
+    useEffect(() => {
+        if (comparisonMode) {
+            renderBoard(svg2Ref.current, player2Shots, player2StdDev, p2Coverage50, p2Coverage80);
+        }
+    }, [player2Shots, player2StdDev, p2Coverage50, p2Coverage80, comparisonMode]);
 
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value);
         setStdDev(val);
-        // We need to re-generate shots to match the new distribution statistically
-        // Or we could move existing shots. Moving them maintains identity which is cool visually.
-        // Let's scale existing shots!
-
-        setShots(prev => {
-            if (val === 0) return prev; // Avoid /0
-            // Find scaling factor from old SD? Hard without storing old SD.
-            // Simpler: Just regenerate for statistical accuracy.
-            // But for "feel", let's regenerate.
-
-            // Actually, regenerating on every slider move is chaotic. 
-            // Better: Scale the current shots relative to their z-score!
-            // x_new = x_old * (new_sd / old_sd) -- Wait, we don't track z-scores.
-            // Let's just regenerate for now, effectively "reshooting".
-
-            // To prevent chaotic flashing, we will use a debounced regenerate or just regenerate.
-            // For the "Dart Board" feel, maybe we keep the random seed (z-scores) fixed?
-            // That would look like the cloud expanding/contracting breathing.
-            // Let's try regenerating new randoms for "fresh shots" effect.
-            return prev; // Placeholder, useEffect below handles the logic
-        });
     };
 
-    // Effect to regenerate shots when SD changes, but maybe debounced or immediate?
-    // Let's do: Keep same 'Z' scores, just scale position. This is best for visualization.
-    // We need to store Z scores.
-
-    // Let's refactor `shots` to store Z scores instead of raw X/Y? 
-    // No, simpler: Just regenerate. It's a simulation of "Shooting with this precision".
+    const handlePlayer2SliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseInt(e.target.value);
+        setPlayer2StdDev(val);
+    };
 
     useEffect(() => {
-        const timer = setTimeout(handleShoot, 50); // Debounce slightly
+        const timer = setTimeout(() => handleShoot(stdDev, false), 50);
         return () => clearTimeout(timer);
     }, [stdDev]);
 
+    useEffect(() => {
+        if (comparisonMode) {
+            const timer = setTimeout(() => handleShoot(player2StdDev, true), 50);
+            return () => clearTimeout(timer);
+        }
+    }, [player2StdDev, comparisonMode]);
+
+    // Toggle comparison mode
+    const toggleComparisonMode = () => {
+        setComparisonMode(!comparisonMode);
+        if (!comparisonMode) {
+            handleShoot(player2StdDev, true);
+        }
+    };
+
+    const skillInfo = getSkillLabel(stdDev);
+    const p2SkillInfo = getSkillLabel(player2StdDev);
 
     // --- Chat Logic ---
     const handleSendMessage = async (msg: string) => {
@@ -176,11 +227,16 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
             You are Dr. Gem, explaining Standard Deviation (SD) using a dartboard.
             Current State:
             - SD Setting: ${stdDev} (Range: 1-50)
-            - Visual: ${stdDev < 10 ? "Tight cluster (High Precision)" : stdDev > 30 ? "Wild scatter (Low Precision)" : "Average spread"}
+            - Skill Level: ${skillInfo.label}
+            - 50% Coverage Radius: ${coverage50.radius.toFixed(1)}
+            - 80% Coverage Radius: ${coverage80.radius.toFixed(1)}
+            - Average Distance from Center: ${avgDistance.toFixed(1)}
+            ${comparisonMode ? `- Comparison Mode ON: Player 2 SD=${player2StdDev}` : ''}
             
             Educational Goal:
             - SD is the average distance from the center (Mean).
-            - Low SD = Consistent. High SD = Variable.
+            - Low SD = Consistent/Reliable. High SD = Variable/Unpredictable.
+            - Real-world examples: exam scores, bus arrival times, manufacturing quality
         `;
 
         try {
@@ -199,28 +255,138 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                 <button onClick={onBack} className="text-amber-400 hover:text-amber-300 mb-4 inline-block">&larr; Back to Portal</button>
                 <div className="text-center">
                     <h1 className="text-4xl font-bold text-amber-400">The Dart Board</h1>
-                    <p className="text-slate-400 mt-2">Standard Deviation measures the "Spread" or "Error" of your shots.</p>
+                    <p className="text-slate-400 mt-2">Standard Deviation measures the "Spread" or "Consistency" of your shots.</p>
                 </div>
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center">
-                    <svg ref={svgRef} className="w-full h-full min-h-[400px]" style={{ overflow: 'visible' }}></svg>
 
-                    <div className="w-full max-w-md mt-6 bg-slate-800 p-4 rounded-lg">
-                        <label className="flex justify-between text-slate-300 font-bold mb-2">
-                            <span>Spread (Standard Deviation)</span>
-                            <span className="font-mono text-amber-400">{stdDev}</span>
-                        </label>
-                        <input
-                            type="range" min="1" max="50" value={stdDev}
-                            onChange={handleSliderChange}
-                            className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                        />
-                        <div className="flex justify-between text-xs text-slate-500 mt-2">
-                            <span>Precision Sniper (Low SD)</span>
-                            <span>Shotgun Spray (High SD)</span>
+                    {/* Comparison Mode Toggle */}
+                    <div className="w-full flex justify-end mb-2">
+                        <button
+                            onClick={toggleComparisonMode}
+                            className={`px-3 py-1 rounded-full text-sm font-bold transition-all ${comparisonMode ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                        >
+                            {comparisonMode ? '🔄 비교 모드 ON' : '👥 두 선수 비교'}
+                        </button>
+                    </div>
+
+                    {/* Boards Container */}
+                    <div className={`flex ${comparisonMode ? 'gap-4' : ''} justify-center w-full`}>
+                        {/* Player 1 Board */}
+                        <div className="flex flex-col items-center">
+                            {comparisonMode && <div className="text-center mb-2 text-emerald-400 font-bold">선수 A</div>}
+                            <svg ref={svgRef} className={`${comparisonMode ? 'w-full max-w-[350px]' : 'w-full'} min-h-[300px]`} style={{ overflow: 'visible' }}></svg>
                         </div>
+
+                        {/* Player 2 Board (Comparison Mode) */}
+                        {comparisonMode && (
+                            <div className="flex flex-col items-center">
+                                <div className="text-center mb-2 text-rose-400 font-bold">선수 B</div>
+                                <svg ref={svg2Ref} className="w-full max-w-[350px] min-h-[300px]" style={{ overflow: 'visible' }}></svg>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Coverage Statistics */}
+                    <div className={`w-full mt-4 grid ${comparisonMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                        {/* Player 1 Stats */}
+                        <div className="bg-slate-800 p-3 rounded-lg">
+                            {comparisonMode && <div className="text-emerald-400 font-bold text-sm mb-2">선수 A 통계</div>}
+                            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                <div className="bg-slate-700 p-2 rounded">
+                                    <div className="text-green-400 font-bold">50%</div>
+                                    <div className="text-slate-300">{coverage50.count}/{shots.length}</div>
+                                </div>
+                                <div className="bg-slate-700 p-2 rounded">
+                                    <div className="text-blue-400 font-bold">80%</div>
+                                    <div className="text-slate-300">{coverage80.count}/{shots.length}</div>
+                                </div>
+                                <div className="bg-slate-700 p-2 rounded">
+                                    <div className="text-purple-400 font-bold">95%</div>
+                                    <div className="text-slate-300">{coverage95.count}/{shots.length}</div>
+                                </div>
+                            </div>
+                            <div className="mt-2 text-xs text-slate-400 text-center">
+                                평균 거리: <span className="text-amber-400 font-mono">{avgDistance.toFixed(1)}</span>
+                            </div>
+                        </div>
+
+                        {/* Player 2 Stats (Comparison Mode) */}
+                        {comparisonMode && (
+                            <div className="bg-slate-800 p-3 rounded-lg">
+                                <div className="text-rose-400 font-bold text-sm mb-2">선수 B 통계</div>
+                                <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                    <div className="bg-slate-700 p-2 rounded">
+                                        <div className="text-green-400 font-bold">50%</div>
+                                        <div className="text-slate-300">{p2Coverage50.count}/{player2Shots.length}</div>
+                                    </div>
+                                    <div className="bg-slate-700 p-2 rounded">
+                                        <div className="text-blue-400 font-bold">80%</div>
+                                        <div className="text-slate-300">{p2Coverage80.count}/{player2Shots.length}</div>
+                                    </div>
+                                    <div className="bg-slate-700 p-2 rounded">
+                                        <div className="text-purple-400 font-bold">95%</div>
+                                        <div className="text-slate-300">-</div>
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-xs text-slate-400 text-center">
+                                    평균 거리: <span className="text-amber-400 font-mono">{p2AvgDistance.toFixed(1)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Sliders */}
+                    <div className={`w-full mt-6 grid ${comparisonMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                        {/* Player 1 Slider */}
+                        <div className="bg-slate-800 p-4 rounded-lg">
+                            <label className="flex justify-between text-slate-300 font-bold mb-2">
+                                <span>{comparisonMode ? '선수 A' : 'SD (Spread)'}</span>
+                                <span className="font-mono text-amber-400">{stdDev}</span>
+                            </label>
+                            <input
+                                type="range" min="1" max="50" value={stdDev}
+                                onChange={handleSliderChange}
+                                className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                            />
+                            <div className="mt-2 flex items-center justify-between">
+                                <span className="text-2xl">{skillInfo.emoji}</span>
+                                <div className="text-right">
+                                    <div className="text-sm font-bold text-slate-200">{skillInfo.label}</div>
+                                    <div className="text-xs text-slate-400">{skillInfo.example}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Player 2 Slider (Comparison Mode) */}
+                        {comparisonMode && (
+                            <div className="bg-slate-800 p-4 rounded-lg">
+                                <label className="flex justify-between text-slate-300 font-bold mb-2">
+                                    <span>선수 B</span>
+                                    <span className="font-mono text-rose-400">{player2StdDev}</span>
+                                </label>
+                                <input
+                                    type="range" min="1" max="50" value={player2StdDev}
+                                    onChange={handlePlayer2SliderChange}
+                                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                                />
+                                <div className="mt-2 flex items-center justify-between">
+                                    <span className="text-2xl">{p2SkillInfo.emoji}</span>
+                                    <div className="text-right">
+                                        <div className="text-sm font-bold text-slate-200">{p2SkillInfo.label}</div>
+                                        <div className="text-xs text-slate-400">{p2SkillInfo.example}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Educational Note */}
+                    <div className="w-full mt-4 bg-slate-800/50 p-3 rounded border border-slate-700 text-sm text-slate-400">
+                        <strong className="text-slate-300">💡 SD가 커질수록</strong> 점들이 평균(중심)에서 더 멀리 흩어집니다.
+                        커버리지 원은 해당 %의 점이 그 원 안에 들어옴을 의미합니다.
                     </div>
                 </div>
 

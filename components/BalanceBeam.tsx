@@ -150,19 +150,34 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
             .join('g')
             .attr('transform', d => `translate(${x(d.val)}, ${height / 2 - 25})`)
             .attr('cursor', 'grab')
-            .call(d3.drag<SVGGElement, { val: number, id: number }>()
+            .call(d3.drag<SVGGElement, { val: number, id: number, offsetX?: number }>()
+                .subject(function(event, d) {
+                    // Set subject to current position for stable drag start
+                    return { x: x(d.val), y: height / 2 - 25 };
+                })
+                .on('start', function(event, d) {
+                    // Store offset between mouse and box center at drag start
+                    const [mx] = d3.pointer(event, svg.node());
+                    d.offsetX = mx - x(d.val);
+                    d3.select(this).attr('cursor', 'grabbing');
+                })
                 .on('drag', function (event, d) {
-                    const newX = Math.max(0, Math.min(100, x.invert(event.x)));
+                    // Use pointer for consistent coordinate system and apply offset
+                    const [mx] = d3.pointer(event, svg.node());
+                    const newX = Math.max(0, Math.min(100, x.invert(mx - (d.offsetX || 0))));
                     d3.select(this).attr('transform', `translate(${x(newX)}, ${height / 2 - 25})`);
-                    // Update text label inside
-                    d3.select(this).select('text').text(newX.toFixed(0));
+                    // Update text label inside with decimal
+                    d3.select(this).select('text').text(newX.toFixed(1));
 
-                    // Live update state (throttling would be better but direct is okay for small n)
+                    // Live update state
                     setWeights(prev => {
                         const next = [...prev];
                         next[d.id] = newX;
                         return next;
                     });
+                })
+                .on('end', function() {
+                    d3.select(this).attr('cursor', 'grab');
                 }) as any
             );
 
@@ -183,7 +198,7 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
             .attr('fill', 'white')
             .attr('font-weight', 'bold')
             .attr('pointer-events', 'none') // Let clicks pass to rect
-            .text(d => d.val.toFixed(0));
+            .text(d => d.val.toFixed(1));
 
     }, [weights]); // Re-render whenever weights change
 
@@ -217,8 +232,14 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
 
     const handleReset = () => setWeights(INITIAL_WEIGHTS);
     const handleOutlier = () => {
+        const sorted = [...weights].sort((a, b) => a - b);
+        const q1 = d3.quantile(sorted, 0.25) || 0;
+        const q3 = d3.quantile(sorted, 0.75) || 0;
+        const iqr = q3 - q1;
+        const outlierValue = Math.min(q3 + 1.5 * iqr, 100);
+        
         const newWeights = [...weights];
-        newWeights[newWeights.length - 1] = 95; // Throw last one far right
+        newWeights[newWeights.length - 1] = outlierValue;
         setWeights(newWeights);
     };
 

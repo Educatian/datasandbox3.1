@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getChatResponse } from '../services/geminiService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 
@@ -20,6 +20,37 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
 
     const maxCount = Math.max(...counts);
     const modes = counts.map((c, i) => c === maxCount ? i : -1).filter(i => i !== -1);
+
+    // Mode usefulness calculation (ratio-based)
+    const modeAnalysis = useMemo(() => {
+        const total = counts.reduce((a, b) => a + b, 0);
+        if (total === 0) return { isUseful: false, hasMultipleModes: false, message: '', modeRatio: 0 };
+
+        const sortedCounts = [...counts].sort((a, b) => b - a);
+        const modeCount = sortedCounts[0];
+        const secondCount = sortedCounts[1] || 0;
+
+        const modeRatio = modeCount / total;
+        const diffRatio = (modeCount - secondCount) / total;
+
+        // Check for multiple modes (ties)
+        const modeCountTies = counts.filter(c => c === modeCount).length;
+        const hasMultipleModes = modeCountTies > 1;
+
+        // Mode is useful if: 40%+ AND 15%+ difference from second place
+        const isUseful = !hasMultipleModes && modeRatio >= 0.4 && diffRatio >= 0.15;
+
+        let message = '';
+        if (hasMultipleModes) {
+            message = '⚠️ 최빈값이 여러 개입니다. 대표값으로 부적절합니다.';
+        } else if (isUseful) {
+            message = `✅ Mode가 명확합니다! 전체의 ${(modeRatio * 100).toFixed(0)}%를 차지합니다.`;
+        } else {
+            message = '❌ 분포가 고릅니다. Mode만으로 판단하기 어렵습니다.';
+        }
+
+        return { isUseful, hasMultipleModes, message, modeRatio };
+    }, [counts]);
 
     const handleAdd = (index: number) => {
         const newCounts = [...counts];
@@ -44,8 +75,12 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
             - Fruits: ${CATEGORIES.map((c, i) => `${c}:${counts[i]}`).join(', ')}
             - Mode (Tallest Tower): ${modeNames.join(' and ')}
             - Type: ${modes.length > 1 ? "Multi-modal" : "Uni-modal"}
+            - Mode Usefulness: ${modeAnalysis.message}
+            - Mode Ratio: ${(modeAnalysis.modeRatio * 100).toFixed(0)}%
             
-            Educational Goal: Use the visual of "tallest stack" to explain Mode.
+            Educational Goal: 
+            - Use the visual of "tallest stack" to explain Mode.
+            - Explain when Mode is useful (one clear dominant value) vs not useful (evenly distributed).
         `;
 
         try {
@@ -56,6 +91,17 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
         } finally {
             setIsChatLoading(false);
         }
+    };
+
+    // Background color based on Mode usefulness
+    const getUsefulnessStyle = () => {
+        if (modeAnalysis.hasMultipleModes) {
+            return 'bg-amber-900/30 border-amber-500/50';
+        }
+        if (modeAnalysis.isUseful) {
+            return 'bg-emerald-900/30 border-emerald-500/50';
+        }
+        return 'bg-rose-900/30 border-rose-500/50';
     };
 
     return (
@@ -69,34 +115,42 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-8 flex items-end justify-around min-h-[400px]">
-                    {counts.map((count, i) => {
-                        const isMode = count === maxCount;
-                        return (
-                            <div key={i} className="flex flex-col items-center group relative h-full justify-end w-full mx-2">
-                                <div className="mb-2 space-y-1 w-full flex flex-col-reverse items-center">
-                                    {Array.from({ length: count }).map((_, blockIndex) => (
-                                        <div
-                                            key={blockIndex}
-                                            className={`w-full max-w-[60px] h-8 rounded border border-black/20 shadow-sm transition-all duration-300 ${isMode ? 'bg-amber-500' : 'bg-slate-700'}`}
-                                        ></div>
-                                    ))}
+                <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-8 flex flex-col">
+                    {/* Mode Usefulness Indicator */}
+                    <div className={`mb-4 p-3 rounded-lg border-2 transition-all duration-300 ${getUsefulnessStyle()}`}>
+                        <div className="text-sm font-bold text-slate-200">{modeAnalysis.message}</div>
+                    </div>
+
+                    {/* Fruit Stacks */}
+                    <div className="flex items-end justify-around flex-1 min-h-[350px]">
+                        {counts.map((count, i) => {
+                            const isMode = count === maxCount;
+                            return (
+                                <div key={i} className="flex flex-col items-center group relative h-full justify-end w-full mx-2">
+                                    <div className="mb-2 space-y-1 w-full flex flex-col-reverse items-center">
+                                        {Array.from({ length: count }).map((_, blockIndex) => (
+                                            <div
+                                                key={blockIndex}
+                                                className={`w-full max-w-[60px] h-8 rounded border border-black/20 shadow-sm transition-all duration-300 ${isMode ? 'bg-amber-500' : 'bg-slate-700'}`}
+                                            ></div>
+                                        ))}
+                                    </div>
+                                    <div className="text-4xl mb-2 cursor-pointer hover:scale-110 transition-transform" onClick={() => handleAdd(i)}>{CATEGORIES[i]}</div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleRemove(i)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white">-</button>
+                                        <button onClick={() => handleAdd(i)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white">+</button>
+                                    </div>
+                                    {isMode && (
+                                        <div className="absolute -top-10 font-bold text-amber-400 animate-bounce">MODE</div>
+                                    )}
                                 </div>
-                                <div className="text-4xl mb-2 cursor-pointer hover:scale-110 transition-transform" onClick={() => handleAdd(i)}>{CATEGORIES[i]}</div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleRemove(i)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white">-</button>
-                                    <button onClick={() => handleAdd(i)} className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white">+</button>
-                                </div>
-                                {isMode && (
-                                    <div className="absolute -top-10 font-bold text-amber-400 animate-bounce">MODE</div>
-                                )}
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
 
-                <div className="lg:col-span-1 flex flex-col space-y-6">
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                <div className="lg:col-span-1 flex flex-col space-y-6 overflow-hidden">
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg flex flex-col h-full overflow-hidden">
                         <h3 className="text-lg font-semibold text-amber-400 mb-4">Statistics</h3>
                         <div className="text-2xl font-mono text-white mb-4">
                             Mode: <span className="text-amber-400">{modes.map(i => CATEGORIES[i]).join(', ')}</span>
@@ -106,14 +160,16 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
                         </p>
                         <button onClick={() => handleSendMessage("Explain this mode")} className="w-full bg-amber-600 hover:bg-amber-700 p-2 rounded text-white font-bold mb-4">Why is this the Mode?</button>
 
-                        <div className="h-[400px]">
-                            <UnifiedGenAIChat
-                                moduleTitle="The Mode Magnet"
-                                history={chatHistory}
-                                onSendMessage={handleSendMessage}
-                                isLoading={isChatLoading}
-                                variant="embedded"
-                            />
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            <div className="h-full overflow-y-auto">
+                                <UnifiedGenAIChat
+                                    moduleTitle="The Mode Magnet"
+                                    history={chatHistory}
+                                    onSendMessage={handleSendMessage}
+                                    isLoading={isChatLoading}
+                                    variant="embedded"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
