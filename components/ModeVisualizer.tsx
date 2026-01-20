@@ -12,6 +12,9 @@ const CATEGORIES = ['🍎', '🍌', '🍇', '🍊', '🍉'];
 
 const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
     const [counts, setCounts] = useState<number[]>([1, 3, 2, 5, 2]);
+    const [attemptCount, setAttemptCount] = useState(0);
+    const [hasAchievedGreen, setHasAchievedGreen] = useState(false);
+    const [showHint, setShowHint] = useState(false);
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
@@ -58,6 +61,7 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
         if (newCounts[index] < 10) {
             newCounts[index]++;
             logEvent('add_block', 'ModeVisualizer', { category: CATEGORIES[index], newCount: newCounts[index] });
+            setAttemptCount(prev => prev + 1);
         }
         setCounts(newCounts);
     };
@@ -67,8 +71,30 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
         if (newCounts[index] > 0) {
             newCounts[index]--;
             logEvent('remove_block', 'ModeVisualizer', { category: CATEGORIES[index], newCount: newCounts[index] });
+            setAttemptCount(prev => prev + 1);
         }
         setCounts(newCounts);
+    };
+
+    // Track if user achieved green state
+    React.useEffect(() => {
+        if (modeAnalysis.isUseful && !hasAchievedGreen) {
+            setHasAchievedGreen(true);
+            logEvent('achieved_useful_mode', 'ModeVisualizer', { attempts: attemptCount });
+        }
+    }, [modeAnalysis.isUseful, hasAchievedGreen, attemptCount]);
+
+    // Show hint after 5 attempts without achieving green
+    React.useEffect(() => {
+        if (attemptCount >= 5 && !hasAchievedGreen && !showHint) {
+            setShowHint(true);
+        }
+    }, [attemptCount, hasAchievedGreen, showHint]);
+
+    const getHintMessage = () => {
+        const total = counts.reduce((a, b) => a + b, 0);
+        const maxNeeded = Math.ceil(total * 0.4);
+        return `💡 Hint: To make Mode useful, one category needs to be clearly dominant. Try making one tower reach ${maxNeeded}+ blocks (40% of total ${total}).`;
     };
 
     const handleSendMessage = async (msg: string) => {
@@ -127,6 +153,19 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
                     <div className={`mb-4 p-3 rounded-lg border-2 transition-all duration-300 ${getUsefulnessStyle()}`}>
                         <div className="text-sm font-bold text-slate-200">{modeAnalysis.message}</div>
                     </div>
+
+                    {/* Hint Panel - shows after 5 attempts without green */}
+                    {showHint && !modeAnalysis.isUseful && (
+                        <div className="mb-4 p-3 rounded-lg border-2 border-blue-500/50 bg-blue-900/30 transition-all duration-300">
+                            <div className="text-sm text-blue-200">{getHintMessage()}</div>
+                            <button
+                                onClick={() => setShowHint(false)}
+                                className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
+                            >
+                                Hide hint
+                            </button>
+                        </div>
+                    )}
 
                     {/* Fruit Stacks */}
                     <div className="flex items-end justify-around flex-1 min-h-[350px]">
