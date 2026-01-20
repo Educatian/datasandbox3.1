@@ -18,10 +18,10 @@ interface Shot {
 // Educational context labels based on relative SD position
 const getSkillLabel = (stdDev: number, max: number = 50): { emoji: string; label: string; example: string } => {
     const ratio = stdDev / max;
-    if (ratio <= 0.2) return { emoji: '🎯', label: '올림픽 선수', example: '시험: 대부분 70-80점' };
-    if (ratio <= 0.5) return { emoji: '🏹', label: '숙련자', example: '버스: ±5분 오차' };
-    if (ratio <= 0.8) return { emoji: '🎪', label: '초보자', example: '제조: 불량률 증가' };
-    return { emoji: '🌪️', label: '무작위', example: '예측 불가능' };
+    if (ratio <= 0.2) return { emoji: '🎯', label: 'Olympic Athlete', example: 'Exam: Most scores 70-80' };
+    if (ratio <= 0.5) return { emoji: '🏹', label: 'Skilled Player', example: 'Bus: ±5 min variance' };
+    if (ratio <= 0.8) return { emoji: '🎪', label: 'Beginner', example: 'Factory: Higher defect rate' };
+    return { emoji: '🌪️', label: 'Random', example: 'Unpredictable' };
 };
 
 const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
@@ -268,7 +268,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                             onClick={toggleComparisonMode}
                             className={`px-3 py-1 rounded-full text-sm font-bold transition-all ${comparisonMode ? 'bg-amber-500 text-black' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
                         >
-                            {comparisonMode ? '🔄 비교 모드 ON' : '👥 두 선수 비교'}
+                            {comparisonMode ? '🔄 Compare Mode ON' : '👥 Compare Players'}
                         </button>
                     </div>
 
@@ -276,14 +276,14 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                     <div className={`flex ${comparisonMode ? 'gap-4' : ''} justify-center w-full`}>
                         {/* Player 1 Board */}
                         <div className="flex flex-col items-center">
-                            {comparisonMode && <div className="text-center mb-2 text-emerald-400 font-bold">선수 A</div>}
+                            {comparisonMode && <div className="text-center mb-2 text-emerald-400 font-bold">Player A</div>}
                             <svg ref={svgRef} className={`${comparisonMode ? 'w-full max-w-[350px]' : 'w-full'} min-h-[300px]`} style={{ overflow: 'visible' }}></svg>
                         </div>
 
                         {/* Player 2 Board (Comparison Mode) */}
                         {comparisonMode && (
                             <div className="flex flex-col items-center">
-                                <div className="text-center mb-2 text-rose-400 font-bold">선수 B</div>
+                                <div className="text-center mb-2 text-rose-400 font-bold">Player B</div>
                                 <svg ref={svg2Ref} className="w-full max-w-[350px] min-h-[300px]" style={{ overflow: 'visible' }}></svg>
                             </div>
                         )}
@@ -293,7 +293,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                     <div className={`w-full mt-4 grid ${comparisonMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                         {/* Player 1 Stats */}
                         <div className="bg-slate-800 p-3 rounded-lg">
-                            {comparisonMode && <div className="text-emerald-400 font-bold text-sm mb-2">선수 A 통계</div>}
+                            {comparisonMode && <div className="text-emerald-400 font-bold text-sm mb-2">Player A Stats</div>}
                             <div className="grid grid-cols-3 gap-2 text-center text-sm">
                                 <div className="bg-slate-700 p-2 rounded">
                                     <div className="text-green-400 font-bold">50%</div>
@@ -309,14 +309,14 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                                 </div>
                             </div>
                             <div className="mt-2 text-xs text-slate-400 text-center">
-                                평균 거리: <span className="text-amber-400 font-mono">{avgDistance.toFixed(1)}</span>
+                                Avg Distance: <span className="text-amber-400 font-mono">{avgDistance.toFixed(1)}</span>
                             </div>
                         </div>
 
                         {/* Player 2 Stats (Comparison Mode) */}
                         {comparisonMode && (
                             <div className="bg-slate-800 p-3 rounded-lg">
-                                <div className="text-rose-400 font-bold text-sm mb-2">선수 B 통계</div>
+                                <div className="text-rose-400 font-bold text-sm mb-2">Player B Stats</div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-sm">
                                     <div className="bg-slate-700 p-2 rounded">
                                         <div className="text-green-400 font-bold">50%</div>
@@ -332,7 +332,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                                     </div>
                                 </div>
                                 <div className="mt-2 text-xs text-slate-400 text-center">
-                                    평균 거리: <span className="text-amber-400 font-mono">{p2AvgDistance.toFixed(1)}</span>
+                                    Avg Distance: <span className="text-amber-400 font-mono">{p2AvgDistance.toFixed(1)}</span>
                                 </div>
                             </div>
                         )}
@@ -343,7 +343,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                         {/* Player 1 Slider */}
                         <div className="bg-slate-800 p-4 rounded-lg">
                             <label className="flex justify-between text-slate-300 font-bold mb-2">
-                                <span>{comparisonMode ? '선수 A' : 'SD (Spread)'}</span>
+                                <span>{comparisonMode ? 'Player A' : 'SD (Spread)'}</span>
                                 <span className="font-mono text-amber-400">{stdDev}</span>
                             </label>
                             <input
@@ -364,7 +364,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                         {comparisonMode && (
                             <div className="bg-slate-800 p-4 rounded-lg">
                                 <label className="flex justify-between text-slate-300 font-bold mb-2">
-                                    <span>선수 B</span>
+                                    <span>Player B</span>
                                     <span className="font-mono text-rose-400">{player2StdDev}</span>
                                 </label>
                                 <input
@@ -385,8 +385,8 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
 
                     {/* Educational Note */}
                     <div className="w-full mt-4 bg-slate-800/50 p-3 rounded border border-slate-700 text-sm text-slate-400">
-                        <strong className="text-slate-300">💡 SD가 커질수록</strong> 점들이 평균(중심)에서 더 멀리 흩어집니다.
-                        커버리지 원은 해당 %의 점이 그 원 안에 들어옴을 의미합니다.
+                        <strong className="text-slate-300">💡 As SD increases,</strong> points scatter further from the mean (center).
+                        Coverage circles show the % of points contained within that radius.
                     </div>
                 </div>
 

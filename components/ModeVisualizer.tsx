@@ -42,11 +42,11 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
 
         let message = '';
         if (hasMultipleModes) {
-            message = '⚠️ 최빈값이 여러 개입니다. 대표값으로 부적절합니다.';
+            message = '⚠️ Multiple modes found. Not suitable as a representative value.';
         } else if (isUseful) {
-            message = `✅ Mode가 명확합니다! 전체의 ${(modeRatio * 100).toFixed(0)}%를 차지합니다.`;
+            message = `✅ Mode is clear! Represents ${(modeRatio * 100).toFixed(0)}% of all data.`;
         } else {
-            message = '❌ 분포가 고릅니다. Mode만으로 판단하기 어렵습니다.';
+            message = '❌ Distribution is uniform. Mode alone is not informative.';
         }
 
         return { isUseful, hasMultipleModes, message, modeRatio };
