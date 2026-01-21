@@ -149,6 +149,25 @@ const ModeVisualizer: React.FC<ModeVisualizerProps> = ({ onBack }) => {
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-8 flex flex-col">
+                    {/* Color Feedback Indicator */}
+                    <div className="mb-4 flex items-center justify-center gap-2">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all duration-300 shadow-lg ${modeAnalysis.hasMultipleModes
+                                ? 'bg-yellow-500 shadow-yellow-500/50'
+                                : modeAnalysis.isUseful
+                                    ? 'bg-green-500 shadow-green-500/50'
+                                    : 'bg-red-500 shadow-red-500/50'
+                            }`}>
+                            {modeAnalysis.hasMultipleModes ? '🟡' : modeAnalysis.isUseful ? '🟢' : '🔴'}
+                        </div>
+                        <div className="text-lg font-bold">
+                            {modeAnalysis.hasMultipleModes
+                                ? <span className="text-yellow-400">TIE</span>
+                                : modeAnalysis.isUseful
+                                    ? <span className="text-green-400">USEFUL</span>
+                                    : <span className="text-red-400">UNCLEAR</span>}
+                        </div>
+                    </div>
+
                     {/* Mode Usefulness Indicator */}
                     <div className={`mb-4 p-3 rounded-lg border-2 transition-all duration-300 ${getUsefulnessStyle()}`}>
                         <div className="text-sm font-bold text-slate-200">{modeAnalysis.message}</div>

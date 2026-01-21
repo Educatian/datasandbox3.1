@@ -240,12 +240,18 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
         const q1 = d3.quantile(sorted, 0.25) || 0;
         const q3 = d3.quantile(sorted, 0.75) || 0;
         const iqr = q3 - q1;
-        const outlierValue = Math.min(q3 + 1.5 * iqr, 100);
+        const outlierThreshold = q3 + 1.5 * iqr;
+
+        // Generate a random outlier value between the threshold and 100
+        const minOutlier = Math.max(outlierThreshold, q3 + 5); // Ensure some spread from Q3
+        const outlierValue = Math.min(minOutlier + Math.random() * (100 - minOutlier), 100);
 
         logEvent('create_outlier', 'BalanceBeam', { outlierValue, q1, q3, iqr });
 
+        // Randomly select which weight to turn into an outlier
+        const targetIndex = Math.floor(Math.random() * weights.length);
         const newWeights = [...weights];
-        newWeights[newWeights.length - 1] = outlierValue;
+        newWeights[targetIndex] = outlierValue;
         setWeights(newWeights);
     };
 

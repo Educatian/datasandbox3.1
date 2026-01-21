@@ -59,6 +59,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
     // Coverage stats for player 2
     const p2Coverage50 = useMemo(() => calculateCoverage(player2Shots, 0.5), [player2Shots]);
     const p2Coverage80 = useMemo(() => calculateCoverage(player2Shots, 0.8), [player2Shots]);
+    const p2Coverage95 = useMemo(() => calculateCoverage(player2Shots, 0.95), [player2Shots]);
 
     // Average distance from center
     const avgDistance = useMemo(() => {
@@ -182,9 +183,9 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
 
     useEffect(() => {
         if (comparisonMode) {
-            renderBoard(svg2Ref.current, player2Shots, player2StdDev, p2Coverage50, p2Coverage80);
+            renderBoard(svg2Ref.current, player2Shots, player2StdDev, p2Coverage50, p2Coverage80, p2Coverage95);
         }
-    }, [player2Shots, player2StdDev, p2Coverage50, p2Coverage80, comparisonMode]);
+    }, [player2Shots, player2StdDev, p2Coverage50, p2Coverage80, p2Coverage95, comparisonMode]);
 
     const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value);
@@ -333,7 +334,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                                     </div>
                                     <div className="bg-slate-700 p-2 rounded">
                                         <div className="text-purple-400 font-bold">95%</div>
-                                        <div className="text-slate-300">-</div>
+                                        <div className="text-slate-300">{p2Coverage95.count}/{player2Shots.length}</div>
                                     </div>
                                 </div>
                                 <div className="mt-2 text-xs text-slate-400 text-center">
@@ -392,6 +393,28 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                     <div className="w-full mt-4 bg-slate-800/50 p-3 rounded border border-slate-700 text-sm text-slate-400">
                         <strong className="text-slate-300">💡 As SD increases,</strong> points scatter further from the mean (center).
                         Coverage circles show the % of points contained within that radius.
+                    </div>
+
+                    {/* Real-World Analogies */}
+                    <div className="w-full mt-4 bg-gradient-to-r from-slate-800/80 to-slate-900/80 p-4 rounded-lg border border-amber-500/30">
+                        <div className="text-amber-400 font-bold text-sm mb-3">🌍 Real-World Analogies</div>
+                        <div className="grid grid-cols-3 gap-3 text-xs">
+                            <div className="bg-slate-900/50 p-2 rounded border border-slate-700">
+                                <div className="text-emerald-400 font-semibold mb-1">📊 Exam Scores</div>
+                                <div className="text-slate-400">Low SD: Most students score 70-80</div>
+                                <div className="text-slate-400">High SD: Scores range 40-100</div>
+                            </div>
+                            <div className="bg-slate-900/50 p-2 rounded border border-slate-700">
+                                <div className="text-blue-400 font-semibold mb-1">🚌 Bus Arrival</div>
+                                <div className="text-slate-400">Low SD: ±2 min variance</div>
+                                <div className="text-slate-400">High SD: ±15 min variance</div>
+                            </div>
+                            <div className="bg-slate-900/50 p-2 rounded border border-slate-700">
+                                <div className="text-purple-400 font-semibold mb-1">🏭 Manufacturing</div>
+                                <div className="text-slate-400">Low SD: Consistent quality</div>
+                                <div className="text-slate-400">High SD: High defect rate</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
