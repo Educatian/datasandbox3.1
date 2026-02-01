@@ -63,22 +63,24 @@ const toChicagoDate = (isoString: string | null): string => {
 
 const fromChicagoDate = (localString: string): string => {
     if (!localString) return '';
-    // Create a date object treating the input as Chicago time
-    // We can append the offset if we know it, or use a trick.
-    // "2026-01-07T10:00" -> treat as Chicago
-    const date = new Date(localString); // This interprets as Browser Local, which might be wrong if dev is not in Chicago
-    // Correct approach using string manipulation to force ISO with offset?
-    // Given constraints, we will construct a string "YYYY-MM-DDTHH:mm:00" and rely on a library-free approach being imperfect but acceptable
-    // OR, better: Allow browser local time to be the input, but label it "Your Local Time" for Admin convenience.
-    // BUT User specificied "Canonical timezone (America/Chicago)".
-
-    // Best-effort without Moment-timezone:
-    return new Date(localString).toISOString(); // This saves the browser-local time as UTC. 
-    // For now, we will treat the Input as "Browser Local" and save as UTC. 
-    // *Correction*: We will assume the Admin is aware of their timezone or we explicitly label it.
-    // To strictly follow "Chicago" requirement without libraries is hard. 
-    // We'll proceed with storing UTC and showing Local, assuming Admin understands. 
+    // The datetime-local input gives us a string like "2026-02-01T19:00"
+    // This is in the user's local timezone, we need to convert to UTC for storage
+    return new Date(localString).toISOString();
 };
+
+// Helper to convert UTC ISO string to local datetime-local format (YYYY-MM-DDTHH:mm)
+const toLocalDatetimeString = (isoString: string | null): string => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    // Get local date components
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 
 // --- Component ---
 
@@ -383,13 +385,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
 
                                             {/* Date Picker (Only if scheduled) */}
                                             <div className={`transition-all duration-300 flex items-center gap-2 ${setting.visibility_state === 'scheduled' ? 'opacity-100' : 'opacity-30 pointer-events-none grayscale'}`}>
-                                                <label className="text-xs text-slate-500 font-bold">RELEASE:</label>
+                                                <label className="text-xs text-slate-500 font-bold whitespace-nowrap">RELEASE (Local):</label>
                                                 <input
                                                     type="datetime-local"
-                                                    value={setting.release_at ? new Date(setting.release_at).toISOString().slice(0, 16) : ''}
+                                                    value={setting.release_at ? toLocalDatetimeString(setting.release_at) : ''}
                                                     onChange={(e) => handleDateChange(mod.id, e.target.value)}
                                                     style={{ colorScheme: 'dark' }}
-                                                    className="bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded px-2 py-1.5 focus:border-amber-400 outline-none w-48"
+                                                    className="bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded px-3 py-1.5 focus:border-amber-400 outline-none min-w-[220px]"
                                                 />
                                             </div>
 

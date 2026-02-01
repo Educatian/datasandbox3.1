@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { setUser, setPage, logEvent, logLogin, logLogout } from './services/loggingService';
 import { supabase, isSupabaseConfigured, getSession, onAuthStateChange, signIn, signOut, isAdmin } from './services/supabaseService';
@@ -425,6 +425,7 @@ const App: React.FC = () => {
 
     const [authLoading, setAuthLoading] = useState(true);
     const [moduleSettings, setModuleSettings] = useState<Record<string, any>>({});
+    const moduleSettingsRef = useRef<Record<string, any>>({});
 
     // Check for existing session on mount
     useEffect(() => {
@@ -480,6 +481,7 @@ const App: React.FC = () => {
                 const map: Record<string, any> = {};
                 data.forEach((s: any) => map[s.module_id] = s);
                 setModuleSettings(map);
+                moduleSettingsRef.current = map; // Sync ref
             }
         };
         fetchSettings();
@@ -489,15 +491,47 @@ const App: React.FC = () => {
             .channel('public:module_settings')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'module_settings' }, (payload) => {
                 const newSetting = payload.new as any;
-                setModuleSettings(prev => ({
-                    ...prev,
-                    [newSetting.module_id]: newSetting
-                }));
+                setModuleSettings(prev => {
+                    const updated = { ...prev, [newSetting.module_id]: newSetting };
+                    moduleSettingsRef.current = updated; // Sync ref
+                    return updated;
+                });
             })
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
     }, []);
+
+    // Auto-release scheduled modules when their time arrives (timer-based only)
+    useEffect(() => {
+        const checkScheduledReleases = async () => {
+            const now = new Date();
+            // Use ref to get latest settings (avoids stale closure)
+            const currentSettings = moduleSettingsRef.current;
+
+            for (const [moduleId, setting] of Object.entries(currentSettings) as [string, any][]) {
+                if (setting.visibility_state === 'scheduled' && setting.release_at) {
+                    const releaseTime = new Date(setting.release_at);
+                    // Only auto-release if the time has passed AND release_at is within last 24 hours
+                    // (prevents ancient scheduled dates from triggering on every load)
+                    const hoursSinceRelease = (now.getTime() - releaseTime.getTime()) / (1000 * 60 * 60);
+                    if (releaseTime <= now && hoursSinceRelease < 24) {
+                        console.log(`Auto-releasing module: ${moduleId}`);
+                        await supabase.from('module_settings').update({
+                            visibility_state: 'visible',
+                            updated_at: now.toISOString()
+                        }).eq('module_id', moduleId);
+                    }
+                }
+            }
+        };
+
+        // Only check on interval (every 60 seconds), not on settings change
+        const interval = setInterval(checkScheduledReleases, 60000);
+        return () => clearInterval(interval);
+    }, []); // Empty dependency - runs once on mount, timer handles the rest
+
+
 
     useEffect(() => {
         setPage(activeModuleId || 'portal');
