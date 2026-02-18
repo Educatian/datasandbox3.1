@@ -44,22 +44,22 @@ const DATASET_LABELS: Record<DatasetKey, string> = {
 const DATASET_EXPLANATIONS: Record<DatasetKey, { short: string; detail: string; isTarget: boolean }> = {
     I: {
         short: '✅ Normal linear relationship',
-        detail: 'Standard linear trend. What you see is what you get technically.',
+        detail: 'The gold standard. Statistics (r=0.816) and visualization suggest the same linear relationship. In this case, your eyes and the math are in perfect agreement.',
         isTarget: false
     },
     II: {
         short: '🎯 Curved relationship hidden by linear stats!',
-        detail: 'Actually a quadratic curve, masked by linear r=0.816. Always visualize!',
+        detail: 'Statistical camouflage. While r=0.816 suggests a line, the eyes see a perfect shoe-shaped curve. This teaches that correlation only measures LINEAR strength; it is blind to beautiful non-linear patterns.',
         isTarget: true
     },
     III: {
-        short: '⚠️ One outlier inflates correlation',
-        detail: 'Single outlier (13, 12.74) pulls the line. Try dragging it!',
+        short: '⚠️ The Outlier Trap (Leverage)',
+        detail: 'A single point (13, 12.7) pulls the regression line away from the otherwise perfect linear cluster. Correlation is highly sensitive to extreme values—this one "outlier" forces the line to tilt, distorting the truth for all other points.',
         isTarget: false
     },
     IV: {
-        short: '🚨 Leverage point creates fake correlation',
-        detail: 'One outlier (19, 12.5) single-handedly creates the r=0.816 relationship.',
+        short: '🚨 The Leverage Phantom',
+        detail: 'Historically, all points here are clustered at x=8 (vertical line, zero trend). A single remote point at x=19 manufactures a "fake" correlation of 0.816 out of thin air. This is the danger of high-leverage points in small samples.',
         isTarget: false
     }
 };
