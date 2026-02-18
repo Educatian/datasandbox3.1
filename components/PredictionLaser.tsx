@@ -11,6 +11,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
     // State
     const [inputValue, setInputValue] = useState(50); // X (0-100)
     const [correlation, setCorrelation] = useState(0.8); // r (-1 to 1)
+    const [gemControlled, setGemControlled] = useState(false); // true when Dr. Gem last set r
     const [outputValue, setOutputValue] = useState(50); // Y
 
     // Chat
@@ -143,9 +144,10 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
     const handleSendMessage = async (msg: string) => {
         setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
+        setGemControlled(false);
 
         const context = `
-            You are Dr. Gem, explaining Correlation using a Laser Pointer metaphor.
+            You are Dr. Gem, an educational AI explaining Correlation using a Laser Pointer metaphor.
             Current State:
             - Correlation (r): ${correlation.toFixed(2)}
               * r = +1: Perfect positive aim (X up → Y up)
@@ -153,17 +155,37 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
               * r = −1: Perfect negative aim (X up → Y DOWN)
             - Input X: ${inputValue}
             - Output Y: ${outputValue.toFixed(0)}
-            
+
             Educational Goal:
             - Correlation measures BOTH strength and DIRECTION.
             - |r| close to 1 = strong relationship, tight laser beam.
             - Negative r flips the direction — when X increases, Y decreases.
             - r = 0 means knowing X tells us nothing about Y.
+
+            IMPORTANT INSTRUCTION — SLIDER CONTROL:
+            After your reply, you MAY set the correlation slider to demonstrate a concept.
+            To do so, append EXACTLY this tag on a new line at the very end of your message:
+            [SET_R:0.75]
+            Replace 0.75 with a value between -1.00 and 1.00 (two decimal places).
+            Only include this tag if it genuinely helps illustrate your point.
+            If you include the tag, also mention in your reply that you are adjusting the slider for the student.
+            Example: "Let me set the slider to −0.8 so you can see a strong negative correlation in action. [SET_R:-0.80]"
         `;
 
         try {
             const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
+
+            // Parse optional [SET_R:value] directive from the AI response
+            const setRMatch = response.match(/\[SET_R:(-?\d+\.?\d*)\]/);
+            const cleanedResponse = response.replace(/\[SET_R:(-?\d+\.?\d*)\]/g, '').trim();
+
+            if (setRMatch) {
+                const newR = Math.max(-1, Math.min(1, parseFloat(setRMatch[1])));
+                setCorrelation(newR);
+                setGemControlled(true);
+            }
+
+            setChatHistory(prev => [...prev, { text: cleanedResponse, role: 'model' as const }]);
         } catch {
             setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
         } finally {
@@ -207,14 +229,22 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
 
                         <div className="border-t border-slate-700 pt-6">
                             <label className="flex justify-between text-slate-300 font-bold mb-2">
-                                <span>Correlation Strength (r)</span>
+                                <span className="flex items-center gap-2">
+                                    Correlation Strength (r)
+                                    {gemControlled && (
+                                        <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full animate-pulse">
+                                            🤖 Dr. Gem
+                                        </span>
+                                    )}
+                                </span>
                                 <span className="font-mono text-red-400">{correlation.toFixed(2)}</span>
                             </label>
                             <input
                                 type="range" min="-1" max="1" step="0.05"
                                 value={correlation}
-                                onChange={(e) => setCorrelation(parseFloat(e.target.value))}
-                                className="w-full h-2 bg-gradient-to-r from-orange-500 via-slate-600 to-red-500 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                onChange={(e) => { setCorrelation(parseFloat(e.target.value)); setGemControlled(false); }}
+                                className={`w-full h-2 bg-gradient-to-r from-orange-500 via-slate-600 to-red-500 rounded-lg appearance-none cursor-pointer ${gemControlled ? 'accent-purple-500' : 'accent-red-500'
+                                    }`}
                             />
                             <div className="flex justify-between text-xs text-slate-500 mt-1">
                                 <span>−1.0 (Perfect Negative)</span>
@@ -233,8 +263,8 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                         key={preset.value}
                                         onClick={() => setCorrelation(preset.value)}
                                         className={`px-2 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${Math.abs(correlation - preset.value) < 0.1
-                                                ? 'bg-red-500 border-red-400 text-white'
-                                                : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white'
+                                            ? 'bg-red-500 border-red-400 text-white'
+                                            : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white'
                                             }`}
                                     >
                                         {preset.label}
