@@ -23,7 +23,7 @@ import BoxPlotBuilder from './components/BoxPlotBuilder';
 import ModeVisualizer from './components/ModeVisualizer';
 import GaltonBoard from './components/GaltonBoard';
 import PHackingSim from './components/PHackingSim';
-import AnscombeQuartet from './components/AnscombeQuartet';
+import DataDetective from './components/DataDetective';
 import PowerAnalysisGame from './components/PowerAnalysisGame';
 import ProbabilityScannerGame from './components/ProbabilityScannerGame';
 import PredictionPainterGame from './components/PredictionPainterGame';
@@ -248,9 +248,9 @@ const CURRICULUM: AssessmentDef[] = [
                 component: 'prediction-laser'
             },
             {
-                id: 'anscombe', title: 'The Anscombe Quartet',
+                id: 'anscombe', title: 'The Data Detective',
                 description: 'The importance of visualization.',
-                manipulation: 'Switch between 4 datasets that look completely different but have identical statistics.',
+                manipulation: 'Interact with 4 datasets that look completely different but share identical statistics.',
                 component: 'anscombe'
             }
         ]
@@ -612,7 +612,7 @@ const App: React.FC = () => {
             return <PHackingSim onBack={() => setActiveModuleId(null)} />;
         }
         if (moduleDef.id === 'anscombe') {
-            return <AnscombeQuartet onBack={() => setActiveModuleId(null)} />;
+            return <DataDetective onBack={() => setActiveModuleId(null)} />;
         }
         if (moduleDef.id === 'power-triangle') {
             return <PowerAnalysisGame onBack={() => setActiveModuleId(null)} />;

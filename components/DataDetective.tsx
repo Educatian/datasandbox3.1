@@ -5,7 +5,7 @@ import { getChatResponse } from '../services/geminiService';
 import { calculateCorrelation, calculateLinearRegression } from '../services/statisticsService';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 
-interface AnscombeQuartetProps {
+interface DataDetectiveProps {
     onBack: () => void;
 }
 
@@ -64,7 +64,7 @@ const DATASET_EXPLANATIONS: Record<DatasetKey, { short: string; detail: string; 
     }
 };
 
-const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
+const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
     // Game State
     const [datasets, setDatasets] = useState<Record<DatasetKey, { x: number, y: number }[]>>(() => {
         // Deep copy
@@ -207,8 +207,8 @@ const AnscombeQuartet: React.FC<AnscombeQuartetProps> = ({ onBack }) => {
                     {/* Explanation Panel */}
                     {selectedSet && (
                         <div className={`p-5 rounded-2xl border-2 transition-all duration-500 animate-fade-in ${DATASET_EXPLANATIONS[selectedSet].isTarget && isCorrect
-                                ? 'bg-emerald-900/20 border-emerald-500/50'
-                                : 'bg-slate-800/50 border-slate-700'
+                            ? 'bg-emerald-900/20 border-emerald-500/50'
+                            : 'bg-slate-800/50 border-slate-700'
                             }`}>
                             <div className="flex items-start gap-3">
                                 <div className="text-2xl mt-0.5">
@@ -284,55 +284,68 @@ const StatBox = ({ label, value, color }: { label: string, value: string, color:
     </div>
 );
 
-const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, onPointUpdate, onClick, isCorrectAnswer, gameWon }: {
-    datasetKey: DatasetKey,
-    data: { x: number, y: number }[],
-    originalData: { x: number, y: number }[],
-    isSelected: boolean,
-    onPointUpdate: (idx: number, nx: number, ny: number) => void,
-    onClick: () => void,
-    isCorrectAnswer: boolean,
-    gameWon: boolean
-}) => {
+interface InteractiveDatasetCardProps {
+    datasetKey: DatasetKey;
+    data: { x: number, y: number }[];
+    originalData: { x: number, y: number }[];
+    isSelected: boolean;
+    onPointUpdate: (idx: number, nx: number, ny: number) => void;
+    onClick: () => void;
+    isCorrectAnswer: boolean;
+    gameWon: boolean;
+}
+
+const InteractiveDatasetCard: React.FC<InteractiveDatasetCardProps> = ({ datasetKey, data, originalData, isSelected, onPointUpdate, onClick, isCorrectAnswer, gameWon }) => {
     const svgRef = useRef<SVGSVGElement>(null);
     const updateRef = useRef(onPointUpdate);
     updateRef.current = onPointUpdate;
 
+    // Use refs to store D3 selections and scales to avoid recreation
+    const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
+    const xScaleRef = useRef<d3.ScaleLinear<number, number> | null>(null);
+    const yScaleRef = useRef<d3.ScaleLinear<number, number> | null>(null);
+
+    // Initial setup of SVG structure
     useEffect(() => {
         if (!svgRef.current) return;
 
-        const svg = d3.select(svgRef.current);
         const width = 300;
         const height = 200;
         const margin = { top: 10, right: 10, bottom: 25, left: 35 };
 
+        const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
+
+        const g = svg.append('g');
+        gRef.current = g;
 
         // Scales
         const x = d3.scaleLinear().domain([0, 20]).range([margin.left, width - margin.right]);
         const y = d3.scaleLinear().domain([0, 15]).range([height - margin.bottom, margin.top]);
+        xScaleRef.current = x;
+        yScaleRef.current = y;
 
         // Draw Axes
         const xAxis = d3.axisBottom(x).ticks(5).tickSizeOuter(0);
         const yAxis = d3.axisLeft(y).ticks(5).tickSizeOuter(0);
 
-        svg.append('g')
+        g.append('g')
             .attr('transform', `translate(0,${height - margin.bottom})`)
             .call(xAxis)
             .attr('color', '#475569')
             .selectAll('text').attr('font-size', '8');
 
-        svg.append('g')
+        g.append('g')
             .attr('transform', `translate(${margin.left},0)`)
             .call(yAxis)
             .attr('color', '#475569')
             .selectAll('text').attr('font-size', '8');
 
-        // 1. Draw "GHOST" (Original Line and Points)
+        // Draw Ghost elements (static)
         const ghostPoints = originalData.map((p, i) => ({ id: i, ...p }));
         const ghostLine = calculateLinearRegression(ghostPoints);
 
-        svg.append('line')
+        g.append('line')
             .attr('x1', x(0))
             .attr('y1', y(ghostLine.slope * 0 + ghostLine.intercept))
             .attr('x2', x(20))
@@ -341,7 +354,7 @@ const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, on
             .attr('stroke-width', 1.5)
             .attr('stroke-dasharray', '2,2');
 
-        svg.selectAll('.ghost-circle')
+        g.selectAll('.ghost-circle')
             .data(originalData)
             .enter()
             .append('circle')
@@ -350,12 +363,25 @@ const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, on
             .attr('r', 2)
             .attr('fill', 'rgba(148, 163, 184, 0.2)');
 
-        // 2. Draw Current Line
+        // Prepare line and point groups
+        g.append('line').attr('class', 'regression-line');
+        g.append('g').attr('class', 'points-group');
+
+    }, [originalData]); // Only re-setup if originalData changes (e.g. module reload)
+
+    // Dynamic Updates (Persistent elements)
+    useEffect(() => {
+        if (!gRef.current || !xScaleRef.current || !yScaleRef.current) return;
+
+        const g = gRef.current;
+        const x = xScaleRef.current;
+        const y = yScaleRef.current;
+
+        // Update Line
         const currentPoints = data.map((p, i) => ({ id: i, ...p }));
         const currentLine = calculateLinearRegression(currentPoints);
 
-        svg.append('line')
-            .attr('class', 'regression-line')
+        g.select('.regression-line')
             .attr('x1', x(0))
             .attr('y1', y(currentLine.slope * 0 + currentLine.intercept))
             .attr('x2', x(20))
@@ -364,19 +390,22 @@ const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, on
             .attr('stroke-width', 2)
             .attr('opacity', 0.6);
 
-        // 3. Draw Interactive Points
+        // Update Points with stable drag
         const drag = d3.drag<SVGCircleElement, any>()
             .on('start', function () {
-                d3.select(this).attr('r', 8).attr('stroke', 'white');
+                d3.select(this).raise().attr('r', 8).attr('stroke', 'white');
             })
-            .on('drag', function (event, d, i) {
-                const nx = Math.max(0, Math.min(20, x.invert(event.x)));
-                const ny = Math.max(0, Math.min(15, y.invert(event.y)));
+            .on('drag', function (event, d) {
+                // event.x/y in d3-drag is relative to the container if we are dragging the subject
+                // To be absolute stable, we use d3.pointer relative to the SVG container
+                const [mouseX, mouseY] = d3.pointer(event, svgRef.current);
+                const nx = Math.max(0, Math.min(20, x.invert(mouseX)));
+                const ny = Math.max(0, Math.min(15, y.invert(mouseY)));
 
-                // Visual update
+                // Visual immediate feedback (no waiting for React)
                 d3.select(this).attr('cx', x(nx)).attr('cy', y(ny));
 
-                // State update
+                // Parent state update
                 const idx = data.indexOf(d);
                 if (idx !== -1) {
                     updateRef.current(idx, nx, ny);
@@ -386,7 +415,8 @@ const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, on
                 d3.select(this).attr('r', 5).attr('stroke', '#0f172a');
             });
 
-        svg.selectAll('.data-circle')
+        g.select('.points-group')
+            .selectAll<SVGCircleElement, { x: number, y: number }>('.data-circle')
             .data(data)
             .join('circle')
             .attr('class', 'data-circle')
@@ -403,7 +433,7 @@ const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, on
             .style('cursor', 'crosshair')
             .call(drag as any);
 
-    }, [data, originalData, isSelected, datasetKey]);
+    }, [data, isSelected, datasetKey]); // data changes frequently, but we don't clear the SVG
 
     const borderClass = isSelected
         ? isCorrectAnswer && gameWon
@@ -445,5 +475,5 @@ const InteractiveDatasetCard = ({ datasetKey, data, originalData, isSelected, on
     );
 };
 
-export default AnscombeQuartet;
+export default DataDetective;
 
