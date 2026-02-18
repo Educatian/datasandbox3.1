@@ -188,7 +188,8 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                 .attr('d', coneArea as any)
                 .attr('fill', 'rgba(139, 92, 246, 0.08)')
                 .attr('stroke', 'rgba(139, 92, 246, 0.25)')
-                .attr('stroke-width', 1);
+                .attr('stroke-width', 1)
+                .style('pointer-events', 'none');
         }
 
         // --- OLS Reference Line ---
