@@ -377,7 +377,7 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Left Toolbox */}
-                <div className="w-56 flex-shrink-0 bg-slate-900/70 border-r border-slate-800 p-4 flex flex-col gap-4 overflow-y-auto">
+                <div className="w-44 flex-shrink-0 bg-slate-900/70 border-r border-slate-800 p-3 flex flex-col gap-3 overflow-y-auto">
                     {/* Quantum Tools */}
                     <div className="p-3 bg-slate-900 rounded-xl border border-violet-700/40">
                         <div className="text-[10px] text-violet-400 uppercase font-bold mb-3 tracking-widest">⚛️ Quantum Tools</div>
@@ -445,20 +445,20 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                     </div>
                 </div>
 
-                {/* Main Chart */}
-                <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center justify-center">
-                    <div className="w-full max-w-5xl bg-slate-900/80 rounded-2xl border border-slate-700/50 p-6 shadow-2xl backdrop-blur-sm">
-                        <svg ref={svgRef} viewBox="0 0 800 500" className="w-full h-auto drop-shadow-lg" />
+                {/* Main Chart — fills all remaining space */}
+                <div className="flex-1 min-w-0 p-3 flex flex-col items-stretch justify-center overflow-hidden">
+                    <div className="w-full h-full bg-slate-900/80 rounded-2xl border border-slate-700/50 p-3 shadow-2xl backdrop-blur-sm flex flex-col">
+                        <svg ref={svgRef} viewBox="0 0 800 500" className="w-full flex-1 drop-shadow-lg" preserveAspectRatio="xMidYMid meet" />
+                        <p className="mt-2 text-center text-[10px] text-slate-600 font-mono flex-shrink-0">
+                            {interactionMode === 'pointer' ? '🖱 Drag the handles on the beam to adjust slope & intercept' :
+                                interactionMode === 'brush' ? '🖌 Click anywhere on the chart to add a data point' :
+                                    '💨 Click and drag to spray a cloud of data points'}
+                        </p>
                     </div>
-                    <p className="mt-3 text-xs text-slate-600 font-mono">
-                        {interactionMode === 'pointer' ? '🖱 Drag the handles on the beam to adjust slope & intercept' :
-                            interactionMode === 'brush' ? '🖌 Click anywhere on the chart to add a data point' :
-                                '💨 Click and drag to spray a cloud of data points'}
-                    </p>
                 </div>
 
                 {/* Right Chat Panel */}
-                <div className="w-[360px] flex-shrink-0 border-l border-slate-800 bg-slate-900/50 flex flex-col">
+                <div className="w-80 flex-shrink-0 border-l border-slate-800 bg-slate-900/50 flex flex-col">
                     <div className="p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-violet-900/50 flex items-center justify-center border border-violet-500/50">
