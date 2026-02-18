@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
+import { logEvent, logChat } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface PredictionLaserProps {
@@ -145,6 +146,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
         setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
         setIsChatLoading(true);
         setGemControlled(false);
+        logChat('user', msg);
 
         const context = `
             You are Dr. Gem, an educational AI explaining Correlation using a Laser Pointer metaphor.
@@ -183,8 +185,10 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                 const newR = Math.max(-1, Math.min(1, parseFloat(setRMatch[1])));
                 setCorrelation(newR);
                 setGemControlled(true);
+                logEvent('gem_set_r', 'PredictionLaser', { r: newR, trigger: msg.substring(0, 100) });
             }
 
+            logChat('bot', cleanedResponse);
             setChatHistory(prev => [...prev, { text: cleanedResponse, role: 'model' as const }]);
         } catch {
             setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
@@ -222,6 +226,8 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 type="range" min="0" max="100"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(parseFloat(e.target.value))}
+                                onMouseUp={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'InputX', value: parseFloat((e.target as HTMLInputElement).value) })}
+                                onTouchEnd={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'InputX', value: parseFloat((e.target as HTMLInputElement).value) })}
                                 className="w-full h-4 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                             />
                             <p className="text-xs text-slate-500 mt-1">Move the slider to aim the laser.</p>
@@ -243,6 +249,8 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 type="range" min="-1" max="1" step="0.05"
                                 value={correlation}
                                 onChange={(e) => { setCorrelation(parseFloat(e.target.value)); setGemControlled(false); }}
+                                onMouseUp={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'Correlation_r', value: parseFloat((e.target as HTMLInputElement).value) })}
+                                onTouchEnd={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'Correlation_r', value: parseFloat((e.target as HTMLInputElement).value) })}
                                 className={`w-full h-2 bg-gradient-to-r from-orange-500 via-slate-600 to-red-500 rounded-lg appearance-none cursor-pointer ${gemControlled ? 'accent-purple-500' : 'accent-red-500'
                                     }`}
                             />
@@ -261,7 +269,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 ].map(preset => (
                                     <button
                                         key={preset.value}
-                                        onClick={() => setCorrelation(preset.value)}
+                                        onClick={() => { setCorrelation(preset.value); setGemControlled(false); logEvent('preset_click', 'PredictionLaser', { preset: preset.label, r: preset.value }); }}
                                         className={`px-2 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${Math.abs(correlation - preset.value) < 0.1
                                             ? 'bg-red-500 border-red-400 text-white'
                                             : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white'
