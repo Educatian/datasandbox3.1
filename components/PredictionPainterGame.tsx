@@ -373,111 +373,91 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
             </div>
 
             <div className="flex-1 flex overflow-hidden">
-                {/* Left Toolbox */}
-                <div className="w-44 flex-shrink-0 bg-slate-900/70 border-r border-slate-800 p-3 flex flex-col gap-3 overflow-y-auto">
-                    {/* Quantum Tools */}
-                    <div className="p-3 bg-slate-900 rounded-xl border border-violet-700/40">
-                        <div className="text-[10px] text-violet-400 uppercase font-bold mb-3 tracking-widest">⚛️ Quantum Tools</div>
-                        <div className="flex flex-col gap-2">
-                            {toolConfig.map(({ mode, label, emoji, activeClass }) => (
-                                <button key={mode} onClick={() => setInteractionMode(mode)}
-                                    className={`w-full py-2.5 rounded-lg border transition-all text-sm font-bold ${interactionMode === mode ? activeClass : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
-                                    {emoji} {label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-slate-800">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase">Confidence Cone</span>
-                                <button onClick={() => setShowConfidenceCone(!showConfidenceCone)}
-                                    className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${showConfidenceCone ? 'bg-violet-500' : 'bg-slate-700'}`}>
-                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-6' : 'left-1'}`} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Metrics */}
-                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-700/50 space-y-3">
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Metrics</div>
-                        <div>
-                            <div className="text-xs text-slate-400 mb-1">Total Error (SSE)</div>
-                            <div className="text-2xl font-bold font-mono text-white">{sse.toFixed(0)}</div>
-                            <div className="text-[10px] text-slate-500">Min: {minSSE.toFixed(0)}</div>
-                        </div>
-                        <div>
-                            <div className="text-xs text-slate-400 mb-1">Beam Stability</div>
-                            <div className={`text-2xl font-bold font-mono ${stability > 95 ? 'text-green-400' : 'text-violet-400'}`}>{stability.toFixed(1)}%</div>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2">
-                        <button onClick={() => { setSlope(optimalSlope); setIntercept(optimalIntercept); }}
-                            className="w-full px-3 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-semibold transition-all shadow-lg hover:scale-105 active:scale-95">
-                            ⚡ AUTO-CALIBRATE
-                        </button>
-                        <button onClick={() => {
-                            const data = [];
-                            for (let i = 0; i < 15; i++) {
-                                const y = 0.8 * (i * 6 + 10) + 20 + (Math.random() * 20 - 10);
-                                data.push({ x: i * 6 + 10, y });
-                            }
-                            setPoints(data);
-                            setMissionStatus('ACTIVE');
-                        }}
-                            className="w-full px-3 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm font-semibold transition-all">
-                            🔄 Reset Data
-                        </button>
-                    </div>
-
-                    {/* Legend */}
-                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-700/50 text-[10px] text-slate-500 space-y-1.5">
-                        <div className="font-bold uppercase tracking-widest text-slate-400 mb-2">Legend</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#22d3ee] inline-block flex-shrink-0"></span> Low residual</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#fb923c] inline-block flex-shrink-0"></span> Medium residual</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#f43f5e] inline-block flex-shrink-0"></span> High residual</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#fbbf24] inline-block flex-shrink-0"></span> Fulcrum (mean)</div>
-                        <div className="mt-1 text-slate-600">Bubble size = leverage</div>
-                    </div>
-                </div>
-
-                {/* Main Chart — fills all remaining space */}
-                <div className="flex-1 min-w-0 p-3 flex flex-col items-stretch justify-center overflow-hidden">
-                    <div className="w-full h-full bg-slate-900/80 rounded-2xl border border-slate-700/50 p-3 shadow-2xl backdrop-blur-sm flex flex-col">
+                {/* Main Chart — fills all space */}
+                <div className="flex-1 min-w-0 p-2 flex flex-col items-stretch overflow-hidden">
+                    <div className="w-full h-full bg-slate-900/80 rounded-2xl border border-slate-700/50 p-2 shadow-2xl backdrop-blur-sm flex flex-col">
                         <svg ref={svgRef} viewBox="0 0 800 500" className="w-full flex-1 drop-shadow-lg" preserveAspectRatio="xMidYMid meet" />
-                        <p className="mt-2 text-center text-[10px] text-slate-600 font-mono flex-shrink-0">
-                            {interactionMode === 'pointer' ? '🖱 Drag the handles on the beam to adjust slope & intercept' :
-                                interactionMode === 'brush' ? '🖌 Click anywhere on the chart to add a data point' :
-                                    '💨 Click and drag to spray a cloud of data points'}
-                        </p>
                     </div>
                 </div>
 
-                {/* Right Chat Panel */}
-                <div className="w-80 flex-shrink-0 border-l border-slate-800 bg-slate-900/50 flex flex-col">
-                    <div className="p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-violet-900/50 flex items-center justify-center border border-violet-500/50">
-                                <span className="text-lg">👷‍♀️</span>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-100 text-sm">Chief Gem</h3>
-                                <p className="text-xs text-violet-500">Structural Engineering</p>
-                            </div>
-                        </div>
+            </div>
+
+            {/* Bottom Control Bar */}
+            <div className="flex-shrink-0 bg-slate-900 border-t border-slate-800 px-4 py-2 flex items-center gap-3">
+                {/* Tool Selector */}
+                <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+                    {toolConfig.map(({ mode, label, emoji, activeClass }) => (
+                        <button key={mode} onClick={() => setInteractionMode(mode)}
+                            className={`px-3 py-1.5 rounded-md border text-xs font-bold transition-all ${interactionMode === mode ? activeClass : 'border-transparent text-slate-500 hover:text-slate-300'
+                                }`}>
+                            {emoji} {label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Divider */}
+                <div className="w-px h-6 bg-slate-700" />
+
+                {/* Confidence Cone Toggle */}
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Cone</span>
+                    <button onClick={() => setShowConfidenceCone(!showConfidenceCone)}
+                        className={`w-9 h-5 rounded-full transition-colors relative ${showConfidenceCone ? 'bg-violet-500' : 'bg-slate-700'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-5' : 'left-1'}`} />
+                    </button>
+                </div>
+
+                {/* Divider */}
+                <div className="w-px h-6 bg-slate-700" />
+
+                {/* Metrics */}
+                <div className="flex items-center gap-4 font-mono">
+                    <div className="text-center">
+                        <div className="text-[9px] text-slate-500 uppercase">SSE</div>
+                        <div className="text-sm font-bold text-white">{sse.toFixed(0)}</div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                        <UnifiedGenAIChat
-                            moduleTitle="Prediction Painter"
-                            history={chatHistory}
-                            isLoading={isChatLoading}
-                            onSendMessage={handleSendMessage}
-                            variant="embedded"
-                            className="h-full"
-                        />
+                    <div className="text-center">
+                        <div className="text-[9px] text-slate-500 uppercase">Min SSE</div>
+                        <div className="text-sm font-bold text-slate-400">{minSSE.toFixed(0)}</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-[9px] text-slate-500 uppercase">Stability</div>
+                        <div className={`text-sm font-bold ${stability > 95 ? 'text-green-400' : 'text-violet-400'}`}>{stability.toFixed(1)}%</div>
                     </div>
                 </div>
+
+                {/* Divider */}
+                <div className="w-px h-6 bg-slate-700" />
+
+                {/* Legend dots */}
+                <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#22d3ee] inline-block"></span>Low</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#fb923c] inline-block"></span>Mid</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] inline-block"></span>High</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#fbbf24] inline-block"></span>Mean</span>
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Action Buttons */}
+                <button onClick={() => { setSlope(optimalSlope); setIntercept(optimalIntercept); }}
+                    className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all hover:scale-105 active:scale-95">
+                    ⚡ Auto-Calibrate
+                </button>
+                <button onClick={() => {
+                    const data: { x: number, y: number }[] = [];
+                    for (let i = 0; i < 15; i++) {
+                        const yv = 0.8 * (i * 6 + 10) + 20 + (Math.random() * 20 - 10);
+                        data.push({ x: i * 6 + 10, y: yv });
+                    }
+                    setPoints(data);
+                    setMissionStatus('ACTIVE');
+                }}
+                    className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition-all">
+                    🔄 Reset
+                </button>
             </div>
         </div>
     );
