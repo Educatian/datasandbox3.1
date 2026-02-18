@@ -375,6 +375,33 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                 </div>
                             </div>
 
+                            {/* Quantum Toolbox — Prediction Painter only */}
+                            {moduleId === 'prediction-painter' && (
+                                <div className="mb-4 p-3 bg-slate-900/60 rounded-lg border border-teal-700/40">
+                                    <div className="text-[10px] text-teal-500 uppercase font-bold mb-2 tracking-widest">⚛️ Quantum Tools</div>
+                                    <div className="flex gap-2 mb-3">
+                                        {(['pointer', 'brush', 'spray'] as const).map((mode) => {
+                                            const labels = { pointer: '🖱 Adjust', brush: '🖌 Paint', spray: '💨 Spray' };
+                                            const active = { pointer: 'bg-teal-500/20 border-teal-500 text-teal-300', brush: 'bg-fuchsia-500/20 border-fuchsia-500 text-fuchsia-300', spray: 'bg-orange-500/20 border-orange-500 text-orange-300' };
+                                            return (
+                                                <button key={mode} onClick={() => setInteractionMode(mode)}
+                                                    className={`flex-1 py-2 rounded border transition-all text-xs font-bold uppercase tracking-tighter ${interactionMode === mode ? active[mode] : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                        }`}>
+                                                    {labels[mode]}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase">Confidence Cone</span>
+                                        <button onClick={() => setShowConfidenceCone(!showConfidenceCone)}
+                                            className={`w-10 h-5 rounded-full transition-colors relative ${showConfidenceCone ? 'bg-teal-500' : 'bg-slate-700'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-6' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Visual Toggles */}
                             <div className="grid grid-cols-1 gap-3 mb-6">
                                 <label className="flex items-center space-x-2 cursor-pointer group">
@@ -464,41 +491,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                 </span>
                             </div>
 
-                            {/* Interaction Toolbox for Prediction Painter */}
-                            {moduleId === 'prediction-painter' && (
-                                <div className="mb-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-2 tracking-widest">Quantum Tools</div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setInteractionMode('pointer')}
-                                            className={`flex-1 py-2 rounded border transition-all flex flex-col items-center gap-1 ${interactionMode === 'pointer' ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50'}`}
-                                        >
-                                            <span className="text-xs font-bold uppercase tracking-tighter">Adjust</span>
-                                        </button>
-                                        <button
-                                            onClick={() => setInteractionMode('brush')}
-                                            className={`flex-1 py-2 rounded border transition-all flex flex-col items-center gap-1 ${interactionMode === 'brush' ? 'bg-fuchsia-500/20 border-fuchsia-500 text-fuchsia-300' : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50'}`}
-                                        >
-                                            <span className="text-xs font-bold uppercase tracking-tighter">Paint</span>
-                                        </button>
-                                        <button
-                                            onClick={() => setInteractionMode('spray')}
-                                            className={`flex-1 py-2 rounded border transition-all flex flex-col items-center gap-1 ${interactionMode === 'spray' ? 'bg-orange-500/20 border-orange-500 text-orange-300' : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50'}`}
-                                        >
-                                            <span className="text-xs font-bold uppercase tracking-tighter">Spray</span>
-                                        </button>
-                                    </div>
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase">Confidence Cone</span>
-                                        <button
-                                            onClick={() => setShowConfidenceCone(!showConfidenceCone)}
-                                            className={`w-8 h-4 rounded-full transition-colors relative ${showConfidenceCone ? 'bg-teal-500' : 'bg-slate-700'}`}
-                                        >
-                                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-4.5' : 'left-0.5'}`} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            {/* (Toolbox moved to top of Beam Calibration card) */}
 
                             {isManualMode && (
                                 <div className="text-xs text-slate-500">
