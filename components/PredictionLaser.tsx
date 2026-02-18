@@ -10,7 +10,7 @@ interface PredictionLaserProps {
 const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
     // State
     const [inputValue, setInputValue] = useState(50); // X (0-100)
-    const [correlation, setCorrelation] = useState(0.9); // r (0-1)
+    const [correlation, setCorrelation] = useState(0.8); // r (-1 to 1)
     const [outputValue, setOutputValue] = useState(50); // Y
 
     // Chat
@@ -24,20 +24,20 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
     // Physics Loop for "Jitter"
     useEffect(() => {
         const interval = setInterval(() => {
-            // Target Y is same as Input X (assuming linear 1:1 relationship)
-            const targetY = inputValue;
+            // For positive r: targetY tracks inputValue
+            // For negative r: targetY goes in the OPPOSITE direction
+            const targetY = correlation >= 0
+                ? inputValue
+                : 100 - inputValue;  // invert direction for negative correlation
 
-            // Noise factor inverse to correlation
-            // If r=1, noise=0. If r=0, noise is max (e.g., +/- 50)
-            const noiseMax = (1 - correlation) * 50;
+            // Noise is inverse of |r|: |r|=1 → no noise, |r|=0 → max chaos
+            const noiseMax = (1 - Math.abs(correlation)) * 50;
             const noise = (Math.random() - 0.5) * 2 * noiseMax;
 
-            // Calculate final Y
             let nextY = targetY + noise;
-            nextY = Math.max(5, Math.min(95, nextY)); // Clamp
-
+            nextY = Math.max(5, Math.min(95, nextY));
             setOutputValue(nextY);
-        }, 50); // Update 20 times a second
+        }, 50);
 
         return () => clearInterval(interval);
     }, [inputValue, correlation]);
@@ -97,15 +97,15 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
             .attr('y2', 40)
             .attr('stroke', '#ef4444') // Red laser
             .attr('stroke-width', 2)
-            .attr('opacity', 0.6 + correlation * 0.4); // Brighter if correlated
+            .attr('opacity', 0.4 + Math.abs(correlation) * 0.6); // Brighter if stronger |r|
 
         // --- The Laser Dot (Output Y) ---
         svg.append('circle')
             .attr('cx', outputXPos)
             .attr('cy', 40)
-            .attr('r', 6 + (1 - correlation) * 10) // Dot gets fuzzy/large if low correlation
-            .attr('fill', '#ef4444')
-            .attr('filter', 'drop-shadow(0 0 8px red)');
+            .attr('r', 4 + (1 - Math.abs(correlation)) * 12) // Dot larger/fuzzier when |r| is low
+            .attr('fill', correlation >= 0 ? '#ef4444' : '#f97316') // Red = positive, Orange = negative
+            .attr('filter', `drop-shadow(0 0 8px ${correlation >= 0 ? 'red' : 'orange'})`);
 
         svg.append('text')
             .attr('x', outputXPos)
@@ -117,7 +117,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
 
         // --- Visualization of Error ---
         // A "ghost" target showing where it *should* be (perfect prediction)
-        if (correlation < 0.95) {
+        if (Math.abs(correlation) < 0.95) {
             svg.append('circle')
                 .attr('cx', inputXPos)
                 .attr('cy', 40)
@@ -147,14 +147,18 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
         const context = `
             You are Dr. Gem, explaining Correlation using a Laser Pointer metaphor.
             Current State:
-            - Correlation (Precision): ${correlation.toFixed(2)} (1.0 = Perfect Aim, 0.0 = Random)
+            - Correlation (r): ${correlation.toFixed(2)}
+              * r = +1: Perfect positive aim (X up → Y up)
+              * r = 0: No relationship (pure chaos)
+              * r = −1: Perfect negative aim (X up → Y DOWN)
             - Input X: ${inputValue}
             - Output Y: ${outputValue.toFixed(0)}
             
             Educational Goal:
-            - Correlation measures the strength of the relationship.
-            - High correlation allows accurate prediction (Low Error).
-            - Low correlation means high uncertainty (High Error).
+            - Correlation measures BOTH strength and DIRECTION.
+            - |r| close to 1 = strong relationship, tight laser beam.
+            - Negative r flips the direction — when X increases, Y decreases.
+            - r = 0 means knowing X tells us nothing about Y.
         `;
 
         try {
@@ -207,15 +211,23 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 <span className="font-mono text-red-400">{correlation.toFixed(2)}</span>
                             </label>
                             <input
-                                type="range" min="0" max="1" step="0.05"
+                                type="range" min="-1" max="1" step="0.05"
                                 value={correlation}
                                 onChange={(e) => setCorrelation(parseFloat(e.target.value))}
-                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                className="w-full h-2 bg-gradient-to-r from-orange-500 via-slate-600 to-red-500 rounded-lg appearance-none cursor-pointer accent-red-500"
                             />
                             <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                <span>0.0 (Pure Chaos)</span>
-                                <span>1.0 (Perfect Aim)</span>
+                                <span>−1.0 (Perfect Negative)</span>
+                                <span>0.0 (No Relation)</span>
+                                <span>+1.0 (Perfect Positive)</span>
                             </div>
+                            <p className="text-xs text-slate-400 mt-2">
+                                {correlation > 0.6 ? '🎯 Strong positive — X↑ means Y↑' :
+                                    correlation < -0.6 ? '🔄 Strong negative — X↑ means Y↓' :
+                                        Math.abs(correlation) < 0.2 ? '🌪 Near zero — X tells us nothing about Y' :
+                                            correlation > 0 ? '📈 Moderate positive relationship' :
+                                                '📉 Moderate negative relationship'}
+                            </p>
                         </div>
                     </div>
                 </div>
