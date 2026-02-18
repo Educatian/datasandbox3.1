@@ -127,13 +127,9 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
             .style('cursor', interactionMode === 'pointer' ? 'default' : interactionMode === 'brush' ? 'crosshair' : 'cell');
 
         const getDataCoords = (event: any): [number, number] => {
-            const svgEl = svgRef.current!;
-            const rect = svgEl.getBoundingClientRect();
-            const clientX = event.clientX;
-            const clientY = event.clientY;
-            const svgX = ((clientX - rect.left) / rect.width) * width;
-            const svgY = ((clientY - rect.top) / rect.height) * height;
-            return [x.invert(svgX), y.invert(svgY)];
+            // d3.pointer correctly maps screen coords to SVG viewBox space
+            const [px, py] = d3.pointer(event, svgRef.current!);
+            return [x.invert(px), y.invert(py)];
         };
 
         if (interactionMode === 'brush') {
