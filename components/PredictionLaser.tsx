@@ -221,7 +221,27 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                                 <span>0.0 (No Relation)</span>
                                 <span>+1.0 (Perfect Positive)</span>
                             </div>
-                            <p className="text-xs text-slate-400 mt-2">
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {[
+                                    { label: '🔄 Strong −', value: -0.9 },
+                                    { label: '📉 Moderate −', value: -0.5 },
+                                    { label: '🌪 None', value: 0 },
+                                    { label: '📈 Moderate +', value: 0.5 },
+                                    { label: '🎯 Strong +', value: 0.9 },
+                                ].map(preset => (
+                                    <button
+                                        key={preset.value}
+                                        onClick={() => setCorrelation(preset.value)}
+                                        className={`px-2 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${Math.abs(correlation - preset.value) < 0.1
+                                                ? 'bg-red-500 border-red-400 text-white'
+                                                : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white'
+                                            }`}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
                                 {correlation > 0.6 ? '🎯 Strong positive — X↑ means Y↑' :
                                     correlation < -0.6 ? '🔄 Strong negative — X↑ means Y↓' :
                                         Math.abs(correlation) < 0.2 ? '🌪 Near zero — X tells us nothing about Y' :
