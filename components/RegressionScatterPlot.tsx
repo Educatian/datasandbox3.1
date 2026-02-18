@@ -18,6 +18,8 @@ interface RegressionScatterPlotProps {
     yAxisLabel?: string;
     pointColor?: string;
     lineColor?: string;
+    isQuantumMode?: boolean;
+    rSquared?: number;
 }
 
 const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
@@ -25,7 +27,8 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
     showSAE = false, showPredictionInterval = false,
     predictX, onPredictXChange,
     xAxisLabel = "Independent Variable (X)", yAxisLabel = "Dependent Variable (Y)",
-    pointColor = "rgb(34 211 238)", lineColor = "rgb(250 204 21)"
+    pointColor = "rgb(34 211 238)", lineColor = "rgb(250 204 21)",
+    isQuantumMode = false, rSquared = 0
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -97,12 +100,13 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
 
             chartArea.attr('clip-path', 'url(#clip)');
 
-            // Layer Order: Squares -> Mean Line -> Residuals -> Reg Line -> Points
             chartArea.append('g').attr('class', 'interval-layer');
+            chartArea.append('g').attr('class', 'stability-field-layer');
             chartArea.append('g').attr('class', 'squares-layer');
             chartArea.append('line').attr('class', 'mean-line').attr('opacity', 0);
             chartArea.append('g').attr('class', 'residuals-layer');
             chartArea.append('line').attr('class', 'regression-line');
+            chartArea.append('line').attr('class', 'quantum-beam-glow');
             chartArea.append('g').attr('class', 'forecast-layer');
             chartArea.append('text').attr('class', 'equation-text');
             chartArea.append('g').attr('class', 'points-layer');
@@ -145,6 +149,26 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             .selectAll('line').attr('stroke', 'rgba(100, 116, 139, 0.2)');
 
         const chartArea = svg.select('.chart-area');
+
+        // Update Stability Field (Quantum Mode)
+        const fieldLayer = chartArea.select('.stability-field-layer');
+        if (isQuantumMode) {
+            const x1 = 0, y1 = line.slope * x1 + line.intercept;
+            const x2 = 100, y2 = line.slope * x2 + line.intercept;
+
+            fieldLayer.selectAll('line.field-glow')
+                .data([rSquared])
+                .join('line')
+                .attr('class', 'field-glow')
+                .attr('x1', x(x1)).attr('y1', y(y1))
+                .attr('x2', x(x2)).attr('y2', y(y2))
+                .attr('stroke', 'rgba(34, 211, 238, 0.1)')
+                .attr('stroke-width', 100 + (1 - rSquared) * 200)
+                .attr('opacity', rSquared * 0.5)
+                .style('filter', 'blur(40px)');
+        } else {
+            fieldLayer.selectAll('*').remove();
+        }
 
         // Calculate mean Y for baseline
         const meanY = data.length > 0 ? d3.mean(data, d => d.y) || 50 : 50;
@@ -241,8 +265,23 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             .transition().duration(50) // Fast transition for drag responsiveness
             .attr('x1', x(x1)).attr('y1', y(y1))
             .attr('x2', x(x2)).attr('y2', y(y2))
-            .attr('stroke', lineColor) // Yellow-400
-            .attr('stroke-width', 3);
+            .attr('stroke', isQuantumMode ? '#2dd4bf' : lineColor)
+            .attr('stroke-width', isQuantumMode ? (3 + (1 - rSquared) * 10) : 3)
+            .style('filter', isQuantumMode && rSquared < 0.8 ? `blur(${(1 - rSquared) * 5}px)` : 'none')
+            .attr('opacity', isQuantumMode ? 0.8 : 1);
+
+        // Quantum Glow Layer
+        if (isQuantumMode) {
+            chartArea.select('.quantum-beam-glow')
+                .attr('x1', x(x1)).attr('y1', y(y1))
+                .attr('x2', x(x2)).attr('y2', y(y2))
+                .attr('stroke', '#5eead4')
+                .attr('stroke-width', (1 - rSquared) * 30 + 5)
+                .attr('opacity', 0.2 + rSquared * 0.3)
+                .style('filter', 'blur(10px)');
+        } else {
+            chartArea.select('.quantum-beam-glow').attr('opacity', 0);
+        }
 
         // Update Equation Text
         const slopeText = line.slope.toFixed(2);
@@ -364,7 +403,17 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                     .style('cursor', 'grab'),
                 update => update
                     .attr('cx', d => x(d.x))
-                    .attr('cy', d => y(d.y)),
+                    .attr('cy', d => y(d.y))
+                    .attr('fill', d => {
+                        if (!isQuantumMode) return pointColor;
+                        const res = Math.abs(d.y - (line.slope * d.x + line.intercept));
+                        return res > 15 ? '#f43f5e' : (res > 5 ? '#fb923c' : '#2dd4bf');
+                    })
+                    .style('filter', d => {
+                        if (!isQuantumMode) return 'none';
+                        const res = Math.abs(d.y - (line.slope * d.x + line.intercept));
+                        return res > 10 ? `blur(${res / 10}px)` : 'none';
+                    }),
                 exit => exit.remove()
             )
             // Attach drag and events on the merged selection

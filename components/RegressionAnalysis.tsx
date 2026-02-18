@@ -269,260 +269,279 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     const predictedY = effectiveLine.slope * predictX + effectiveLine.intercept;
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-yellow-400 hover:text-yellow-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-yellow-400">{customTitle || "Regression Analysis"}</h1>
-                    <p className="text-slate-400 mt-2">{scenario === 'physics' ? "Hooke's Law Experiment: Mass vs. Spring Extension" : "Minimizing Prediction Error (Least Squares)"}</p>
+        <div className="w-full max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
+            <header className="mb-4 shrink-0">
+                <button onClick={onBack} className="text-yellow-400 hover:text-yellow-300 mb-2 inline-block text-sm">&larr; Back to Portal</button>
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h1 className="text-3xl font-bold text-yellow-400 leading-tight">{customTitle || "Regression Analysis"}</h1>
+                        <p className="text-slate-400 text-sm">{scenario === 'physics' ? "Hooke's Law Experiment: Mass vs. Spring Extension" : "Minimizing Prediction Error (Least Squares)"}</p>
+                    </div>
+
+                    <div className={`${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
+                        <div className="bg-slate-800 p-1 rounded-lg inline-flex text-xs">
+                            <button
+                                onClick={() => setScenario('abstract')}
+                                className={`px-3 py-1.5 rounded-md transition-colors ${scenario === 'abstract' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Abstract Data
+                            </button>
+                            <button
+                                onClick={() => setScenario('physics')}
+                                className={`px-3 py-1.5 rounded-md transition-colors ${scenario === 'physics' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                🧪 Physics Experiment
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
             {customContext && (
-                <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg text-center max-w-3xl mx-auto">
-                    <p className="text-yellow-200 text-sm font-medium">Mission: {customContext}</p>
+                <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 p-2 rounded-lg text-center shrink-0">
+                    <p className="text-yellow-200 text-xs font-medium">Mission: {customContext}</p>
                 </div>
             )}
 
-            <div className={`flex justify-center mb-6 ${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
-                <div className="bg-slate-800 p-1 rounded-lg inline-flex">
-                    <button
-                        onClick={() => setScenario('abstract')}
-                        className={`px-4 py-2 rounded-md transition-colors ${scenario === 'abstract' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        Abstract Data
-                    </button>
-                    <button
-                        onClick={() => setScenario('physics')}
-                        className={`px-4 py-2 rounded-md transition-colors ${scenario === 'physics' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        🧪 Physics Experiment
-                    </button>
-                </div>
-            </div>
-
-            <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-hidden pb-4">
                 {/* Left Panel: Visualizer (Physics Mode) or Chart (Abstract Mode) */}
-                <div className={`${scenario === 'physics' ? 'lg:col-span-3' : 'hidden'} bg-slate-800 rounded-lg shadow-2xl p-4 flex flex-col items-center`}>
+                <div className={`${scenario === 'physics' ? 'lg:col-span-3' : 'hidden'} bg-slate-800 rounded-lg shadow-2xl p-4 flex flex-col items-center overflow-y-auto`}>
                     <h3 className="text-lg font-semibold text-yellow-400 mb-4">Experimental Setup</h3>
                     <SpringVisualizer mass={springMass} onMeasure={handleMeasureSpring} />
-                    <div className="w-full mt-6 px-2">
+                    <div className="w-full mt-6 px-2 shrink-0">
                         <Slider label="Add Mass (g)" value={springMass} min={0} max={100} step={5} onChange={(e) => setSpringMass(+e.target.value)} />
                     </div>
                 </div>
 
                 {/* Center Panel: Scatter Plot */}
-                <div className={`${scenario === 'physics' ? 'lg:col-span-6' : 'lg:col-span-8'} bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4`}>
-                    <RegressionScatterPlot
-                        data={displayPoints.points}
-                        line={effectiveLine}
-                        onPointUpdate={handlePointUpdate}
-                        onAddPoint={handleAddPoint}
-                        showSquares={showSquares}
-                        showSAE={useSAE}
-                        showPredictionInterval={showPredictionInterval}
-                        showMeanLine={showMeanLine}
-                        predictX={predictX}
-                        onPredictXChange={setPredictX}
-                        xAxisLabel={scenario === 'physics' ? "Mass (grams)" : "Independent Variable (X)"}
-                        yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : "Dependent Variable (Y)"}
-                        pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined} // Fuchsia-600 for Painter
-                        lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined} // Orange-500 for Painter
-                    />
+                <div className={`${scenario === 'physics' ? 'lg:col-span-6' : 'lg:col-span-8'} bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4 min-h-0`}>
+                    <div className="w-full h-full flex items-center justify-center">
+                        <RegressionScatterPlot
+                            data={displayPoints.points}
+                            line={effectiveLine}
+                            onPointUpdate={handlePointUpdate}
+                            onAddPoint={handleAddPoint}
+                            showSquares={showSquares}
+                            showSAE={useSAE}
+                            showPredictionInterval={showPredictionInterval}
+                            showMeanLine={showMeanLine}
+                            predictX={predictX}
+                            onPredictXChange={setPredictX}
+                            xAxisLabel={scenario === 'physics' ? "Mass (grams)" : (moduleId === 'prediction-painter' ? "Particle Position" : "Independent Variable (X)")}
+                            yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : (moduleId === 'prediction-painter' ? "Energy State" : "Dependent Variable (Y)")}
+                            pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined} // Fuchsia-600 for Painter
+                            lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined} // Orange-500 for Painter
+                            isQuantumMode={moduleId === 'prediction-painter'}
+                            rSquared={rSquared}
+                        />
+                    </div>
                 </div>
 
-                {/* Right Panel: Controls */}
-                <div className={`${scenario === 'physics' ? 'lg:col-span-3' : 'lg:col-span-4'} flex flex-col space-y-6`}>
+                {/* Right Panel: Controls & Chat */}
+                <div className={`${scenario === 'physics' ? 'lg:col-span-3' : 'lg:col-span-4'} flex flex-col space-y-4 min-h-0 overflow-hidden`}>
 
-                    {/* Mode Toggle & Controls */}
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-yellow-400">Analysis Model</h3>
-                            <div className={`flex bg-slate-700 rounded-lg p-1 ${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
-                                <button
-                                    onClick={() => setIsManualMode(false)}
-                                    className={`px-3 py-1 rounded-md text-sm transition-colors ${!isManualMode ? 'bg-yellow-600 text-white' : 'text-slate-300 hover:text-white'}`}
-                                >
-                                    Auto Fit
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setIsManualMode(true);
-                                        if (!isManualMode) setManualLine(autoLine);
-                                    }}
-                                    className={`px-3 py-1 rounded-md text-sm transition-colors ${isManualMode ? 'bg-yellow-600 text-white' : 'text-slate-300 hover:text-white'}`}
-                                >
-                                    Manual
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Visual Toggles */}
-                        <div className="grid grid-cols-1 gap-3 mb-6">
-                            <label className="flex items-center space-x-2 cursor-pointer group">
-                                <input type="checkbox" checked={showSquares} onChange={(e) => setShowSquares(e.target.checked)} className="accent-yellow-500 w-4 h-4" />
-                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Errors (SAE/SSE)</span>
-                            </label>
-                            {showSquares && (
-                                <div className="ml-6 flex bg-slate-700/50 rounded-lg p-1 animate-fade-in">
+                    {/* Scrollable Side Content */}
+                    <div className="flex-grow overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                        {/* Mode Toggle & Controls */}
+                        <div className="bg-slate-800/50 p-5 rounded-lg border border-slate-700/50 shadow-lg">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className={`text-base font-semibold uppercase tracking-wider ${moduleId === 'prediction-painter' ? 'text-teal-400' : 'text-yellow-400'}`}>
+                                    {moduleId === 'prediction-painter' ? 'Beam Calibration' : 'Analysis Model'}
+                                </h3>
+                                <div className={`flex bg-slate-700/50 rounded-lg p-0.5 ${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
                                     <button
-                                        onClick={() => setUseSAE(false)}
-                                        className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${!useSAE ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
-                                        title="Sum of Squared Errors"
+                                        onClick={() => setIsManualMode(false)}
+                                        className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold transition-colors ${!isManualMode ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
                                     >
-                                        SSE (Squares)
+                                        Auto Fit
                                     </button>
                                     <button
-                                        onClick={() => setUseSAE(true)}
-                                        className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${useSAE ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
-                                        title="Sum of Absolute Errors"
+                                        onClick={() => {
+                                            setIsManualMode(true);
+                                            if (!isManualMode) setManualLine(autoLine);
+                                        }}
+                                        className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold transition-colors ${isManualMode ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
                                     >
-                                        SAE (Absolute)
+                                        Manual
                                     </button>
                                 </div>
-                            )}
-                            <label className="flex items-center space-x-2 cursor-pointer group">
-                                <input type="checkbox" checked={showPredictionInterval} onChange={(e) => setShowPredictionInterval(e.target.checked)} className="accent-teal-500 w-4 h-4" />
-                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Uncertainty Interval</span>
-                            </label>
-                            <label className="flex items-center space-x-2 cursor-pointer group">
-                                <input type="checkbox" checked={showMeanLine} onChange={(e) => setShowMeanLine(e.target.checked)} className="accent-blue-500 w-4 h-4" />
-                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Mean Y (Baseline)</span>
-                            </label>
-                        </div>
-
-                        {/* Manual Controls */}
-                        {isManualMode && (
-                            <div className="space-y-4 border-t border-slate-700 pt-4 animate-fade-in mb-4">
-                                <Slider
-                                    label={scenario === 'physics' ? "Elasticity (Slope)" : "Slope (β₁)"}
-                                    value={manualLine.slope}
-                                    min={-2} max={2} step={0.01}
-                                    onChange={(e) => setManualLine(prev => ({ ...prev, slope: +e.target.value }))}
-                                />
-                                <Slider
-                                    label={scenario === 'physics' ? "Natural Length (Intercept)" : "Intercept (β₀)"}
-                                    value={manualLine.intercept}
-                                    min={-20} max={120} step={1}
-                                    onChange={(e) => setManualLine(prev => ({ ...prev, intercept: +e.target.value }))}
-                                />
                             </div>
-                        )}
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={resetData}
-                                className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
-                            >
-                                Reset Data
-                            </button>
+                            {/* Visual Toggles */}
+                            <div className="grid grid-cols-1 gap-3 mb-6">
+                                <label className="flex items-center space-x-2 cursor-pointer group">
+                                    <input type="checkbox" checked={showSquares} onChange={(e) => setShowSquares(e.target.checked)} className="accent-yellow-500 w-4 h-4" />
+                                    <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Errors (SAE/SSE)</span>
+                                </label>
+                                {showSquares && (
+                                    <div className="ml-6 flex bg-slate-700/50 rounded-lg p-1 animate-fade-in">
+                                        <button
+                                            onClick={() => setUseSAE(false)}
+                                            className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${!useSAE ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
+                                            title="Sum of Squared Errors"
+                                        >
+                                            SSE (Squares)
+                                        </button>
+                                        <button
+                                            onClick={() => setUseSAE(true)}
+                                            className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${useSAE ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
+                                            title="Sum of Absolute Errors"
+                                        >
+                                            SAE (Absolute)
+                                        </button>
+                                    </div>
+                                )}
+                                <label className="flex items-center space-x-2 cursor-pointer group">
+                                    <input type="checkbox" checked={showPredictionInterval} onChange={(e) => setShowPredictionInterval(e.target.checked)} className="accent-teal-500 w-4 h-4" />
+                                    <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Uncertainty Interval</span>
+                                </label>
+                                <label className="flex items-center space-x-2 cursor-pointer group">
+                                    <input type="checkbox" checked={showMeanLine} onChange={(e) => setShowMeanLine(e.target.checked)} className="accent-blue-500 w-4 h-4" />
+                                    <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Mean Y (Baseline)</span>
+                                </label>
+                            </div>
+
+                            {/* Manual Controls */}
                             {isManualMode && (
-                                <button
-                                    onClick={handleSnapToFit}
-                                    disabled={isSnapping}
-                                    className="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
-                                >
-                                    {isSnapping ? '⏳ Fitting...' : '🎯 Snap to Best Fit'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Model Metrics */}
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-3">
-                        <h3 className="text-lg font-semibold text-white mb-2">Model Metrics</h3>
-
-                        {/* Error Metric — The core metric for manual mode */}
-                        <div className="flex justify-between items-center">
-                            <span className="text-slate-300" title={useSAE ? "Sum of Absolute Errors" : "Sum of Squared Errors"}>
-                                {useSAE ? "SAE" : "SSE"} (Error):
-                            </span>
-                            <span className={`text-xl font-mono bg-slate-900 px-3 py-1 rounded transition-colors ${isManualMode && (useSAE ? sae <= autoSae * 1.05 : sse <= autoSse * 1.05) ? 'text-emerald-400' : 'text-orange-400'
-                                }`}>
-                                {(useSAE ? sae : sse).toFixed(1)}
-                            </span>
-                        </div>
-                        {isManualMode && (
-                            <div className="text-xs text-slate-500">
-                                Best possible {useSAE ? 'SAE' : 'SSE'}: <span className="text-yellow-400 font-mono">{(useSAE ? autoSae : autoSse).toFixed(1)}</span>
-                                {(useSAE ? sae <= autoSae * 1.05 : sse <= autoSse * 1.05) && <span className="text-emerald-400 ml-2">✨ Near optimal!</span>}
-                            </div>
-                        )}
-
-                        <div className="flex justify-between items-center">
-                            <span className="text-slate-300">R-squared ($R^2$):</span>
-                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-yellow-400">
-                                {rSquared.toFixed(3)}
-                            </span>
-                        </div>
-                        {isManualMode && autoRSquared > 0 && (
-                            <div className="text-xs text-slate-500">
-                                Best R²: <span className="text-yellow-400 font-mono">{autoRSquared.toFixed(3)}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                            <span className="text-slate-300" title="Standard Error of the Estimate">Std. Error ($S_e$):</span>
-                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-slate-200">
-                                {standardError.toFixed(2)}
-                            </span>
-                        </div>
-                        {scenario === 'physics' && (
-                            <p className="text-xs text-slate-400 mt-2 border-t border-slate-700 pt-2">
-                                <strong>Physical Interpretation:</strong><br />
-                                Slope ≈ 0.6 (Elasticity)<br />
-                                Intercept ≈ 20 (Rest Length)
-                            </p>
-                        )}
-
-                        {/* Error Bucket Visual Goal */}
-                        <div className="mt-4 pt-4 border-t border-slate-700">
-                            <div className="flex justify-between text-xs text-slate-500 mb-1 font-bold uppercase tracking-tighter">
-                                <span>Optimization Goal</span>
-                                <span>{((useSAE ? autoSae / sae : autoSse / sse) * 100).toFixed(0)}% Accuracy</span>
-                            </div>
-                            <div className="h-4 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
-                                <div
-                                    className={`h-full transition-all duration-500 ${isManualMode && (useSAE ? sae <= autoSae * 1.1 : sse <= autoSse * 1.1) ? 'bg-emerald-500' : 'bg-orange-500'
-                                        }`}
-                                    style={{ width: `${Math.min(100, (useSAE ? autoSae / sae : autoSse / sse) * 100)}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 mt-1 italic text-center">Minimize the area to hit the target!</p>
-                        </div>
-                    </div>
-
-                    {/* Prediction Tool */}
-                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                        <h3 className="text-lg font-semibold text-teal-400 mb-3">Prediction Tool</h3>
-                        <div className="space-y-3">
-                            <label className="flex flex-col text-sm text-slate-400">
-                                <span>Input {scenario === 'physics' ? 'Mass (g)' : 'X Value'}:</span>
-                                <div className="flex items-center space-x-3 mt-1">
-                                    <input
-                                        type="range" min={0} max={100} value={predictX}
-                                        onChange={(e) => setPredictX(+e.target.value)}
-                                        className="flex-grow h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                <div className="space-y-4 border-t border-slate-700 pt-4 animate-fade-in mb-4">
+                                    <Slider
+                                        label={scenario === 'physics' ? "Elasticity (Slope)" : "Slope (β₁)"}
+                                        value={manualLine.slope}
+                                        min={-2} max={2} step={0.01}
+                                        onChange={(e) => setManualLine(prev => ({ ...prev, slope: +e.target.value }))}
                                     />
-                                    <span className="font-mono w-10 text-right text-white">{predictX}</span>
+                                    <Slider
+                                        label={scenario === 'physics' ? "Natural Length (Intercept)" : "Intercept (β₀)"}
+                                        value={manualLine.intercept}
+                                        min={-20} max={120} step={1}
+                                        onChange={(e) => setManualLine(prev => ({ ...prev, intercept: +e.target.value }))}
+                                    />
                                 </div>
-                            </label>
-                            <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                                <span className="text-slate-300">Predicted {scenario === 'physics' ? 'Length' : 'Y'}:</span>
-                                <span className="text-xl font-bold font-mono text-teal-400">
-                                    {Math.min(100, Math.max(0, predictedY)).toFixed(1)}
+                            )}
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={resetData}
+                                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+                                >
+                                    Reset Data
+                                </button>
+                                {isManualMode && (
+                                    <button
+                                        onClick={handleSnapToFit}
+                                        disabled={isSnapping}
+                                        className="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+                                    >
+                                        {isSnapping ? '⏳ Fitting...' : '🎯 Snap to Best Fit'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Model Metrics */}
+                        <div className="bg-slate-800/50 p-5 rounded-lg border border-slate-700/50 shadow-lg space-y-3">
+                            <h3 className="text-base font-semibold text-white uppercase tracking-wider mb-2">Model Metrics</h3>
+
+                            {/* Error Metric — The core metric for manual mode */}
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-300" title={useSAE ? "Sum of Absolute Errors" : "Sum of Squared Errors"}>
+                                    {useSAE ? "SAE" : "SSE"} (Error):
+                                </span>
+                                <span className={`text-xl font-mono bg-slate-900 px-3 py-1 rounded transition-colors ${isManualMode && (useSAE ? sae <= autoSae * 1.05 : sse <= autoSse * 1.05) ? 'text-emerald-400' : 'text-orange-400'
+                                    }`}>
+                                    {(useSAE ? sae : sse).toFixed(1)}
                                 </span>
                             </div>
+                            {isManualMode && (
+                                <div className="text-xs text-slate-500">
+                                    Best possible {useSAE ? 'SAE' : 'SSE'}: <span className="text-yellow-400 font-mono">{(useSAE ? autoSae : autoSse).toFixed(1)}</span>
+                                    {(useSAE ? sae <= autoSae * 1.05 : sse <= autoSse * 1.05) && <span className="text-emerald-400 ml-2">✨ Near optimal!</span>}
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-300">R-squared ($R^2$):</span>
+                                <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-yellow-400">
+                                    {rSquared.toFixed(3)}
+                                </span>
+                            </div>
+                            {isManualMode && autoRSquared > 0 && (
+                                <div className="text-xs text-slate-500">
+                                    Best R²: <span className="text-yellow-400 font-mono">{autoRSquared.toFixed(3)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-300" title="Standard Error of the Estimate">Std. Error ($S_e$):</span>
+                                <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-slate-200">
+                                    {standardError.toFixed(2)}
+                                </span>
+                            </div>
+                            {scenario === 'physics' && (
+                                <p className="text-xs text-slate-400 mt-2 border-t border-slate-700 pt-2">
+                                    <strong>Physical Interpretation:</strong><br />
+                                    Slope ≈ 0.6 (Elasticity)<br />
+                                    Intercept ≈ 20 (Rest Length)
+                                </p>
+                            )}
+
+                            {/* Error Bucket Visual Goal */}
+                            <div className="mt-4 pt-4 border-t border-slate-700">
+                                <div className="flex justify-between text-xs text-slate-500 mb-1 font-bold uppercase tracking-tighter">
+                                    <span>{moduleId === 'prediction-painter' ? 'Calibration Stability' : 'Optimization Goal'}</span>
+                                    <span>{((useSAE ? autoSae / sae : autoSse / sse) * 100).toFixed(0)}%</span>
+                                </div>
+                                <div className="h-4 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                                    <div
+                                        className={`h-full transition-all duration-500 ${isManualMode && (useSAE ? sae <= autoSae * 1.1 : sse <= autoSse * 1.1)
+                                            ? (moduleId === 'prediction-painter' ? 'bg-teal-500 shadow-[0_0_10px_#2dd4bf]' : 'bg-emerald-500')
+                                            : 'bg-orange-500'
+                                            }`}
+                                        style={{ width: `${Math.min(100, (useSAE ? autoSae / sae : autoSse / sse) * 100)}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-1 italic text-center">
+                                    {moduleId === 'prediction-painter' ? 'Align particles to stabilize the beam' : 'Minimize the area to hit the target!'}
+                                </p>
+                            </div>
                         </div>
+
+                        {/* Prediction Tool */}
+                        <div className="bg-slate-800/50 p-5 rounded-lg border border-slate-700/50 shadow-lg">
+                            <h3 className="text-base font-semibold text-teal-400 uppercase tracking-wider mb-3">Prediction Tool</h3>
+                            <div className="space-y-3">
+                                <label className="flex flex-col text-sm text-slate-400">
+                                    <span>Input {scenario === 'physics' ? 'Mass (g)' : 'X Value'}:</span>
+                                    <div className="flex items-center space-x-3 mt-1">
+                                        <input
+                                            type="range" min={0} max={100} value={predictX}
+                                            onChange={(e) => setPredictX(+e.target.value)}
+                                            className="flex-grow h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <span className="font-mono w-10 text-right text-white">{predictX}</span>
+                                    </div>
+                                </label>
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                                    <span className="text-slate-300">Predicted {scenario === 'physics' ? 'Length' : 'Y'}:</span>
+                                    <span className="text-xl font-bold font-mono text-teal-400">
+                                        {Math.min(100, Math.max(0, predictedY)).toFixed(1)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
-                    <UnifiedGenAIChat
-                        moduleTitle="Regression Analysis"
-                        history={chatHistory}
-                        onSendMessage={handleSendMessage}
-                        isLoading={isChatLoading}
-                        variant="embedded"
-                        className="h-full"
-                    />
+                    {/* Chat Section: Fixed height at bottom of sidebar */}
+                    <div className="h-64 bg-slate-800/50 rounded-lg border border-slate-700/50 shadow-lg overflow-hidden shrink-0">
+                        <UnifiedGenAIChat
+                            moduleTitle="Regression Analysis"
+                            history={chatHistory}
+                            onSendMessage={handleSendMessage}
+                            isLoading={isChatLoading}
+                            variant="embedded"
+                            className="h-full"
+                        />
+                    </div>
                 </div>
             </main>
             <style>{`
@@ -532,6 +551,27 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                 }
                 .animate-fade-in {
                     animation: fade-in 0.3s ease-out forwards;
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #334155;
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #475569;
+                }
+                @keyframes quantum-flicker {
+                    0% { opacity: 0.7; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.7; }
+                }
+                .quantum-beam-glow {
+                    animation: quantum-flicker 0.2s infinite;
                 }
             `}</style>
         </div>
