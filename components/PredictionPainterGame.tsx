@@ -374,10 +374,35 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
 
             <div className="flex-1 flex overflow-hidden">
 
-                {/* Main Chart — fills all space */}
+                {/* Main Chart */}
                 <div className="flex-1 min-w-0 p-2 flex flex-col items-stretch overflow-hidden">
                     <div className="w-full h-full bg-slate-900/80 rounded-2xl border border-slate-700/50 p-2 shadow-2xl backdrop-blur-sm flex flex-col">
                         <svg ref={svgRef} viewBox="0 0 800 500" className="w-full flex-1 drop-shadow-lg" preserveAspectRatio="xMidYMid meet" />
+                    </div>
+                </div>
+
+                {/* Right Chat Panel — Chief Gem */}
+                <div className="w-80 flex-shrink-0 border-l border-slate-800 bg-slate-900/50 flex flex-col">
+                    <div className="p-3 border-b border-slate-800 bg-slate-900 flex-shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-violet-900/50 flex items-center justify-center border border-violet-500/50">
+                                <span className="text-lg">👷‍♀️</span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-100 text-sm">Chief Gem</h3>
+                                <p className="text-xs text-violet-500">Structural Engineering</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <UnifiedGenAIChat
+                            moduleTitle="Prediction Painter"
+                            history={chatHistory}
+                            isLoading={isChatLoading}
+                            onSendMessage={handleSendMessage}
+                            variant="embedded"
+                            className="h-full"
+                        />
                     </div>
                 </div>
 
