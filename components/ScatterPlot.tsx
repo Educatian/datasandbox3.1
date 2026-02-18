@@ -10,14 +10,16 @@ interface ScatterPlotProps {
     onPointUpdate: (id: number, newX: number, newY: number) => void;
     xAxisLabel?: string;
     yAxisLabel?: string;
+    showRegressionLine?: boolean;
 }
 
-const ScatterPlot: React.FC<ScatterPlotProps> = ({ 
-    data, 
-    line, 
+const ScatterPlot: React.FC<ScatterPlotProps> = ({
+    data,
+    line,
     onPointUpdate,
     xAxisLabel = "X Variable",
-    yAxisLabel = "Y Variable"
+    yAxisLabel = "Y Variable",
+    showRegressionLine = true
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -61,7 +63,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             svg.append('g').attr('class', 'y-axis');
             svg.append('line').attr('class', 'regression-line');
             svg.append('g').attr('class', 'points-layer');
-            
+
             // Add labels
             svg.append('text')
                 .attr('class', 'x-label')
@@ -120,7 +122,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         // Update Regression Line
         const x1 = 0, y1 = line.slope * x1 + line.intercept;
         const x2 = 100, y2 = line.slope * x2 + line.intercept;
-        
+
         svg.select('.regression-line')
             .attr('x1', x(x1))
             .attr('y1', y(y1))
@@ -128,17 +130,17 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             .attr('y2', y(y2))
             .attr('stroke', 'rgb(34 211 238)')
             .attr('stroke-width', 2)
-            .attr('opacity', 0.5);
+            .attr('opacity', showRegressionLine ? 0.5 : 0);
 
         // Drag Behavior
         const drag = d3.drag<SVGCircleElement, Point>()
-            .subject(function(event, d) {
+            .subject(function (event, d) {
                 return { x: x(d.x), y: y(d.y) };
             })
-            .on('start', function() {
+            .on('start', function () {
                 d3.select(this).attr('stroke', 'white').attr('stroke-width', 3).raise();
                 // Select tooltip globally to handle closure issues if it was recreated
-                d3.select('.scatter-tooltip').style('visibility', 'hidden'); 
+                d3.select('.scatter-tooltip').style('visibility', 'hidden');
             })
             .on('drag', function (event, d) {
                 const newX = Math.max(0, Math.min(100, x.invert(event.x)));
@@ -146,11 +148,11 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
                 d3.select(this).attr('cx', x(newX)).attr('cy', y(newY));
                 onPointUpdate(d.id, newX, newY);
             })
-            .on('end', function(event, d) {
-                 d3.select(this).attr('stroke', 'rgb(15 23 42)').attr('stroke-width', 2);
-                 const finalX = Math.max(0, Math.min(100, x.invert(event.x)));
-                 const finalY = Math.max(0, Math.min(100, y.invert(event.y)));
-                 logEvent('point_drag_end', 'ScatterPlot', { point_id: d.id, x: finalX, y: finalY });
+            .on('end', function (event, d) {
+                d3.select(this).attr('stroke', 'rgb(15 23 42)').attr('stroke-width', 2);
+                const finalX = Math.max(0, Math.min(100, x.invert(event.x)));
+                const finalY = Math.max(0, Math.min(100, y.invert(event.y)));
+                logEvent('point_drag_end', 'ScatterPlot', { point_id: d.id, x: finalX, y: finalY });
             });
 
         // Update Points using join
@@ -170,15 +172,15 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
                     .attr('cy', d => y(d.y)),
                 exit => exit.remove()
             );
-            
+
         // Attach hover events to merged selection to ensure they reference the latest tooltip closure
         points
-            .on('mouseover', function(event, d) {
+            .on('mouseover', function (event, d) {
                 d3.select(this)
                     .transition().duration(200)
                     .attr('r', 9)
                     .attr('fill', 'rgb(103 232 249)'); // Lighter cyan highlight
-                
+
                 // Tooltip logic uses current render's tooltip variable
                 tooltip
                     .style('visibility', 'visible')
@@ -188,12 +190,12 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
                         <div class="flex justify-between gap-4"><span>Y:</span> <span class="font-mono text-cyan-300">${d.y.toFixed(1)}</span></div>
                     `);
             })
-            .on('mousemove', function(event) {
+            .on('mousemove', function (event) {
                 tooltip
                     .style('top', (event.pageY) + 'px')
                     .style('left', (event.pageX) + 'px');
             })
-            .on('mouseout', function() {
+            .on('mouseout', function () {
                 d3.select(this)
                     .transition().duration(200)
                     .attr('r', 6)
@@ -206,7 +208,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
             tooltip.remove();
         }
 
-    }, [data, line, onPointUpdate, xAxisLabel, yAxisLabel]);
+    }, [data, line, onPointUpdate, xAxisLabel, yAxisLabel, showRegressionLine]);
 
     return <svg ref={svgRef}></svg>;
 };

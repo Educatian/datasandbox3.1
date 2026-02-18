@@ -65,7 +65,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     const [points, setPoints] = useState<ResidualPoint[]>(() => generateInitialData(25));
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Welcome to Regression Analysis! 📉 I'm Dr. Gem. Let's find the line of best fit." }
+        { role: 'model', text: "Welcome to Regression Analysis! 📉 I'm Dr. Gem. Try tilting the line to minimize prediction errors. Can you beat the computer's best fit?" }
     ]);
     const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
     const [hasOutlier, setHasOutlier] = useState<boolean>(false);
@@ -73,11 +73,12 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     // Mode Selection
     const [scenario, setScenario] = useState<'abstract' | 'physics'>('abstract');
 
-    // Interaction States
-    const [isManualMode, setIsManualMode] = useState(false);
-    const [manualLine, setManualLine] = useState<RegressionLine>({ slope: 1, intercept: 20 });
-    const [showSquares, setShowSquares] = useState(false);
+    // Interaction States — Manual mode ON by default for hands-on learning
+    const [isManualMode, setIsManualMode] = useState(true);
+    const [manualLine, setManualLine] = useState<RegressionLine>({ slope: 0.5, intercept: 35 });
+    const [showSquares, setShowSquares] = useState(true);
     const [showMeanLine, setShowMeanLine] = useState(false);
+    const [isSnapping, setIsSnapping] = useState(false);
 
     // Physics Experiment State
     const [springMass, setSpringMass] = useState(20);
@@ -157,6 +158,52 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     // 3. Calculate Statistics
     const rSquared = useMemo(() => calculateRSquared(points, effectiveLine), [points, effectiveLine]);
     const standardError = useMemo(() => calculateStandardError(points, effectiveLine), [points, effectiveLine]);
+    const autoRSquared = useMemo(() => calculateRSquared(points, autoLine), [points, autoLine]);
+
+    // Sum of Squared Errors (SSE)
+    const sse = useMemo(() => {
+        return points.reduce((sum, p) => {
+            const yHat = effectiveLine.slope * p.x + effectiveLine.intercept;
+            return sum + Math.pow(p.y - yHat, 2);
+        }, 0);
+    }, [points, effectiveLine]);
+
+    const autoSse = useMemo(() => {
+        return points.reduce((sum, p) => {
+            const yHat = autoLine.slope * p.x + autoLine.intercept;
+            return sum + Math.pow(p.y - yHat, 2);
+        }, 0);
+    }, [points, autoLine]);
+
+    // Snap-to-fit animation
+    const handleSnapToFit = () => {
+        if (!isManualMode) return;
+        setIsSnapping(true);
+        const startSlope = manualLine.slope;
+        const startIntercept = manualLine.intercept;
+        const targetSlope = autoLine.slope;
+        const targetIntercept = autoLine.intercept;
+        const duration = 800;
+        const startTime = Date.now();
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+            setManualLine({
+                slope: startSlope + (targetSlope - startSlope) * eased,
+                intercept: startIntercept + (targetIntercept - startIntercept) * eased
+            });
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                setIsSnapping(false);
+            }
+        };
+        requestAnimationFrame(animate);
+    };
 
     // 4. Prepare Display Points with Residuals based on Effective Line
     const displayPoints = useMemo(() => {
@@ -319,23 +366,55 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                             </div>
                         )}
 
-                        <button
-                            onClick={resetData}
-                            className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
-                        >
-                            Reset Data
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={resetData}
+                                className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+                            >
+                                Reset Data
+                            </button>
+                            {isManualMode && (
+                                <button
+                                    onClick={handleSnapToFit}
+                                    disabled={isSnapping}
+                                    className="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm"
+                                >
+                                    {isSnapping ? '⏳ Fitting...' : '🎯 Snap to Best Fit'}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Model Metrics */}
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-3">
                         <h3 className="text-lg font-semibold text-white mb-2">Model Metrics</h3>
+
+                        {/* SSE — The core metric for manual mode */}
+                        <div className="flex justify-between items-center">
+                            <span className="text-slate-300" title="Sum of Squared Errors">SSE (Error):</span>
+                            <span className={`text-xl font-mono bg-slate-900 px-3 py-1 rounded transition-colors ${isManualMode && sse <= autoSse * 1.05 ? 'text-emerald-400' : 'text-orange-400'
+                                }`}>
+                                {sse.toFixed(1)}
+                            </span>
+                        </div>
+                        {isManualMode && (
+                            <div className="text-xs text-slate-500">
+                                Best possible SSE: <span className="text-yellow-400 font-mono">{autoSse.toFixed(1)}</span>
+                                {sse <= autoSse * 1.05 && <span className="text-emerald-400 ml-2">✨ Near optimal!</span>}
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">R-squared ($R^2$):</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-yellow-400">
                                 {rSquared.toFixed(3)}
                             </span>
                         </div>
+                        {isManualMode && autoRSquared > 0 && (
+                            <div className="text-xs text-slate-500">
+                                Best R²: <span className="text-yellow-400 font-mono">{autoRSquared.toFixed(3)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300" title="Standard Error of the Estimate">Std. Error ($S_e$):</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded text-slate-200">

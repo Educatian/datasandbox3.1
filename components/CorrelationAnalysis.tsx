@@ -183,6 +183,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                         data={points}
                         line={regressionLine}
                         onPointUpdate={handlePointUpdate}
+                        showRegressionLine={false}
                         xAxisLabel={scenario === 'experiment' ? "Distraction Level" : "Variable X"}
                         yAxisLabel={scenario === 'experiment' ? "Reaction Time (ms)" : "Variable Y"}
                     />
