@@ -157,7 +157,10 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     // 2. Determine Effective Line
     const effectiveLine = isManualMode ? manualLine : autoLine;
 
-    // 3. Calculate Statistics
+    // 3. Calculate Statistics & Pivot Point
+    const meanX = useMemo(() => points.length > 0 ? points.reduce((s, p) => s + p.x, 0) / points.length : 50, [points]);
+    const meanY = useMemo(() => points.length > 0 ? points.reduce((s, p) => s + p.y, 0) / points.length : 50, [points]);
+
     const rSquared = useMemo(() => calculateRSquared(points, effectiveLine), [points, effectiveLine]);
     const standardError = useMemo(() => calculateStandardError(points, effectiveLine), [points, effectiveLine]);
     const autoRSquared = useMemo(() => calculateRSquared(points, autoLine), [points, autoLine]);
@@ -333,6 +336,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                             lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined} // Orange-500 for Painter
                             isQuantumMode={moduleId === 'prediction-painter'}
                             rSquared={rSquared}
+                            meanPoint={{ x: meanX, y: meanY }}
                         />
                     </div>
                 </div>
@@ -408,14 +412,17 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                         label={scenario === 'physics' ? "Elasticity (Slope)" : "Slope (β₁)"}
                                         value={manualLine.slope}
                                         min={-2} max={2} step={0.01}
-                                        onChange={(e) => setManualLine(prev => ({ ...prev, slope: +e.target.value }))}
+                                        onChange={(e) => {
+                                            const newSlope = +e.target.value;
+                                            // Force rotation around the pivot (meanX, meanY)
+                                            // y = mx + b => b = y - mx
+                                            const newIntercept = meanY - (newSlope * meanX);
+                                            setManualLine({ slope: newSlope, intercept: newIntercept });
+                                        }}
                                     />
-                                    <Slider
-                                        label={scenario === 'physics' ? "Natural Length (Intercept)" : "Intercept (β₀)"}
-                                        value={manualLine.intercept}
-                                        min={-20} max={120} step={1}
-                                        onChange={(e) => setManualLine(prev => ({ ...prev, intercept: +e.target.value }))}
-                                    />
+                                    <div className="p-2 bg-yellow-500/5 border border-yellow-500/10 rounded-md text-[10px] text-yellow-200/50 italic leading-snug">
+                                        Rotation is anchored at the data's center (The Fulcrum). To move the line up/down, reposition the data points.
+                                    </div>
                                 </div>
                             )}
 
@@ -572,6 +579,11 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                 }
                 .quantum-beam-glow {
                     animation: quantum-flicker 0.2s infinite;
+                }
+                @keyframes fulcrum-pulse {
+                    0% { transform: scale(1); opacity: 0.3; }
+                    50% { transform: scale(1.5); opacity: 0.1; }
+                    100% { transform: scale(1); opacity: 0.3; }
                 }
             `}</style>
         </div>

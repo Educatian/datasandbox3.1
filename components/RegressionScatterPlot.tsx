@@ -20,6 +20,7 @@ interface RegressionScatterPlotProps {
     lineColor?: string;
     isQuantumMode?: boolean;
     rSquared?: number;
+    meanPoint?: { x: number, y: number };
 }
 
 const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
@@ -28,7 +29,8 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
     predictX, onPredictXChange,
     xAxisLabel = "Independent Variable (X)", yAxisLabel = "Dependent Variable (Y)",
     pointColor = "rgb(34 211 238)", lineColor = "rgb(250 204 21)",
-    isQuantumMode = false, rSquared = 0
+    isQuantumMode = false, rSquared = 0,
+    meanPoint
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -107,6 +109,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             chartArea.append('g').attr('class', 'residuals-layer');
             chartArea.append('line').attr('class', 'regression-line');
             chartArea.append('line').attr('class', 'quantum-beam-glow');
+            chartArea.append('g').attr('class', 'fulcrum-layer');
             chartArea.append('g').attr('class', 'forecast-layer');
             chartArea.append('text').attr('class', 'equation-text');
             chartArea.append('g').attr('class', 'points-layer');
@@ -281,6 +284,35 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                 .style('filter', 'blur(10px)');
         } else {
             chartArea.select('.quantum-beam-glow').attr('opacity', 0);
+        }
+
+        // Update Fulcrum (Pivot Point)
+        const fulcrumGroup = chartArea.select('.fulcrum-layer');
+        if (meanPoint) {
+            fulcrumGroup.selectAll('circle.fulcrum-core')
+                .data([meanPoint])
+                .join('circle')
+                .attr('class', 'fulcrum-core')
+                .attr('cx', x(meanPoint.x)).attr('cy', y(meanPoint.y))
+                .attr('r', 6)
+                .attr('fill', '#fbbf24')
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2)
+                .style('filter', 'drop-shadow(0 0 8px #fbbf24)');
+
+            fulcrumGroup.selectAll('circle.fulcrum-outer')
+                .data([meanPoint])
+                .join('circle')
+                .attr('class', 'fulcrum-outer')
+                .attr('cx', x(meanPoint.x)).attr('cy', y(meanPoint.y))
+                .attr('r', 12)
+                .attr('fill', 'none')
+                .attr('stroke', '#fbbf24')
+                .attr('stroke-width', 1)
+                .attr('opacity', 0.3)
+                .style('animation', 'fulcrum-pulse 2s infinite');
+        } else {
+            fulcrumGroup.selectAll('*').remove();
         }
 
         // Update Equation Text
