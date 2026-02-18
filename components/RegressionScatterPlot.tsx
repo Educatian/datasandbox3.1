@@ -21,6 +21,8 @@ interface RegressionScatterPlotProps {
     isQuantumMode?: boolean;
     rSquared?: number;
     meanPoint?: { x: number, y: number };
+    interactionMode?: 'pointer' | 'brush' | 'spray';
+    showConfidenceCone?: boolean;
 }
 
 const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
@@ -30,7 +32,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
     xAxisLabel = "Independent Variable (X)", yAxisLabel = "Dependent Variable (Y)",
     pointColor = "rgb(34 211 238)", lineColor = "rgb(250 204 21)",
     isQuantumMode = false, rSquared = 0,
-    meanPoint
+    meanPoint, interactionMode = 'pointer', showConfidenceCone = false
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -118,15 +120,52 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
         const x = d3.scaleLinear().domain([0, 100]).range([margin.left, width - margin.right]);
         const y = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
 
-        // Update Background Click Listener
-        svg.select('.bg-layer').on('click', (event) => {
-            const [pointerX, pointerY] = d3.pointer(event);
-            if (pointerX > margin.left && pointerX < width - margin.right && pointerY > margin.top && pointerY < height - margin.bottom) {
-                const newX = x.invert(pointerX);
-                const newY = y.invert(pointerY);
-                onAddPoint(newX, newY);
-            }
-        });
+        // Update Background Click/Drag Listener
+        const bgLayer = svg.select('.bg-layer');
+
+        // Remove old listeners to avoid conflicts
+        bgLayer.on('mousedown', null).on('mousemove', null).on('mouseup', null).on('click', null);
+
+        if (interactionMode === 'brush' || interactionMode === 'spray') {
+            let isDrawing = false;
+            let lastSprayTime = 0;
+
+            const addAtPointer = (event: any) => {
+                const [pointerX, pointerY] = d3.pointer(event);
+                if (pointerX > margin.left && pointerX < width - margin.right && pointerY > margin.top && pointerY < height - margin.bottom) {
+                    const newX = x.invert(pointerX);
+                    const newY = y.invert(pointerY);
+
+                    if (interactionMode === 'spray') {
+                        // Add jitter for spray effect
+                        const now = Date.now();
+                        if (now - lastSprayTime > 50) { // Throttle spray
+                            for (let i = 0; i < 3; i++) {
+                                onAddPoint(
+                                    newX + (Math.random() - 0.5) * 10,
+                                    newY + (Math.random() - 0.5) * 10
+                                );
+                            }
+                            lastSprayTime = now;
+                        }
+                    } else {
+                        onAddPoint(newX, newY);
+                    }
+                }
+            };
+
+            bgLayer.on('mousedown', () => { isDrawing = true; })
+                .on('mousemove', (event) => { if (isDrawing && interactionMode === 'spray') addAtPointer(event); })
+                .on('mouseup', () => { isDrawing = false; })
+                .on('click', (event) => { if (interactionMode === 'brush') addAtPointer(event); });
+        } else {
+            bgLayer.on('click', (event) => {
+                const [pointerX, pointerY] = d3.pointer(event);
+                if (pointerX > margin.left && pointerX < width - margin.right && pointerY > margin.top && pointerY < height - margin.bottom) {
+                    onAddPoint(x.invert(pointerX), y.invert(pointerY));
+                }
+            });
+        }
 
         // Update Axes Labels
         svg.select('.x-label')
@@ -226,23 +265,32 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
 
         // Update Prediction Interval (Conceptual Shading)
         const intervalGroup = chartArea.select('.interval-layer');
-        if (showPredictionInterval && data.length > 3) {
+        if ((showPredictionInterval || showConfidenceCone) && data.length > 3) {
             const se = d3.deviation(data, d => d.y - (line.slope * d.x + line.intercept)) || 5;
-            const area = d3.area<[number, number]>()
-                .x(d => x(d[0]))
-                .y0(d => y(line.slope * d[0] + line.intercept - se * 1.96))
-                .y1(d => y(line.slope * d[0] + line.intercept + se * 1.96));
 
-            const intervalData: [number, number][] = [[0, 0], [100, 100]]; // Range for the area
+            // Confidence Cone (Funnel shape) logic
+            const confidenceArea = d3.area<number>()
+                .x(d => x(d))
+                .y0(d => {
+                    // Leverage increases uncertainty at edges (further from meanX)
+                    const leverage = 1 + Math.pow((d - (meanPoint?.x || 50)) / 40, 2);
+                    return y(line.slope * d + line.intercept - se * 1.5 * (showConfidenceCone ? leverage : 1.2));
+                })
+                .y1(d => {
+                    const leverage = 1 + Math.pow((d - (meanPoint?.x || 50)) / 40, 2);
+                    return y(line.slope * d + line.intercept + se * 1.5 * (showConfidenceCone ? leverage : 1.2));
+                });
+
+            const xRange = d3.range(0, 101, 5);
 
             intervalGroup.selectAll('path.prediction-interval')
-                .data([intervalData])
+                .data([xRange])
                 .join('path')
                 .attr('class', 'prediction-interval')
-                .attr('d', area as any)
-                .attr('fill', 'rgba(34, 211, 238, 0.05)')
-                .attr('stroke', 'rgba(34, 211, 238, 0.1)')
-                .attr('stroke-dasharray', '2,2');
+                .attr('d', confidenceArea as any)
+                .attr('fill', showConfidenceCone ? 'rgba(20, 184, 166, 0.1)' : 'rgba(34, 211, 238, 0.05)')
+                .attr('stroke', showConfidenceCone ? 'rgba(20, 184, 166, 0.2)' : 'rgba(34, 211, 238, 0.1)')
+                .attr('stroke-dasharray', showConfidenceCone ? 'none' : '2,2');
         } else {
             intervalGroup.selectAll('path.prediction-interval').remove();
         }
@@ -436,6 +484,12 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
                 update => update
                     .attr('cx', d => x(d.x))
                     .attr('cy', d => y(d.y))
+                    .attr('r', d => {
+                        if (!isQuantumMode) return 6;
+                        // Leverage-based size: further from meanX = bigger/heavier
+                        const leverage = Math.abs(d.x - (meanPoint?.x || 50));
+                        return 4 + (leverage / 10);
+                    })
                     .attr('fill', d => {
                         if (!isQuantumMode) return pointColor;
                         const res = Math.abs(d.y - (line.slope * d.x + line.intercept));

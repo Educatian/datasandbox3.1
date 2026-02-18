@@ -76,7 +76,9 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     // Interaction States — Manual mode ON by default for hands-on learning
     const [isManualMode, setIsManualMode] = useState(true);
     const [manualLine, setManualLine] = useState<RegressionLine>({ slope: 0.5, intercept: 35 });
-    const [showSquares, setShowSquares] = useState(true);
+    const [showSquares, setShowSquares] = useState(false);
+    const [interactionMode, setInteractionMode] = useState<'pointer' | 'brush' | 'spray'>('pointer');
+    const [showConfidenceCone, setShowConfidenceCone] = useState(true);
     const [useSAE, setUseSAE] = useState(false);
     const [showPredictionInterval, setShowPredictionInterval] = useState(true);
     const [showMeanLine, setShowMeanLine] = useState(false);
@@ -332,11 +334,13 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                             onPredictXChange={setPredictX}
                             xAxisLabel={scenario === 'physics' ? "Mass (grams)" : (moduleId === 'prediction-painter' ? "Particle Position" : "Independent Variable (X)")}
                             yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : (moduleId === 'prediction-painter' ? "Energy State" : "Dependent Variable (Y)")}
-                            pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined} // Fuchsia-600 for Painter
-                            lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined} // Orange-500 for Painter
+                            pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined}
+                            lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined}
                             isQuantumMode={moduleId === 'prediction-painter'}
                             rSquared={rSquared}
                             meanPoint={{ x: meanX, y: meanY }}
+                            interactionMode={interactionMode}
+                            showConfidenceCone={moduleId === 'prediction-painter' ? showConfidenceCone : false}
                         />
                     </div>
                 </div>
@@ -459,6 +463,43 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                     {(useSAE ? sae : sse).toFixed(1)}
                                 </span>
                             </div>
+
+                            {/* Interaction Toolbox for Prediction Painter */}
+                            {moduleId === 'prediction-painter' && (
+                                <div className="mb-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-2 tracking-widest">Quantum Tools</div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setInteractionMode('pointer')}
+                                            className={`flex-1 py-2 rounded border transition-all flex flex-col items-center gap-1 ${interactionMode === 'pointer' ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50'}`}
+                                        >
+                                            <span className="text-xs font-bold uppercase tracking-tighter">Adjust</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setInteractionMode('brush')}
+                                            className={`flex-1 py-2 rounded border transition-all flex flex-col items-center gap-1 ${interactionMode === 'brush' ? 'bg-fuchsia-500/20 border-fuchsia-500 text-fuchsia-300' : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50'}`}
+                                        >
+                                            <span className="text-xs font-bold uppercase tracking-tighter">Paint</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setInteractionMode('spray')}
+                                            className={`flex-1 py-2 rounded border transition-all flex flex-col items-center gap-1 ${interactionMode === 'spray' ? 'bg-orange-500/20 border-orange-500 text-orange-300' : 'bg-slate-800 border-slate-700 text-slate-400 opacity-50'}`}
+                                        >
+                                            <span className="text-xs font-bold uppercase tracking-tighter">Spray</span>
+                                        </button>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase">Confidence Cone</span>
+                                        <button
+                                            onClick={() => setShowConfidenceCone(!showConfidenceCone)}
+                                            className={`w-8 h-4 rounded-full transition-colors relative ${showConfidenceCone ? 'bg-teal-500' : 'bg-slate-700'}`}
+                                        >
+                                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-4.5' : 'left-0.5'}`} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {isManualMode && (
                                 <div className="text-xs text-slate-500">
                                     Best possible {useSAE ? 'SAE' : 'SSE'}: <span className="text-yellow-400 font-mono">{(useSAE ? autoSae : autoSse).toFixed(1)}</span>
