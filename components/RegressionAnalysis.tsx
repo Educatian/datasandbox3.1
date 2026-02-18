@@ -77,6 +77,8 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     const [isManualMode, setIsManualMode] = useState(true);
     const [manualLine, setManualLine] = useState<RegressionLine>({ slope: 0.5, intercept: 35 });
     const [showSquares, setShowSquares] = useState(true);
+    const [useSAE, setUseSAE] = useState(false);
+    const [showPredictionInterval, setShowPredictionInterval] = useState(true);
     const [showMeanLine, setShowMeanLine] = useState(false);
     const [isSnapping, setIsSnapping] = useState(false);
 
@@ -172,6 +174,21 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
         return points.reduce((sum, p) => {
             const yHat = autoLine.slope * p.x + autoLine.intercept;
             return sum + Math.pow(p.y - yHat, 2);
+        }, 0);
+    }, [points, autoLine]);
+
+    // Sum of Absolute Errors (SAE)
+    const sae = useMemo(() => {
+        return points.reduce((sum, p) => {
+            const yHat = effectiveLine.slope * p.x + effectiveLine.intercept;
+            return sum + Math.abs(p.y - yHat);
+        }, 0);
+    }, [points, effectiveLine]);
+
+    const autoSae = useMemo(() => {
+        return points.reduce((sum, p) => {
+            const yHat = autoLine.slope * p.x + autoLine.intercept;
+            return sum + Math.abs(p.y - yHat);
         }, 0);
     }, [points, autoLine]);
 
@@ -302,7 +319,11 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         onPointUpdate={handlePointUpdate}
                         onAddPoint={handleAddPoint}
                         showSquares={showSquares}
+                        showSAE={useSAE}
+                        showPredictionInterval={showPredictionInterval}
                         showMeanLine={showMeanLine}
+                        predictX={predictX}
+                        onPredictXChange={setPredictX}
                         xAxisLabel={scenario === 'physics' ? "Mass (grams)" : "Independent Variable (X)"}
                         yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : "Dependent Variable (Y)"}
                         pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined} // Fuchsia-600 for Painter
@@ -340,7 +361,29 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         <div className="grid grid-cols-1 gap-3 mb-6">
                             <label className="flex items-center space-x-2 cursor-pointer group">
                                 <input type="checkbox" checked={showSquares} onChange={(e) => setShowSquares(e.target.checked)} className="accent-yellow-500 w-4 h-4" />
-                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Squared Errors (Least Squares)</span>
+                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Errors (SAE/SSE)</span>
+                            </label>
+                            {showSquares && (
+                                <div className="ml-6 flex bg-slate-700/50 rounded-lg p-1 animate-fade-in">
+                                    <button
+                                        onClick={() => setUseSAE(false)}
+                                        className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${!useSAE ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
+                                        title="Sum of Squared Errors"
+                                    >
+                                        SSE (Squares)
+                                    </button>
+                                    <button
+                                        onClick={() => setUseSAE(true)}
+                                        className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${useSAE ? 'bg-yellow-600 text-white' : 'text-slate-400'}`}
+                                        title="Sum of Absolute Errors"
+                                    >
+                                        SAE (Absolute)
+                                    </button>
+                                </div>
+                            )}
+                            <label className="flex items-center space-x-2 cursor-pointer group">
+                                <input type="checkbox" checked={showPredictionInterval} onChange={(e) => setShowPredictionInterval(e.target.checked)} className="accent-teal-500 w-4 h-4" />
+                                <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Show Uncertainty Interval</span>
                             </label>
                             <label className="flex items-center space-x-2 cursor-pointer group">
                                 <input type="checkbox" checked={showMeanLine} onChange={(e) => setShowMeanLine(e.target.checked)} className="accent-blue-500 w-4 h-4" />
@@ -389,18 +432,20 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-3">
                         <h3 className="text-lg font-semibold text-white mb-2">Model Metrics</h3>
 
-                        {/* SSE — The core metric for manual mode */}
+                        {/* Error Metric — The core metric for manual mode */}
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-300" title="Sum of Squared Errors">SSE (Error):</span>
-                            <span className={`text-xl font-mono bg-slate-900 px-3 py-1 rounded transition-colors ${isManualMode && sse <= autoSse * 1.05 ? 'text-emerald-400' : 'text-orange-400'
+                            <span className="text-slate-300" title={useSAE ? "Sum of Absolute Errors" : "Sum of Squared Errors"}>
+                                {useSAE ? "SAE" : "SSE"} (Error):
+                            </span>
+                            <span className={`text-xl font-mono bg-slate-900 px-3 py-1 rounded transition-colors ${isManualMode && (useSAE ? sae <= autoSae * 1.05 : sse <= autoSse * 1.05) ? 'text-emerald-400' : 'text-orange-400'
                                 }`}>
-                                {sse.toFixed(1)}
+                                {(useSAE ? sae : sse).toFixed(1)}
                             </span>
                         </div>
                         {isManualMode && (
                             <div className="text-xs text-slate-500">
-                                Best possible SSE: <span className="text-yellow-400 font-mono">{autoSse.toFixed(1)}</span>
-                                {sse <= autoSse * 1.05 && <span className="text-emerald-400 ml-2">✨ Near optimal!</span>}
+                                Best possible {useSAE ? 'SAE' : 'SSE'}: <span className="text-yellow-400 font-mono">{(useSAE ? autoSae : autoSse).toFixed(1)}</span>
+                                {(useSAE ? sae <= autoSae * 1.05 : sse <= autoSse * 1.05) && <span className="text-emerald-400 ml-2">✨ Near optimal!</span>}
                             </div>
                         )}
 
@@ -428,6 +473,22 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                 Intercept ≈ 20 (Rest Length)
                             </p>
                         )}
+
+                        {/* Error Bucket Visual Goal */}
+                        <div className="mt-4 pt-4 border-t border-slate-700">
+                            <div className="flex justify-between text-xs text-slate-500 mb-1 font-bold uppercase tracking-tighter">
+                                <span>Optimization Goal</span>
+                                <span>{((useSAE ? autoSae / sae : autoSse / sse) * 100).toFixed(0)}% Accuracy</span>
+                            </div>
+                            <div className="h-4 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                                <div
+                                    className={`h-full transition-all duration-500 ${isManualMode && (useSAE ? sae <= autoSae * 1.1 : sse <= autoSse * 1.1) ? 'bg-emerald-500' : 'bg-orange-500'
+                                        }`}
+                                    style={{ width: `${Math.min(100, (useSAE ? autoSae / sae : autoSse / sse) * 100)}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-1 italic text-center">Minimize the area to hit the target!</p>
+                        </div>
                     </div>
 
                     {/* Prediction Tool */}

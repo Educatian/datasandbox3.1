@@ -10,6 +10,10 @@ interface RegressionScatterPlotProps {
     onAddPoint: (x: number, y: number) => void;
     showSquares: boolean;
     showMeanLine: boolean;
+    showSAE?: boolean;
+    showPredictionInterval?: boolean;
+    predictX?: number;
+    onPredictXChange?: (x: number) => void;
     xAxisLabel?: string;
     yAxisLabel?: string;
     pointColor?: string;
@@ -18,6 +22,8 @@ interface RegressionScatterPlotProps {
 
 const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
     data, line, onPointUpdate, onAddPoint, showSquares, showMeanLine,
+    showSAE = false, showPredictionInterval = false,
+    predictX, onPredictXChange,
     xAxisLabel = "Independent Variable (X)", yAxisLabel = "Dependent Variable (Y)",
     pointColor = "rgb(34 211 238)", lineColor = "rgb(250 204 21)"
 }) => {
@@ -92,10 +98,12 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             chartArea.attr('clip-path', 'url(#clip)');
 
             // Layer Order: Squares -> Mean Line -> Residuals -> Reg Line -> Points
+            chartArea.append('g').attr('class', 'interval-layer');
             chartArea.append('g').attr('class', 'squares-layer');
             chartArea.append('line').attr('class', 'mean-line').attr('opacity', 0);
             chartArea.append('g').attr('class', 'residuals-layer');
             chartArea.append('line').attr('class', 'regression-line');
+            chartArea.append('g').attr('class', 'forecast-layer');
             chartArea.append('text').attr('class', 'equation-text');
             chartArea.append('g').attr('class', 'points-layer');
         }
@@ -153,22 +161,63 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             .attr('stroke-dasharray', '5,5')
             .attr('opacity', showMeanLine ? 0.6 : 0);
 
-        // Update Squares (Visualization of Least Squares)
+        // Update Squares/Lines (Visualization of SSE/SAE)
         const squaresGroup = chartArea.select('.squares-layer');
         if (showSquares) {
-            squaresGroup.selectAll('rect.residual-square')
-                .data(data, (d: any) => d.id)
-                .join('rect')
-                .attr('class', 'residual-square')
-                .attr('fill', 'rgba(234, 179, 8, 0.15)') // Yellow with low opacity
-                .attr('stroke', 'rgba(234, 179, 8, 0.3)')
-                .attr('stroke-width', 1)
-                .attr('x', d => x(d.x))
-                .attr('y', d => Math.min(y(d.y), y(d.yHat)))
-                .attr('width', d => Math.abs(y(d.y) - y(d.yHat))) // visual width in pixels
-                .attr('height', d => Math.abs(y(d.y) - y(d.yHat))); // visual height in pixels
+            if (showSAE) {
+                // Show Absolute Error Lines (just lines, but maybe colored)
+                squaresGroup.selectAll('rect.residual-square').remove();
+                squaresGroup.selectAll('line.sae-line')
+                    .data(data, (d: any) => d.id)
+                    .join('line')
+                    .attr('class', 'sae-line')
+                    .attr('x1', d => x(d.x))
+                    .attr('x2', d => x(d.x))
+                    .attr('y1', d => y(d.y))
+                    .attr('y2', d => y(d.yHat))
+                    .attr('stroke', 'rgba(34, 211, 238, 0.5)')
+                    .attr('stroke-width', 4);
+            } else {
+                // Show Squared Errors
+                squaresGroup.selectAll('line.sae-line').remove();
+                squaresGroup.selectAll('rect.residual-square')
+                    .data(data, (d: any) => d.id)
+                    .join('rect')
+                    .attr('class', 'residual-square')
+                    .attr('fill', 'rgba(234, 179, 8, 0.15)')
+                    .attr('stroke', 'rgba(234, 179, 8, 0.3)')
+                    .attr('stroke-width', 1)
+                    .attr('x', d => x(d.x))
+                    .attr('y', d => Math.min(y(d.y), y(d.yHat)))
+                    .attr('width', d => Math.abs(y(d.y) - y(d.yHat)))
+                    .attr('height', d => Math.abs(y(d.y) - y(d.yHat)));
+            }
         } else {
             squaresGroup.selectAll('rect.residual-square').remove();
+            squaresGroup.selectAll('line.sae-line').remove();
+        }
+
+        // Update Prediction Interval (Conceptual Shading)
+        const intervalGroup = chartArea.select('.interval-layer');
+        if (showPredictionInterval && data.length > 3) {
+            const se = d3.deviation(data, d => d.y - (line.slope * d.x + line.intercept)) || 5;
+            const area = d3.area<[number, number]>()
+                .x(d => x(d[0]))
+                .y0(d => y(line.slope * d[0] + line.intercept - se * 1.96))
+                .y1(d => y(line.slope * d[0] + line.intercept + se * 1.96));
+
+            const intervalData: [number, number][] = [[0, 0], [100, 100]]; // Range for the area
+
+            intervalGroup.selectAll('path.prediction-interval')
+                .data([intervalData])
+                .join('path')
+                .attr('class', 'prediction-interval')
+                .attr('d', area as any)
+                .attr('fill', 'rgba(34, 211, 238, 0.05)')
+                .attr('stroke', 'rgba(34, 211, 238, 0.1)')
+                .attr('stroke-dasharray', '2,2');
+        } else {
+            intervalGroup.selectAll('path.prediction-interval').remove();
         }
 
         // Update Residuals
@@ -206,6 +255,67 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
         // Clamp Y to stay in chart area
         if (textY > 90) { textY = 90; textX = (90 - line.intercept) / (line.slope || 0.001); }
         if (textY < 10) { textY = 10; textX = (10 - line.intercept) / (line.slope || 0.001); }
+
+        // Update Forecast Tool
+        const forecastGroup = chartArea.select('.forecast-layer');
+        if (predictX !== undefined && onPredictXChange) {
+            const py = line.slope * predictX + line.intercept;
+            const se = d3.deviation(data, d => d.y - (line.slope * d.x + line.intercept)) || 5;
+
+            // Target Line
+            forecastGroup.selectAll('line.forecast-x-line')
+                .data([predictX])
+                .join('line')
+                .attr('class', 'forecast-x-line')
+                .attr('x1', x(predictX)).attr('x2', x(predictX))
+                .attr('y1', margin.top).attr('y2', height - margin.bottom)
+                .attr('stroke', 'rgba(20, 184, 166, 0.3)')
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '4,4');
+
+            // Prediction Error Bar
+            forecastGroup.selectAll('line.forecast-error-bar')
+                .data([predictX])
+                .join('line')
+                .attr('class', 'forecast-error-bar')
+                .attr('x1', x(predictX)).attr('x2', x(predictX))
+                .attr('y1', y(py - se * 1.96)).attr('y2', y(py + se * 1.96))
+                .attr('stroke', 'rgba(20, 184, 166, 0.8)')
+                .attr('stroke-width', 4);
+
+            // Prediction Point
+            forecastGroup.selectAll('circle.forecast-point')
+                .data([predictX])
+                .join('circle')
+                .attr('class', 'forecast-point')
+                .attr('cx', x(predictX)).attr('cy', y(py))
+                .attr('r', 6)
+                .attr('fill', '#14b8a6')
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2);
+
+            // Draggable Handle on X-axis
+            const handleDrag = d3.drag<SVGRectElement, any>()
+                .on('drag', (event) => {
+                    const nx = Math.max(0, Math.min(100, x.invert(event.x)));
+                    onPredictXChange(nx);
+                });
+
+            forecastGroup.selectAll('rect.forecast-handle')
+                .data([predictX])
+                .join('rect')
+                .attr('class', 'forecast-handle')
+                .attr('x', x(predictX) - 10)
+                .attr('y', height - margin.bottom - 5)
+                .attr('width', 20)
+                .attr('height', 10)
+                .attr('fill', '#14b8a6')
+                .attr('rx', 2)
+                .style('cursor', 'ew-resize')
+                .call(handleDrag as any);
+        } else {
+            forecastGroup.selectAll('*').remove();
+        }
 
         // Clamp X
         textX = Math.max(10, Math.min(90, textX));
