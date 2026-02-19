@@ -542,7 +542,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
             tooltip.remove();
         }
 
-    }, [data, line, onPointUpdate, onAddPoint, showSquares, showMeanLine, xAxisLabel, yAxisLabel]);
+    }, [data, line, onPointUpdate, onAddPoint, showSquares, showSAE, showMeanLine, showPredictionInterval, showConfidenceCone, predictX, onPredictXChange, xAxisLabel, yAxisLabel, pointColor, lineColor, isQuantumMode, rSquared, meanPoint, interactionMode]);
 
     return <svg ref={svgRef}></svg>;
 };
