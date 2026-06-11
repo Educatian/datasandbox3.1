@@ -180,6 +180,100 @@ datasets.append({
     "points": [{"x": int(r["Temperature"]), "outcome": 1 if int(r["Total"]) > 0 else 0} for r in o],
 })
 
+# 9. Gapminder 2007: GDP per capita vs life expectancy (CC-BY)
+gm = read("gapminder.csv")
+gm07 = [r for r in gm if r["year"] == "2007"]
+datasets.append({
+    "id": "gapminder-2007",
+    "kind": "bivariate",
+    "name": "Gapminder: Wealth & Health (2007)",
+    "source": "142 countries, Gapminder Foundation (gapminder via Rdatasets, CC-BY)",
+    "citation": "Bryan, J. (2017). gapminder: Data from Gapminder. Data from gapminder.org, originally compiled by Hans Rosling's Gapminder Foundation.",
+    "year": 2007,
+    "n": len(gm07),
+    "sampled": len(gm07),
+    "xLabel": "GDP per capita", "yLabel": "Life expectancy",
+    "unitX": "USD", "unitY": "years",
+    "description": "Hans Rosling's famous chart: richer countries live longer, but the relationship is curved, not linear.",
+    "contextNote": "Every point is a whole country. Notice how a straight line fits poorly: most of the action happens below $10,000, a classic case for thinking beyond linearity.",
+    "points": [{"x": rnd(r["gdpPercap"], 0), "y": rnd(r["lifeExp"], 1)} for r in gm07],
+})
+
+# 10. Gapminder life expectancy by continent (grouped, for ANOVA)
+continents = {}
+for r in gm07:
+    continents.setdefault(r["continent"], []).append(round(float(r["lifeExp"]), 1))
+datasets.append({
+    "id": "gapminder-lifeexp-by-continent",
+    "kind": "grouped",
+    "name": "Life Expectancy by Continent (2007)",
+    "source": "142 countries grouped by continent, Gapminder Foundation (CC-BY)",
+    "citation": "Bryan, J. (2017). gapminder: Data from Gapminder. Data from gapminder.org / Gapminder Foundation.",
+    "year": 2007,
+    "n": len(gm07),
+    "sampled": len(gm07),
+    "xLabel": "Life expectancy", "unitX": "years",
+    "description": "Do continents differ in average life expectancy? Real between-group differences with very real consequences.",
+    "contextNote": "Group differences here reflect global health inequality, not biology: access to medicine, sanitation, conflict, and wealth.",
+    "groups": [{"label": k, "values": v} for k, v in sorted(continents.items())],
+})
+
+# 11. UN: national wealth vs infant mortality (carData::UN)
+un = [r for r in read("un.csv")
+      if r["ppgdp"] not in ("", "NA") and r["infantMortality"] not in ("", "NA")]
+datasets.append({
+    "id": "un-infant-mortality",
+    "kind": "bivariate",
+    "name": "UN: Wealth & Infant Mortality (2011)",
+    "source": f"{len(un)} UN member states (carData::UN via Rdatasets)",
+    "citation": "United Nations (2011), national statistics compiled in Fox & Weisberg, An R Companion to Applied Regression (carData).",
+    "year": 2011,
+    "n": len(un),
+    "sampled": len(un),
+    "xLabel": "GDP per capita", "yLabel": "Infant mortality",
+    "unitX": "USD", "unitY": "deaths per 1,000 births",
+    "description": "A strong negative, sharply curved relationship: small income gains in poor countries matter enormously.",
+    "contextNote": "Each point summarizes thousands of real births and deaths. The curvature is the statistical signature of diminishing returns to national income.",
+    "points": [{"x": rnd(r["ppgdp"], 0), "y": rnd(r["infantMortality"], 1)} for r in un],
+})
+
+# 12. Fiji earthquakes: depth vs magnitude (datasets::quakes)
+q = read("quakes.csv")
+q_s = sample_every_nth(q, 150)
+datasets.append({
+    "id": "quakes-fiji",
+    "kind": "bivariate",
+    "name": "Fiji Earthquakes",
+    "source": "1,000 seismic events near Fiji since 1964 (datasets::quakes via Rdatasets)",
+    "citation": "Harvard PRIM-H project / Dr. John Woodhouse, Dept. of Geophysics, Harvard University.",
+    "year": 1964,
+    "n": len(q),
+    "sampled": len(q_s),
+    "xLabel": "Depth", "yLabel": "Magnitude",
+    "unitX": "km", "unitY": "Richter",
+    "description": "1,000 real earthquakes from one of the most seismically active regions on Earth. Is depth related to magnitude?",
+    "contextNote": "The Tonga trench produces both shallow and very deep quakes. A near-zero correlation is itself a finding worth trusting.",
+    "points": [{"x": int(r["depth"]), "y": rnd(r["mag"], 1)} for r in q_s],
+})
+
+# 13. Swiss fertility vs education, 1888 (datasets::swiss)
+sw = read("swiss.csv")
+datasets.append({
+    "id": "swiss-fertility",
+    "kind": "bivariate",
+    "name": "Swiss Fertility & Education (1888)",
+    "source": "47 French-speaking Swiss provinces, 1888 census (datasets::swiss via Rdatasets)",
+    "citation": "Mosteller, F. & Tukey, J. W. (1977). Data Analysis and Regression. Addison-Wesley (Project: 1888 Swiss demographic data).",
+    "year": 1888,
+    "n": len(sw),
+    "sampled": len(sw),
+    "xLabel": "Education beyond primary school", "yLabel": "Standardized fertility",
+    "unitX": "% of draftees", "unitY": "Ig index",
+    "description": "A 19th-century demographic transition caught in the act: more education, fewer births.",
+    "contextNote": "Collected during Switzerland's demographic transition. Correlation here is entangled with religion, region, and wealth: a gateway to confounding.",
+    "points": [{"x": rnd(r["Education"], 0), "y": rnd(r["Fertility"], 1)} for r in sw],
+})
+
 # --- Emit TypeScript ---
 header = """// AUTO-GENERATED by scripts/build_real_datasets.py - do not edit by hand.
 // Curated open datasets for the real-data layer (GAISE 2016 Rec 3:

@@ -20,6 +20,7 @@ const N_MIN = 5, N_MAX = 200;
 const REAL_DATA_OPTIONS = [
     { id: 'penguins-flipper-by-species', label: 'Penguin Flippers by Species' },
     { id: 'michelson-speed', label: "Michelson's Speed of Light (first 3 experiments)" },
+    { id: 'gapminder-lifeexp-by-continent', label: 'Life Expectancy: Africa vs Americas vs Asia (2007)' },
 ];
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
