@@ -29,6 +29,17 @@ try {
   const out = process.argv[2] || 'scripts/smoke.png';
   await page.screenshot({ path: out, fullPage: false });
   console.log('SCREENSHOT_SAVED', out);
+
+  // Optional: click into a module by visible title and screenshot it too.
+  const moduleTitle = process.argv[3];
+  if (moduleTitle) {
+    await page.getByText(moduleTitle, { exact: false }).first().click();
+    await page.waitForTimeout(2500);
+    const out2 = out.replace(/\.png$/, '_module.png');
+    await page.screenshot({ path: out2, fullPage: false });
+    console.log('SCREENSHOT_SAVED', out2);
+  }
+
   console.log('PAGE_ERRORS', JSON.stringify(errors.slice(0, 10)));
   await browser.close();
 } finally {
