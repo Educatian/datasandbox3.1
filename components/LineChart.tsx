@@ -1,4 +1,4 @@
-
+﻿
 
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
@@ -112,7 +112,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, movingAverageData, onPointU
 
     }, [data, movingAverageData, onPointUpdate]);
 
-    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px] touch-none"></svg>;
 };
 
 export default LineChart;

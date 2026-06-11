@@ -1,4 +1,4 @@
-
+﻿
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { SNANode, SNALink } from '../types';
@@ -147,7 +147,7 @@ const SNAGraph: React.FC<SNAGraphProps> = ({ nodes, links, selectedNodeId, onNod
     }, [selectedNodeId, links]);
 
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="touch-none"></svg>;
 };
 
 export default SNAGraph;

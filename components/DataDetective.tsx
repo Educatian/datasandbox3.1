@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
@@ -43,22 +43,22 @@ const DATASET_LABELS: Record<DatasetKey, string> = {
 
 const DATASET_EXPLANATIONS: Record<DatasetKey, { short: string; detail: string; isTarget: boolean }> = {
     I: {
-        short: '✅ Normal linear relationship',
+        short: 'âœ… Normal linear relationship',
         detail: 'The gold standard. Statistics (r=0.816) and visualization suggest the same linear relationship. In this case, your eyes and the math are in perfect agreement.',
         isTarget: false
     },
     II: {
-        short: '🎯 Curved relationship hidden by linear stats!',
+        short: 'ðŸŽ¯ Curved relationship hidden by linear stats!',
         detail: 'Statistical camouflage. While r=0.816 suggests a line, the eyes see a perfect shoe-shaped curve. This teaches that correlation only measures LINEAR strength; it is blind to beautiful non-linear patterns.',
         isTarget: true
     },
     III: {
-        short: '⚠️ The Outlier Trap (Leverage)',
-        detail: 'A single point (13, 12.7) pulls the regression line away from the otherwise perfect linear cluster. Correlation is highly sensitive to extreme values—this one "outlier" forces the line to tilt, distorting the truth for all other points.',
+        short: 'âš ï¸ The Outlier Trap (Leverage)',
+        detail: 'A single point (13, 12.7) pulls the regression line away from the otherwise perfect linear cluster. Correlation is highly sensitive to extreme valuesâ€”this one "outlier" forces the line to tilt, distorting the truth for all other points.',
         isTarget: false
     },
     IV: {
-        short: '🚨 The Leverage Phantom',
+        short: 'ðŸš¨ The Leverage Phantom',
         detail: 'Historically, all points here are clustered at x=8 (vertical line, zero trend). A single remote point at x=19 manufactures a "fake" correlation of 0.816 out of thin air. This is the danger of high-leverage points in small samples.',
         isTarget: false
     }
@@ -76,7 +76,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
     // Chat State
     const [chatHistory, setChatHistory] = useState<Message[]>([
         {
-            text: "Welcome to 'The Data Detective' (Interactive Edition)! 🕵️‍♂️ All 4 suspects are in the lineup. They share identical stats, but one is an IMPOSTER (curved). \n\n**NEW:** You can now DRAG any point to see how the statistics 'feel' their influence!",
+            text: "Welcome to 'The Data Detective' (Interactive Edition)! ðŸ•µï¸â€â™‚ï¸ All 4 suspects are in the lineup. They share identical stats, but one is an IMPOSTER (curved). \n\n**NEW:** You can now DRAG any point to see how the statistics 'feel' their influence!",
             role: 'model'
         }
     ]);
@@ -103,7 +103,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
             setIsCorrect(true);
             setChatHistory(prev => [...prev,
             { role: 'user', text: `I think Suspect ${set} is the imposter!` },
-            { role: 'model', text: `🎉 **CORRECT!** ${explanation.detail}\n\n**Hands-on challenge:** Try dragging the points in the linear sets to see how much you can change the correlation just by moving one outlier!` }
+            { role: 'model', text: `ðŸŽ‰ **CORRECT!** ${explanation.detail}\n\n**Hands-on challenge:** Try dragging the points in the linear sets to see how much you can change the correlation just by moving one outlier!` }
             ]);
         } else {
             setChatHistory(prev => [...prev,
@@ -144,7 +144,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
         setSelectedSet(null);
         setIsCorrect(false);
         setChatHistory([{
-            text: "Reset to the original quartet. All stats are identical again. 🕵️‍♂️",
+            text: "Reset to the original quartet. All stats are identical again. ðŸ•µï¸â€â™‚ï¸",
             role: 'model'
         }]);
     };
@@ -154,14 +154,14 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
             <header className="mb-8 flex justify-between items-center">
                 <div>
                     <button onClick={onBack} className="text-cyan-400 hover:text-cyan-300 mb-2 inline-block transition-colors">&larr; Back to Portal</button>
-                    <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">The Data Detective 🕵️‍♂️</h1>
-                    <p className="text-slate-400 mt-2 text-lg">Case File: Interactive Anscombe — Feel the Influence</p>
+                    <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">The Data Detective ðŸ•µï¸â€â™‚ï¸</h1>
+                    <p className="text-slate-400 mt-2 text-lg">Case File: Interactive Anscombe â€” Feel the Influence</p>
                 </div>
                 <button
                     onClick={handleReset}
                     className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-full transition-all border border-slate-600 flex items-center gap-2"
                 >
-                    <span className="text-lg" aria-hidden="true">🔄</span> Reset Quartet
+                    <span className="text-lg" aria-hidden="true">ðŸ”„</span> Reset Quartet
                 </button>
             </header>
 
@@ -173,7 +173,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
                     <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 backdrop-blur-sm">
                         <h2 className="text-xl font-bold text-slate-300 mb-4 flex items-center justify-between">
                             <div className="flex items-center">
-                                <span className="bg-slate-700 p-2 rounded mr-3">🕵️‍♂️</span>
+                                <span className="bg-slate-700 p-2 rounded mr-3">ðŸ•µï¸â€â™‚ï¸</span>
                                 {selectedSet ? `Inspecting Suspect ${selectedSet}` : "Select a card to inspect stats"}
                             </div>
                             {selectedSet && <span className="text-sm font-normal text-slate-500 italic">{DATASET_LABELS[selectedSet]}</span>}
@@ -187,7 +187,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
                         </div>
                     </div>
 
-                    {/* The Cards — All Visible & Draggable */}
+                    {/* The Cards â€” All Visible & Draggable */}
                     <div className="grid grid-cols-2 gap-6">
                         {(['I', 'II', 'III', 'IV'] as const).map(set => (
                             <InteractiveDatasetCard
@@ -212,7 +212,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
                             }`}>
                             <div className="flex items-start gap-3">
                                 <div className="text-2xl mt-0.5">
-                                    {DATASET_EXPLANATIONS[selectedSet].isTarget && isCorrect ? '🎉' : '🔍'}
+                                    {DATASET_EXPLANATIONS[selectedSet].isTarget && isCorrect ? 'ðŸŽ‰' : 'ðŸ”'}
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-white mb-1">
@@ -462,7 +462,7 @@ const InteractiveDatasetCard: React.FC<InteractiveDatasetCardProps> = ({ dataset
 
             <div className="flex h-full">
                 <div className="w-full">
-                    <svg ref={svgRef} className="w-full h-full" viewBox="0 0 300 200"></svg>
+                    <svg ref={svgRef} className="w-full h-full touch-none" viewBox="0 0 300 200"></svg>
                 </div>
             </div>
 

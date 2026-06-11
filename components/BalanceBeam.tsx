@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
@@ -17,7 +17,7 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { text: "Welcome to The Balance Beam! ⚖️ I'm Dr. Gem. Drag the blue weights and watch how the Mean chases them while the Median stays calm.", role: 'model' }
+        { text: "Welcome to The Balance Beam! âš–ï¸ I'm Dr. Gem. Drag the blue weights and watch how the Mean chases them while the Median stays calm.", role: 'model' }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -279,7 +279,7 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
             >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center">
-                    <svg ref={svgRef} className="w-full h-full min-h-[400px]" style={{ overflow: 'visible' }}></svg>
+                    <svg ref={svgRef} className="w-full h-full min-h-[400px] touch-none" style={{ overflow: 'visible' }}></svg>
 
                     <div className="flex gap-4 mt-4">
                         <button onClick={handleReset} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white">Reset Weights</button>

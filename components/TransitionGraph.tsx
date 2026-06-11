@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+﻿import React, { useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
 import { LagAnalysisResult, StudentAction } from '../types';
 
@@ -9,12 +9,12 @@ interface TransitionGraphProps {
 }
 
 const actionMap: Record<StudentAction, { emoji: string; name: string }> = {
-    V: { emoji: '▶️', name: 'Video' },
-    Q: { emoji: '❓', name: 'Quiz' },
-    A: { emoji: '📝', name: 'Assignment' },
-    F: { emoji: '💬', name: 'Forum' },
-    P: { emoji: '✅', name: 'Pass' },
-    E: { emoji: '❌', name: 'Fail/Error' },
+    V: { emoji: 'â–¶ï¸', name: 'Video' },
+    Q: { emoji: 'â“', name: 'Quiz' },
+    A: { emoji: 'ðŸ“', name: 'Assignment' },
+    F: { emoji: 'ðŸ’¬', name: 'Forum' },
+    P: { emoji: 'âœ…', name: 'Pass' },
+    E: { emoji: 'âŒ', name: 'Fail/Error' },
 };
 
 // FIX: Define a type that combines the local node data with D3's simulation data for type safety.
@@ -102,7 +102,7 @@ const TransitionGraph: React.FC<TransitionGraphProps> = ({ title, result, action
         <div className="w-full h-full flex flex-col items-center">
             <h4 className="text-lg font-semibold text-center text-slate-300 mb-2">{title}</h4>
             <div ref={containerRef} className="w-full flex-grow">
-                <svg ref={svgRef}></svg>
+                <svg ref={svgRef} className="touch-none"></svg>
             </div>
         </div>
     );

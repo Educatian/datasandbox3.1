@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
@@ -26,7 +26,7 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Engineering Chief Gem speaking. 🛠️\n\nOur **Quantum Beam** is misaligned using too much energy. \n\n**MISSION**: Minimize the **Total Error** (Sum of Squared Residuals).\n\nAdjust the Beam (Slope & Height) until the **Stability** reaches **95%**.\n\nTry the **🖌 Paint** or **💨 Spray** tools to add more data points!" }
+        { role: 'model', text: "Engineering Chief Gem speaking. ðŸ› ï¸\n\nOur **Quantum Beam** is misaligned using too much energy. \n\n**MISSION**: Minimize the **Total Error** (Sum of Squared Residuals).\n\nAdjust the Beam (Slope & Height) until the **Stability** reaches **95%**.\n\nTry the **ðŸ–Œ Paint** or **ðŸ’¨ Spray** tools to add more data points!" }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -318,10 +318,10 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
     const handleSendMessage = async (msg: string) => {
         setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
         setIsChatLoading(true);
-        const context = `Mission: Prediction Painter. SSE: ${sse.toFixed(0)}, Stability: ${stability.toFixed(1)}%, R²: ${rSquared.toFixed(3)}, N: ${points.length}, Tool: ${interactionMode}`;
+        const context = `Mission: Prediction Painter. SSE: ${sse.toFixed(0)}, Stability: ${stability.toFixed(1)}%, RÂ²: ${rSquared.toFixed(3)}, N: ${points.length}, Tool: ${interactionMode}`;
         try {
             if (msg.includes("Beam stabilized")) {
-                setChatHistory(prev => [...prev, { role: 'model', text: `✅ **CALIBRATION COMPLETE**\n\nBy minimizing SSE, you found the **Line of Best Fit**. Stability is at maximum.` }]);
+                setChatHistory(prev => [...prev, { role: 'model', text: `âœ… **CALIBRATION COMPLETE**\n\nBy minimizing SSE, you found the **Line of Best Fit**. Stability is at maximum.` }]);
             } else {
                 const response = await getChatResponse(msg, context);
                 setChatHistory(prev => [...prev, { role: 'model', text: response }]);
@@ -331,9 +331,9 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
     };
 
     const toolConfig: { mode: InteractionMode; label: string; emoji: string; activeClass: string }[] = [
-        { mode: 'pointer', label: 'Adjust', emoji: '🖱', activeClass: 'bg-teal-500/20 border-teal-500 text-teal-300' },
-        { mode: 'brush', label: 'Paint', emoji: '🖌', activeClass: 'bg-fuchsia-500/20 border-fuchsia-500 text-fuchsia-300' },
-        { mode: 'spray', label: 'Spray', emoji: '💨', activeClass: 'bg-orange-500/20 border-orange-500 text-orange-300' },
+        { mode: 'pointer', label: 'Adjust', emoji: 'ðŸ–±', activeClass: 'bg-teal-500/20 border-teal-500 text-teal-300' },
+        { mode: 'brush', label: 'Paint', emoji: 'ðŸ–Œ', activeClass: 'bg-fuchsia-500/20 border-fuchsia-500 text-fuchsia-300' },
+        { mode: 'spray', label: 'Spray', emoji: 'ðŸ’¨', activeClass: 'bg-orange-500/20 border-orange-500 text-orange-300' },
     ];
 
     return (
@@ -348,7 +348,7 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                     </button>
                     <div>
                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-500">
-                            The Prediction Painter 🎨
+                            The Prediction Painter ðŸŽ¨
                         </h1>
                         <p className="text-xs text-slate-400 font-mono tracking-wider mt-0.5">QUANTUM BEAM CALIBRATION // LEAST SQUARES</p>
                     </div>
@@ -362,7 +362,7 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                         </span>
                     </div>
                     <div className="flex flex-col items-end text-slate-300">
-                        <span className="text-xs uppercase opacity-70">R²</span>
+                        <span className="text-xs uppercase opacity-70">RÂ²</span>
                         <span className="font-bold text-lg text-yellow-400">{rSquared.toFixed(3)}</span>
                     </div>
                     <div className="flex flex-col items-end text-slate-300">
@@ -377,16 +377,16 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                 {/* Main Chart */}
                 <div className="flex-1 min-w-0 p-2 flex flex-col items-stretch overflow-hidden">
                     <div className="w-full h-full bg-slate-900/80 rounded-2xl border border-slate-700/50 p-2 shadow-2xl backdrop-blur-sm flex flex-col">
-                        <svg ref={svgRef} viewBox="0 0 800 500" className="w-full flex-1 drop-shadow-lg" preserveAspectRatio="xMidYMid meet" />
+                        <svg ref={svgRef} viewBox="0 0 800 500" className="w-full flex-1 drop-shadow-lg touch-none" preserveAspectRatio="xMidYMid meet" />
                     </div>
                 </div>
 
-                {/* Right Chat Panel — Chief Gem */}
+                {/* Right Chat Panel â€” Chief Gem */}
                 <div className="w-80 flex-shrink-0 border-l border-slate-800 bg-slate-900/50 flex flex-col">
                     <div className="p-3 border-b border-slate-800 bg-slate-900 flex-shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-violet-900/50 flex items-center justify-center border border-violet-500/50">
-                                <span className="text-lg">👷‍♀️</span>
+                                <span className="text-lg">ðŸ‘·â€â™€ï¸</span>
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-100 text-sm">Chief Gem</h3>
@@ -471,7 +471,7 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                 {/* Action Buttons */}
                 <button onClick={() => { setSlope(optimalSlope); setIntercept(optimalIntercept); }}
                     className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-bold transition-all hover:scale-105 active:scale-95">
-                    <span aria-hidden="true">⚡</span> Auto-Calibrate
+                    <span aria-hidden="true">âš¡</span> Auto-Calibrate
                 </button>
                 <button onClick={() => {
                     const data: { x: number, y: number }[] = [];
@@ -483,7 +483,7 @@ const PredictionPainterGame: React.FC<PredictionPainterGameProps> = ({ onBack })
                     setMissionStatus('ACTIVE');
                 }}
                     className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition-all">
-                    <span aria-hidden="true">🔄</span> Reset
+                    <span aria-hidden="true">ðŸ”„</span> Reset
                 </button>
             </div>
         </div>

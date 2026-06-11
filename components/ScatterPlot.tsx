@@ -1,4 +1,4 @@
-
+﻿
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { Point, RegressionLine } from '../types';
@@ -210,7 +210,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
 
     }, [data, line, onPointUpdate, xAxisLabel, yAxisLabel, showRegressionLine]);
 
-    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px] touch-none"></svg>;
 };
 
 export default ScatterPlot;

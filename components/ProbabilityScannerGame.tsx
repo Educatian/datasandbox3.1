@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
@@ -18,7 +18,7 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
 
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Commander Gem here. 🛰️ We're scanning for anomalous signals. \n\n**MISSION 1**: Isolate the **Top 5%** of signal strength.\n\nAdjust the Z-Scanner until the **Cumulative Probability** reads **95%** (0.95). Access denied below that threshold." }
+        { role: 'model', text: "Commander Gem here. ðŸ›°ï¸ We're scanning for anomalous signals. \n\n**MISSION 1**: Isolate the **Top 5%** of signal strength.\n\nAdjust the Z-Scanner until the **Cumulative Probability** reads **95%** (0.95). Access denied below that threshold." }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -203,7 +203,7 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
             // If automated success message, simulate delay
             if (msg.includes("I think I locked it in")) {
                 setChatHistory(prev => [...prev,
-                { role: 'model', text: `🎯 **TARGET ACQUIRED!** \n\nExcellent work, Cadet. \n\nYou've set the scanner to **Z = ${zScore.toFixed(2)}**, which covers **${(currentP * 100).toFixed(1)}%** of the distribution.\n\nThis is the critical threshold for the Top 5% of anomalies.` }
+                { role: 'model', text: `ðŸŽ¯ **TARGET ACQUIRED!** \n\nExcellent work, Cadet. \n\nYou've set the scanner to **Z = ${zScore.toFixed(2)}**, which covers **${(currentP * 100).toFixed(1)}%** of the distribution.\n\nThis is the critical threshold for the Top 5% of anomalies.` }
                 ]);
             } else {
                 const response = await getChatResponse(msg, context);
@@ -232,7 +232,7 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
                     </button>
                     <div>
                         <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center gap-3">
-                            The Probability Scanner 🛸
+                            The Probability Scanner ðŸ›¸
                         </h1>
                         <p className="text-sm text-slate-400 font-mono tracking-wider mt-1">ANOMALY DETECTION SYSTEM // Z-SECTOR</p>
                     </div>
@@ -261,7 +261,7 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
                             MU: 0.0
                         </div>
 
-                        <svg ref={svgRef} viewBox="0 0 900 450" className="w-full h-auto drop-shadow-lg"></svg>
+                        <svg ref={svgRef} viewBox="0 0 900 450" className="w-full h-auto drop-shadow-lg touch-none"></svg>
 
                         {/* Scanner Readout */}
                         <div className="flex justify-between items-center mt-8 pt-8 border-t border-slate-700/50 px-8">
@@ -311,7 +311,7 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
                     <div className="p-4 border-b border-slate-800 bg-slate-900">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-cyan-900/50 flex items-center justify-center border border-cyan-500/50">
-                                <span className="text-xl">👩‍🚀</span>
+                                <span className="text-xl">ðŸ‘©â€ðŸš€</span>
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-100">Commander Gem</h3>

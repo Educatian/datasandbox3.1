@@ -1,4 +1,4 @@
-
+﻿
 import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import { PCA3DPoint, PCAResult } from '../types';
@@ -148,7 +148,7 @@ const PCAVisualizer: React.FC<PCAVisualizerProps> = ({ data3D, pcaResult }) => {
     return (
         <div className="w-full h-full flex flex-col items-center">
             <div className="w-full flex-grow relative cursor-move">
-                 <svg ref={svgRef} className="w-full h-full"></svg>
+                 <svg ref={svgRef} className="w-full h-full touch-none"></svg>
             </div>
             <div className="mt-4 p-2 bg-slate-900 rounded-lg">
                 <h4 className="text-center text-sm text-slate-300 mb-1">2D Projection</h4>

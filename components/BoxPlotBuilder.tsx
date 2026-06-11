@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
@@ -25,7 +25,7 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
     const [data, setData] = useState<number[]>([10, 25, 40, 45, 50, 55, 60, 75, 90]);
     // Chat State
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Greetings! Dr. Gem here. 📦 Let's pack some data! Drag those points around and I'll help you make sense of the Quartiles." }
+        { role: 'model', text: "Greetings! Dr. Gem here. ðŸ“¦ Let's pack some data! Drag those points around and I'll help you make sense of the Quartiles." }
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
@@ -305,7 +305,7 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
 
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4">
-                    <svg ref={svgRef} className="w-full h-full min-h-[400px]"></svg>
+                    <svg ref={svgRef} className="w-full h-full min-h-[400px] touch-none"></svg>
                 </div>
 
                 <div className="lg:col-span-1 flex flex-col space-y-6">

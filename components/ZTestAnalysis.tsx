@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { DistributionParams } from '../types';
 import { calculateZTest, calculateMean2ForPValue, generateSampleData, calculateMean, normalCDF } from '../services/statisticsService';
@@ -36,6 +36,7 @@ const Slider: React.FC<{ label: string, value: number, min: number, max: number,
             value={value}
             onChange={onChange}
             onMouseUp={onMouseUp}
+            onTouchEnd={onMouseUp}
             aria-label={label}
             className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
         />
@@ -69,8 +70,8 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
     const [testResult, setTestResult] = useState({ zScore: 0, pValue: 1 });
     const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
         isRadarMode
-            ? "Welcome to The Radar Detector! 🎯 I'm Dr. Gem. Here, the null hypothesis is ALWAYS TRUE, but watch how we still get 'significant' results sometimes. That's a Type I Error - a False Alarm! Click 'Run 10 Samples' to start."
-            : "Hello! I'm Dr. Gem. 🧪 Ready to test our hypothesis? Adjust the group means and let's check that p-value!",
+            ? "Welcome to The Radar Detector! ðŸŽ¯ I'm Dr. Gem. Here, the null hypothesis is ALWAYS TRUE, but watch how we still get 'significant' results sometimes. That's a Type I Error - a False Alarm! Click 'Run 10 Samples' to start."
+            : "Hello! I'm Dr. Gem. ðŸ§ª Ready to test our hypothesis? Adjust the group means and let's check that p-value!",
         () => isRadarMode
             ? `
                 Radar Detector Simulation (Type I Error Demo):
@@ -183,13 +184,13 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                     <button onClick={onBack} className="text-rose-400 hover:text-rose-300 mb-4 inline-block">&larr; Back to Portal</button>
                     <div className="text-center">
                         <h1 className="text-4xl font-bold text-rose-400">The Radar Detector</h1>
-                        <p className="text-slate-400 mt-2">Watch Type I Errors happen—even when the null hypothesis is TRUE!</p>
+                        <p className="text-slate-400 mt-2">Watch Type I Errors happenâ€”even when the null hypothesis is TRUE!</p>
                     </div>
                 </header>
 
                 <div className="mb-6 bg-rose-500/10 border border-rose-500/30 p-4 rounded-lg text-center max-w-3xl mx-auto">
                     <p className="text-rose-200 text-sm font-medium">
-                        ⚠️ In this simulation, <strong>H₀ is ALWAYS TRUE</strong> (μ = {POPULATION_MEAN}).
+                        âš ï¸ In this simulation, <strong>Hâ‚€ is ALWAYS TRUE</strong> (Î¼ = {POPULATION_MEAN}).
                         Any "significant" result is a <strong>FALSE ALARM</strong> (Type I Error).
                     </p>
                 </div>
@@ -203,7 +204,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                             <div className="relative h-48 bg-slate-900 rounded-lg overflow-hidden">
                                 {/* Bell curve background (simplified) */}
                                 <svg viewBox="0 0 400 100" className="w-full h-full" preserveAspectRatio="none">
-                                    {/* Rejection regions - z = ±1.96 maps to x = 102 and 298 */}
+                                    {/* Rejection regions - z = Â±1.96 maps to x = 102 and 298 */}
                                     <rect x="0" y="0" width="102" height="100" fill="rgba(239, 68, 68, 0.15)" />
                                     <rect x="298" y="0" width="102" height="100" fill="rgba(239, 68, 68, 0.15)" />
                                     {/* Accept region */}
@@ -244,13 +245,13 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
 
                                     {/* Center line */}
                                     <line x1="200" y1="0" x2="200" y2="100" stroke="rgba(255,255,255,0.2)" strokeDasharray="4" />
-                                    {/* Critical value lines at z = ±1.96 */}
+                                    {/* Critical value lines at z = Â±1.96 */}
                                     <line x1="102" y1="0" x2="102" y2="100" stroke="rgba(239, 68, 68, 0.8)" strokeWidth="2" />
                                     <line x1="298" y1="0" x2="298" y2="100" stroke="rgba(239, 68, 68, 0.8)" strokeWidth="2" />
                                     {/* Labels */}
                                     <text x="51" y="95" fill="#ef4444" fontSize="10" textAnchor="middle">-1.96</text>
                                     <text x="349" y="95" fill="#ef4444" fontSize="10" textAnchor="middle">+1.96</text>
-                                    <text x="200" y="95" fill="#94a3b8" fontSize="10" textAnchor="middle">μ=50</text>
+                                    <text x="200" y="95" fill="#94a3b8" fontSize="10" textAnchor="middle">Î¼=50</text>
                                 </svg>
 
 
@@ -279,9 +280,9 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                 </div>
                             </div>
                             <div className="flex justify-between mt-2 text-xs text-slate-500">
-                                <span className="text-red-400">← Reject H₀</span>
-                                <span className="text-green-400">Accept H₀ (Fail to Reject)</span>
-                                <span className="text-red-400">Reject H₀ →</span>
+                                <span className="text-red-400">â† Reject Hâ‚€</span>
+                                <span className="text-green-400">Accept Hâ‚€ (Fail to Reject)</span>
+                                <span className="text-red-400">Reject Hâ‚€ â†’</span>
                             </div>
                         </div>
 
@@ -293,7 +294,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                     disabled={isAutoRunning}
                                     className="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-600 text-white font-bold py-4 rounded-lg shadow-lg transition-all transform active:scale-95"
                                 >
-                                    <span aria-hidden="true">🎯</span> Run {BATCH_SIZE} Samples
+                                    <span aria-hidden="true">ðŸŽ¯</span> Run {BATCH_SIZE} Samples
                                 </button>
                                 <button
                                     onClick={() => setIsAutoRunning(!isAutoRunning)}
@@ -302,7 +303,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                         : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
                                         }`}
                                 >
-                                    {isAutoRunning ? '⏸ Stop Auto-Run' : '▶️ Auto-Run'}
+                                    {isAutoRunning ? 'â¸ Stop Auto-Run' : 'â–¶ï¸ Auto-Run'}
                                 </button>
                             </div>
 
@@ -316,7 +317,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                     onChange={(e) => setRadarSampleSize(Number(e.target.value))}
                                 />
                                 <p className="text-xs text-slate-500 mt-1">
-                                    Standard Error of Mean: σ/√n = {standardError.toFixed(2)}
+                                    Standard Error of Mean: Ïƒ/âˆšn = {standardError.toFixed(2)}
                                 </p>
                             </div>
 
@@ -324,7 +325,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                 onClick={resetRadar}
                                 className="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg text-sm"
                             >
-                                <span aria-hidden="true">🔄</span> Reset Experiment
+                                <span aria-hidden="true">ðŸ”„</span> Reset Experiment
                             </button>
                         </div>
                     </div>
@@ -352,7 +353,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-slate-400">Expected (α):</span>
+                                        <span className="text-slate-400">Expected (Î±):</span>
                                         <span className="text-xl font-mono text-slate-300">5.0%</span>
                                     </div>
                                 </div>
@@ -383,8 +384,8 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                         }`}>
                                         <p className="text-sm">
                                             {Math.abs(observedRate - 5) < 2
-                                                ? "✅ As expected! The error rate converges to ~5% (α level)."
-                                                : "📊 Keep sampling! The rate will converge to 5% with more samples."
+                                                ? "âœ… As expected! The error rate converges to ~5% (Î± level)."
+                                                : "ðŸ“Š Keep sampling! The rate will converge to 5% with more samples."
                                             }
                                         </p>
                                     </div>
@@ -474,6 +475,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                 value={logPValue}
                                 onChange={handlePValueSliderChange}
                                 onMouseUp={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'p-value_adjust', value: Math.pow(10, -logPValue) })}
+                                onTouchEnd={() => logEvent('slider_change', 'ZTestAnalysis', { control: 'p-value_adjust', value: Math.pow(10, -logPValue) })}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer mt-1"
                                 aria-label="Adjust p-value"
                             />
