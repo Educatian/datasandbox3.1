@@ -7,3 +7,17 @@ compatibility_date = "2025-01-01"
 
 [vars]
 ALLOWED_ORIGINS = "https://datasandbox-36k.pages.dev,http://localhost:3000,http://localhost:4173"
+
+# Per-IP rate limits (Workers rate-limiting binding).
+# MINUTE: sustained ceiling; BURST: rapid-fire guard.
+[[unsafe.bindings]]
+name = "RL_MINUTE"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 8, period = 60 }
+
+[[unsafe.bindings]]
+name = "RL_BURST"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 3, period = 10 }

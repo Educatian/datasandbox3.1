@@ -42,6 +42,24 @@ export default {
             return Response.json({ error: 'No LLM secret configured (OPENROUTER_API_KEY or GEMINI_API_KEY)' }, { status: 500, headers: corsHeaders(allowOrigin) });
         }
 
+        // Per-IP rate limiting (protects LLM credits from anonymous/demo abuse).
+        // 3 requests / 10s burst + 8 requests / 60s sustained.
+        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+        try {
+            const [burst, minute] = await Promise.all([
+                env.RL_BURST?.limit({ key: ip }),
+                env.RL_MINUTE?.limit({ key: ip }),
+            ]);
+            if ((burst && !burst.success) || (minute && !minute.success)) {
+                return Response.json(
+                    { error: 'Rate limit exceeded. Dr. Gem needs a short breather; try again in a minute.' },
+                    { status: 429, headers: { ...corsHeaders(allowOrigin), 'Retry-After': '30' } }
+                );
+            }
+        } catch {
+            // If the binding is unavailable, fail open rather than break the tutor.
+        }
+
         let prompt;
         try {
             const body = await request.json();
