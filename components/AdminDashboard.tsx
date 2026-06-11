@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, getCurrentUser, isAdmin } from '../services/supabaseService';
 import { User } from '@supabase/supabase-js';
+import AdminAnalytics from './AdminAnalytics';
 
 // --- Types ---
 
@@ -94,6 +95,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
     const [userSearch, setUserSearch] = useState('');
     const [userListLoading, setUserListLoading] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false); // For autocomplete dropdown
+    const [adminTab, setAdminTab] = useState<'modules' | 'analytics'>('modules');
 
     // 1. Auth Check (Route Guard)
     useEffect(() => {
@@ -109,6 +111,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
             }
             setLoading(false);
         };
+        checkAuth();
     }, []);
 
     // Fetch User List (Admin Only)
@@ -253,12 +256,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
                         Admin Command Center
                     </h1>
                     <p className="text-slate-400 text-sm mt-1">
-                        Control module access / Schedule releases / Real-time updates
+                        Control module access / Schedule releases / Learning analytics
                     </p>
                 </div>
 
+                <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700" role="tablist" aria-label="Admin sections">
+                    {([['modules', 'Modules & Users'], ['analytics', 'Learning Analytics']] as const).map(([tab, label]) => (
+                        <button
+                            key={tab}
+                            role="tab"
+                            aria-selected={adminTab === tab}
+                            onClick={() => setAdminTab(tab)}
+                            className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${adminTab === tab
+                                ? 'bg-indigo-600 text-white shadow-lg'
+                                : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
             </header>
 
+            {adminTab === 'analytics' && <AdminAnalytics />}
+
+            {adminTab === 'modules' && (
+            <>
             {/* --- User Management Section --- */}
             <div className="mb-12 bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6">
                 <div className="flex justify-between items-center mb-6">
@@ -407,6 +430,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
                     </div>
                 ))}
             </div>
+            </>
+            )}
         </div>
     );
 };

@@ -5,10 +5,11 @@ import { supabase, isSupabaseConfigured, getSession, onAuthStateChange, signOut,
 import { GlobalClickLogger } from './components/GlobalClickLogger';
 import LoginPage from './components/LoginPage';
 import CurriculumView from './components/CurriculumView';
-import { CURRICULUM, getModuleDef, ModuleDef } from './curriculum';
+import { ALL_TRACKS, getModuleDef, ModuleDef } from './curriculum';
 import { MODULE_REGISTRY } from './components/moduleRegistry';
 
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const ProgressView = lazy(() => import('./components/ProgressView'));
 
 const LoadingScreen: React.FC<{ label?: string }> = ({ label = 'Loading...' }) => (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center" role="status">
@@ -114,7 +115,7 @@ const App: React.FC = () => {
         // Local screencast bypass: mark every module visible (skip Supabase).
         if (LOCAL_BYPASS) {
             const all: Record<string, any> = {};
-            for (const a of CURRICULUM) for (const m of a.modules) all[m.id] = { module_id: m.id, visibility_state: 'visible' };
+            for (const a of ALL_TRACKS) for (const m of a.modules) all[m.id] = { module_id: m.id, visibility_state: 'visible' };
             setModuleSettings(all);
             return;
         }
@@ -196,17 +197,28 @@ const App: React.FC = () => {
         if (activeModuleId === 'admin_dashboard') {
             return (
                 <Suspense fallback={<LoadingScreen label="Loading dashboard..." />}>
-                    <AdminDashboard curriculum={CURRICULUM} onBack={() => setActiveModuleId(null)} preVerifiedAdmin={isAdminState} />
+                    <AdminDashboard curriculum={ALL_TRACKS} onBack={() => setActiveModuleId(null)} preVerifiedAdmin={isAdminState} />
+                </Suspense>
+            );
+        }
+        if (activeModuleId === 'my_progress') {
+            return (
+                <Suspense fallback={<LoadingScreen label="Loading your progress..." />}>
+                    <ProgressView
+                        userKey={user?.email || user?.id || 'anonymous'}
+                        onBack={() => setActiveModuleId(null)}
+                        navigateTo={navigateTo}
+                    />
                 </Suspense>
             );
         }
         if (!activeModuleId) {
-            return <CurriculumView tracks={CURRICULUM} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
+            return <CurriculumView tracks={ALL_TRACKS} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
         }
 
         const moduleDef = getModuleDef(activeModuleId);
         if (!moduleDef) {
-            return <CurriculumView tracks={CURRICULUM} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
+            return <CurriculumView tracks={ALL_TRACKS} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
         }
 
         const onBack = () => setActiveModuleId(null);
@@ -253,6 +265,16 @@ const App: React.FC = () => {
                     <span className="text-sm text-slate-300 hidden sm:block max-w-[150px] truncate">
                         {user.email}
                     </span>
+                    <button
+                        onClick={() => setActiveModuleId(activeModuleId === 'my_progress' ? null : 'my_progress')}
+                        className={`transition-colors p-1 ${activeModuleId === 'my_progress' ? 'text-cyan-300' : 'text-slate-400 hover:text-cyan-300'}`}
+                        title="My Progress"
+                        aria-label="My progress"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6m4 6V9m4 10V5M5 19h14" />
+                        </svg>
+                    </button>
                     <button
                         onClick={handleLogout}
                         className="text-slate-400 hover:text-red-400 transition-colors p-1"

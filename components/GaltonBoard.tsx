@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { getChatResponse } from '../services/geminiService';
+import PredictGate from './ui/PredictGate';
 
 interface GaltonBoardProps {
     onBack: () => void;
@@ -213,6 +214,16 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="galton-board-shape"
+                question="100 balls will drop through the pegs, each bouncing randomly left or right at every peg. What shape will the pile at the bottom take?"
+                options={[
+                    { id: 'flat', label: 'Roughly flat: every bin is equally likely', misconception: 'uniform_outcome_belief' },
+                    { id: 'bell', label: 'A bell shape: most balls land in the middle bins', correct: true },
+                    { id: 'edges', label: 'U-shaped: balls drift toward the outer edges', misconception: 'random_walk_divergence' },
+                    { id: 'unpredictable', label: 'No stable shape: it is random, so every run looks different', misconception: 'randomness_no_pattern' }
+                ]}
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center">
                     <canvas ref={canvasRef} width={500} height={500} className="w-full h-full max-w-[500px]" />
@@ -235,6 +246,7 @@ const GaltonBoard: React.FC<GaltonBoardProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

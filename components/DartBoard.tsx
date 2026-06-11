@@ -4,6 +4,7 @@ import { getChatResponse } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { generateSampleData } from '../services/statisticsService';
+import PredictGate from './ui/PredictGate';
 
 interface DartBoardProps {
     onBack: () => void;
@@ -265,6 +266,16 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="dart-board-sd"
+                question="Two players throw 50 darts each at the same target. Player A has SD = 5, Player B has SD = 30. Both aim at the bullseye. What will you see?"
+                options={[
+                    { id: 'tight-vs-scatter', label: "A's darts cluster tightly near the center; B's are scattered all over, but BOTH average near the bullseye", correct: true },
+                    { id: 'b-off-target', label: "B's darts will land mostly far from the bullseye, so B's average lands far from center too", misconception: 'spread_shifts_mean' },
+                    { id: 'a-better-score', label: "A's darts always land closer to the bullseye than every one of B's darts", misconception: 'sd_as_strict_bound' },
+                    { id: 'same-picture', label: 'The two patterns will look about the same; 50 darts is too few to see any difference', misconception: 'variability_invisible' }
+                ]}
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center">
 
@@ -430,6 +441,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };
