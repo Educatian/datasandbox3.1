@@ -14,7 +14,23 @@ const ProgressView = lazy(() => import('./components/ProgressView'));
 const LoadingScreen: React.FC<{ label?: string }> = ({ label = 'Loading...' }) => (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center" role="status">
         <div className="text-center">
-            <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            {/* Animated bead-curve logo; static logo with pulse for reduced motion */}
+            <video
+                className="w-28 h-28 mx-auto mb-4 rounded-3xl object-cover shadow-lg shadow-violet-500/20 motion-reduce:hidden"
+                src="/brand/logo_loading.mp4"
+                poster="/brand/logo.webp"
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-hidden="true"
+            />
+            <img
+                src="/brand/logo.webp"
+                alt=""
+                aria-hidden="true"
+                className="w-28 h-28 mx-auto mb-4 rounded-3xl animate-pulse hidden motion-reduce:block"
+            />
             <p className="text-slate-400">{label}</p>
         </div>
     </div>
