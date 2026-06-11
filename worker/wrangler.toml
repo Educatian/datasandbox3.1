@@ -1,0 +1,10 @@
+name = "datasandbox-gemini-proxy"
+main = "gemini-proxy.js"
+compatibility_date = "2025-01-01"
+
+# Secrets (set via `npx wrangler secret put GEMINI_API_KEY`):
+#   GEMINI_API_KEY  - Google AI Studio key, server-side only
+#
+# Optional vars:
+# [vars]
+# ALLOWED_ORIGINS = "https://your-pages-domain.pages.dev,http://localhost:3000"

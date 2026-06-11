@@ -2,23 +2,45 @@
 import { GoogleGenAI } from "@google/genai";
 import { Observation, ValueTimePoint, FrequentPattern, LagAnalysisResult, StudentAction, FactorLoading, SNANode, BKTParams, FitIndices, SEMPath, PredictionResult, Bookmark, IRTParams, Topic, QualitativeTheme, Participant } from '../types';
 
-// API key (vite injects process.env.API_KEY). Lazy init so a missing key does NOT
-// crash module load — the simulation modules don't use Gemini, only Dr. Gem chat does.
+// Transport selection:
+// 1. VITE_GEMINI_PROXY_URL (production): Cloudflare Worker proxy, no key in the bundle.
+// 2. process.env.API_KEY (dev only; vite injects it only in development builds):
+//    direct SDK call. Lazy init so a missing key does not crash module load —
+//    the simulation modules don't use Gemini, only Dr. Gem chat does.
+const PROXY_URL = (import.meta.env.VITE_GEMINI_PROXY_URL as string | undefined)?.trim();
 const apiKey = process.env.API_KEY;
 let ai: GoogleGenAI | null = null;
 const getAi = (): GoogleGenAI => {
-    if (!apiKey) throw new Error("API_KEY environment variable not set");
+    if (!apiKey) throw new Error("AI tutor is not configured (no proxy URL or dev API key).");
     if (!ai) ai = new GoogleGenAI({ apiKey });
     return ai;
 };
 
+const generate = async (prompt: string): Promise<string> => {
+    if (PROXY_URL) {
+        const res = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+        });
+        if (!res.ok) {
+            const err: any = new Error(`AI proxy error ${res.status}`);
+            err.status = res.status;
+            throw err;
+        }
+        const data = await res.json();
+        return data.text || "No explanation generated.";
+    }
+    const response = await getAi().models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    return response.text || "No explanation generated.";
+};
+
 const callGemini = async (prompt: string, retries = 3, delay = 1000): Promise<string> => {
     try {
-        const response = await getAi().models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-        return response.text || "No explanation generated.";
+        return await generate(prompt);
     } catch (error: any) {
         // Analyze the error object for rate limiting indicators
         const isRateLimit = 
