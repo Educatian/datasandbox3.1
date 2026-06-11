@@ -1,31 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PSMDataPoint } from '../types';
 import { generatePSMData, performMatching } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import PSMComparisonPlot from './PSMComparisonPlot';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface PSMAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string }> = ({ label, value, min, max, step, onChange, format }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{format ? format(value) : value}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
     const [selectionBias, setSelectionBias] = useState(15);
@@ -33,10 +16,17 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
     const [isMatched, setIsMatched] = useState(false);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand Propensity Score Matching. Try adjusting the selection bias and then perform matching to see the effect!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you understand Propensity Score Matching. Try adjusting the selection bias and then perform matching to see the effect!",
+        () => `
+            We are simulating Propensity Score Matching (PSM).
+            Selection Bias Level: ${selectionBias} (higher means Treatment group has higher natural propensity scores).
+            Status: ${isMatched ? 'Matched' : 'Unmatched raw data'}.
+            Total Participants: ${data.length}.
+
+            Explain how matching helps to reduce bias and allow for fairer comparisons between the groups.
+        `
+    );
 
     const regenerateData = useCallback(() => {
         const newData = generatePSMData(150, selectionBias);
@@ -58,31 +48,6 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
         setIsMatched(false);
         setData(prevData => prevData.map(p => ({ ...p, isMatched: false, matchedWithId: null })));
     };
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are simulating Propensity Score Matching (PSM).
-            Selection Bias Level: ${selectionBias} (higher means Treatment group has higher natural propensity scores).
-            Status: ${isMatched ? 'Matched' : 'Unmatched raw data'}.
-            Total Participants: ${data.length}.
-            
-            User Question: ${msg}
-            
-            Explain how matching helps to reduce bias and allow for fairer comparisons between the groups.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the matching result.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [isMatched, selectionBias, data]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -119,7 +84,7 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="Propensity Score Matching"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

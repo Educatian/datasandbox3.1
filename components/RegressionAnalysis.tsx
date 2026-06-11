@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ResidualPoint, RegressionLine } from '../types';
 import { calculateLinearRegression, calculateRSquared, calculateStandardError } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import RegressionScatterPlot from './RegressionScatterPlot';
 import SpringVisualizer from './SpringVisualizer';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface RegressionAnalysisProps {
     onBack: () => void;
@@ -42,32 +43,28 @@ const generateRandomCloud = (count: number): ResidualPoint[] => {
     });
 };
 
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value.toFixed(2)}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
-
-
 const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customTitle, customContext, moduleId }) => {
     const [points, setPoints] = useState<ResidualPoint[]>(() => generateInitialData(25));
     // Chat State
-    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Welcome to Regression Analysis! 📉 I'm Dr. Gem. Try tilting the line to minimize prediction errors. Can you beat the computer's best fit?" }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+    const welcomeMessage = moduleId === 'residual-rain'
+        ? "Welcome to Residual Rain! ☔ Tilt the line to minimize the squared errors (the rain)!"
+        : moduleId === 'prediction-painter'
+            ? "Welcome to The Prediction Painter! 🎨 The data is a mess. Drag the dots to *create* a linear relationship and increase the R-Squared score!"
+            : "Welcome to Regression Analysis! 📉 I'm Dr. Gem. Try tilting the line to minimize prediction errors. Can you beat the computer's best fit?";
+    const { chatHistory, isChatLoading, sendMessage, addBotMessage } = useGeminiChat(
+        welcomeMessage,
+        () => `
+            Regression Analysis (${scenario} mode):
+            - Points: ${points.length}
+            - Line: Slope=${effectiveLine.slope.toFixed(2)}, Intercept=${effectiveLine.intercept.toFixed(2)}
+            - R-Squared: ${rSquared.toFixed(3)}
+            - Standard Error: ${standardError.toFixed(2)}
+            - Manual Mode: ${isManualMode}
+            - Has Outlier: ${hasOutlier}
+
+            Goal: Understand relationship between X and Y.
+        `
+    );
     const [hasOutlier, setHasOutlier] = useState<boolean>(false);
 
     // Mode Selection
@@ -97,12 +94,10 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
             setShowSquares(true);
             setScenario('abstract');
             setPoints(generateInitialData(25));
-            setChatHistory([{ role: 'model', text: "Welcome to Residual Rain! ☔ Tilt the line to minimize the squared errors (the rain)!" }]);
         } else if (moduleId === 'prediction-painter') {
             setIsManualMode(false);
             setScenario('abstract');
             setPoints(generateRandomCloud(25));
-            setChatHistory([{ role: 'model', text: "Welcome to The Prediction Painter! 🎨 The data is a mess. Drag the dots to *create* a linear relationship and increase the R-Squared score!" }]);
         }
     }, [moduleId]);
 
@@ -134,10 +129,10 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
         if (scenario === 'physics') {
             setPoints([]); // Clear points for fresh experiment
             setManualLine({ slope: 0.6, intercept: 20 }); // Close to 'true' physics params
-            setChatHistory(prev => [...prev, { role: 'model', text: "Entering Physics Mode! 🧪 Use the slider to change mass, then click 'Measure' to collect data. Can you discover Hooke's Law?" }]);
+            addBotMessage("Entering Physics Mode! 🧪 Use the slider to change mass, then click 'Measure' to collect data. Can you discover Hooke's Law?");
         } else {
             setPoints(generateInitialData(25));
-            setChatHistory(prev => [...prev, { role: 'model', text: "Back to Abstract Mode. Try to minimize the squared errors!" }]);
+            addBotMessage("Back to Abstract Mode. Try to minimize the squared errors!");
         }
     }, [scenario]);
 
@@ -244,32 +239,6 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     }, [displayPoints.maxResidual, points.length]);
 
 
-    const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
-        setIsChatLoading(true);
-
-        const context = `
-            Regression Analysis (${scenario} mode):
-            - Points: ${points.length}
-            - Line: Slope=${effectiveLine.slope.toFixed(2)}, Intercept=${effectiveLine.intercept.toFixed(2)}
-            - R-Squared: ${rSquared.toFixed(3)}
-            - Standard Error: ${standardError.toFixed(2)}
-            - Manual Mode: ${isManualMode}
-            - Has Outlier: ${hasOutlier}
-            
-            Goal: Understand relationship between X and Y.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { role: 'model', text: response }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { role: 'model', text: "I'm having trouble analyzing the regression right now." }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    };
-
     // Predicted Y for the tool
     const predictedY = effectiveLine.slope * predictX + effectiveLine.intercept;
 
@@ -314,7 +283,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                     <h3 className="text-lg font-semibold text-yellow-400 mb-4">Experimental Setup</h3>
                     <SpringVisualizer mass={springMass} onMeasure={handleMeasureSpring} />
                     <div className="w-full mt-6 px-2 shrink-0">
-                        <Slider label="Add Mass (g)" value={springMass} min={0} max={100} step={5} onChange={(e) => setSpringMass(+e.target.value)} />
+                        <Slider label="Add Mass (g)" value={springMass} min={0} max={100} step={5} onChange={(e) => setSpringMass(+e.target.value)} format={(v) => v.toFixed(2)} />
                     </div>
                 </div>
 
@@ -443,6 +412,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                         label={scenario === 'physics' ? "Elasticity (Slope)" : "Slope (β₁)"}
                                         value={manualLine.slope}
                                         min={-2} max={2} step={0.01}
+                                        format={(v) => v.toFixed(2)}
                                         onChange={(e) => {
                                             const newSlope = +e.target.value;
                                             // Force rotation around the pivot (meanX, meanY)
@@ -577,7 +547,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                         <UnifiedGenAIChat
                             moduleTitle="Regression Analysis"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

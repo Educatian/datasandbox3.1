@@ -1,41 +1,31 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SurvivalDataPoint, SurvivalCurvePoint } from '../types';
 import { generateSurvivalData, calculateKaplanMeier } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import SurvivalCurveChart from './SurvivalCurveChart';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface SurvivalAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string }> = ({ label, value, min, max, step, onChange, format }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{format ? format(value) : value}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
     const [interventionEffect, setInterventionEffect] = useState(0.5);
     const [survivalData, setSurvivalData] = useState<SurvivalDataPoint[]>([]);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help interpret these survival curves. Adjust the mentoring effect to see how it changes student retention over time!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help interpret these survival curves. Adjust the mentoring effect to see how it changes student retention over time!",
+        () => `
+            We are performing Survival Analysis (Kaplan-Meier Estimator).
+            Group A (Mentored) Median Survival Time: ${medianSurvivalA} weeks.
+            Group B (Control) Median Survival Time: ${medianSurvivalB} weeks.
+            Intervention Effect Setting: ${(interventionEffect * 100).toFixed(0)}% risk reduction.
+
+            Explain the difference in the curves and what it implies about the effectiveness of the mentoring program on student retention.
+        `
+    );
 
     const regenerateData = useCallback(() => {
         const data = generateSurvivalData(200, interventionEffect);
@@ -65,31 +55,6 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
         };
     }, [survivalData]);
 
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are performing Survival Analysis (Kaplan-Meier Estimator).
-            Group A (Mentored) Median Survival Time: ${medianSurvivalA} weeks.
-            Group B (Control) Median Survival Time: ${medianSurvivalB} weeks.
-            Intervention Effect Setting: ${(interventionEffect * 100).toFixed(0)}% risk reduction.
-            
-            User Question: ${msg}
-            
-            Explain the difference in the curves and what it implies about the effectiveness of the mentoring program on student retention.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the survival curves.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [medianSurvivalA, medianSurvivalB, interventionEffect]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -138,7 +103,7 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="Survival Analysis"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

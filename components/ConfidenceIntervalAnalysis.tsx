@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ConfidenceInterval } from '../types';
 import { generateSampleData, calculateConfidenceInterval } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import ConfidenceIntervalChart from './ConfidenceIntervalChart';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface ConfidenceIntervalAnalysisProps {
     onBack: () => void;
@@ -15,29 +16,10 @@ interface ConfidenceIntervalAnalysisProps {
 const POPULATION_MEAN = 50;
 const POPULATION_STD_DEV = 15;
 
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, unit?: string }> = ({ label, value, min, max, step, onChange, unit }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value}{unit}</span>
-        </label>
-        <input
-            type="range" min={min} max={max} step={step} value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
-
-
 const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({ onBack, customTitle, customContext }) => {
     const [confidenceLevel, setConfidenceLevel] = useState(95);
     const [sampleSize, setSampleSize] = useState(30);
     const [intervals, setIntervals] = useState<ConfidenceInterval[]>([]);
-    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Welcome. This is Dr. Gem. 🧬 Here we test how 'Confident' we can be that our sample represents the truth. Try running 100 samples!" }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const runSimulation = useCallback((count: number) => {
         const newIntervals: ConfidenceInterval[] = [];
@@ -54,34 +36,6 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
         setIntervals([]);
     };
 
-    const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' as const }]);
-        setIsChatLoading(true);
-
-        const context = `
-            You are Dr. Gem, explaining Confidence Intervals.
-            Current Simulation State:
-            - Confidence Level: ${confidenceLevel}%
-            - Sample Size: ${sampleSize}
-            - Total Samples Run: ${stats.total}
-            - Percentage Capturing Mean: ${stats.percentage.toFixed(1)}% (Target: ${confidenceLevel}%)
-            
-            Educational Goal:
-            - Explain that higher confidence = wider intervals.
-            - Explain that larger samples = narrower intervals (more precision).
-            - Explain that "95% confidence" means 95 out of 100 random intervals will capture the true mean in the long run.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' as const }]);
-        } catch {
-            setChatHistory(prev => [...prev, { text: "Connection error.", role: 'model' as const }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    };
-
     const stats = React.useMemo(() => {
         const total = intervals.length;
         if (total === 0) return { total: 0, captured: 0, percentage: 0 };
@@ -92,6 +46,23 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
             percentage: (capturedCount / total) * 100
         };
     }, [intervals]);
+
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Welcome. This is Dr. Gem. 🧬 Here we test how 'Confident' we can be that our sample represents the truth. Try running 100 samples!",
+        () => `
+            You are Dr. Gem, explaining Confidence Intervals.
+            Current Simulation State:
+            - Confidence Level: ${confidenceLevel}%
+            - Sample Size: ${sampleSize}
+            - Total Samples Run: ${stats.total}
+            - Percentage Capturing Mean: ${stats.percentage.toFixed(1)}% (Target: ${confidenceLevel}%)
+
+            Educational Goal:
+            - Explain that higher confidence = wider intervals.
+            - Explain that larger samples = narrower intervals (more precision).
+            - Explain that "95% confidence" means 95 out of 100 random intervals will capture the true mean in the long run.
+        `
+    );
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -121,7 +92,7 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                         <div>
                             <h3 className="text-lg font-semibold text-indigo-400 mb-3 border-b border-indigo-400/20 pb-2">Simulation Controls</h3>
                             <div className="space-y-4 mt-3">
-                                <Slider label="Confidence Level" value={confidenceLevel} min={80} max={99} step={1} onChange={(e) => setConfidenceLevel(+e.target.value)} unit="%" />
+                                <Slider label="Confidence Level" value={confidenceLevel} min={80} max={99} step={1} onChange={(e) => setConfidenceLevel(+e.target.value)} format={(v) => `${v.toFixed(0)}%`} />
                                 <Slider label="Sample Size (n)" value={sampleSize} min={5} max={200} step={1} onChange={(e) => setSampleSize(+e.target.value)} />
                             </div>
                         </div>
@@ -152,7 +123,7 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                         <UnifiedGenAIChat
                             moduleTitle={customTitle || "Confidence Intervals"}
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

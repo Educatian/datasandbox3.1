@@ -1,28 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LDAResult, Topic } from '../types';
 import { calculateLda } from '../services/statisticsService';
-import { getTopicModelingExplanation, getChatResponse } from '../services/geminiService';
+import { getTopicModelingExplanation } from '../services/geminiService';
 import TopicKeywords from './TopicKeywords';
 import DocumentViewer from './DocumentViewer';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface TopicModelingAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value}</span>
-        </label>
-        <input
-            type="range" min={min} max={max} step={step} value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 
 const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack }) => {
@@ -31,10 +19,21 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
     const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you discover hidden themes in your text data. Try changing the number of topics to see how the grouping changes!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you discover hidden themes in your text data. Try changing the number of topics to see how the grouping changes!",
+        () => {
+            const activeTopic = ldaResult?.topics[selectedTopicId || 0];
+            const keywords = activeTopic?.keywords.map(k => k.text).join(', ');
+            return `
+            We are performing Topic Modeling (Latent Dirichlet Allocation).
+            Number of Topics: ${numTopics}
+            Currently Selected Topic: ${activeTopic?.name || 'Unknown'}
+            Keywords for Selected Topic: ${keywords}
+
+            Explain how these keywords might represent a coherent theme in educational context.
+        `;
+        }
+    );
 
     useEffect(() => {
         const result = calculateLda(numTopics);
@@ -75,34 +74,6 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
 
     }, [ldaResult?.topics.length]); // Re-run only when the number of topics changes
 
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const activeTopic = ldaResult?.topics[selectedTopicId || 0];
-        const keywords = activeTopic?.keywords.map(k => k.text).join(', ');
-
-        const context = `
-            We are performing Topic Modeling (Latent Dirichlet Allocation).
-            Number of Topics: ${numTopics}
-            Currently Selected Topic: ${activeTopic?.name || 'Unknown'}
-            Keywords for Selected Topic: ${keywords}
-            
-            User Question: ${msg}
-            
-            Explain how these keywords might represent a coherent theme in educational context.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the topics.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [numTopics, ldaResult, selectedTopicId]);
-
     return (
         <div className="w-full max-w-7xl mx-auto">
             <header className="mb-8">
@@ -131,7 +102,7 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
                         <UnifiedGenAIChat
                             moduleTitle="Topic Modeling"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

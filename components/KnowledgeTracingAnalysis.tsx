@@ -1,31 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BKTParams } from '../types';
 import { updateMastery } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import MasteryBarChart from './MasteryBarChart';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface KnowledgeTracingAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value.toFixed(2)}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const INITIAL_MASTERY = 0.25;
 
@@ -35,10 +18,18 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
     const [lastAnswer, setLastAnswer] = useState<'correct' | 'incorrect' | null>(null);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain how this Bayesian Knowledge Tracing model estimates student learning. Try submitting some answers!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can explain how this Bayesian Knowledge Tracing model estimates student learning. Try submitting some answers!",
+        () => `
+            We are simulating Bayesian Knowledge Tracing (BKT).
+            Current Mastery Probability: ${(currentMastery * 100).toFixed(1)}%
+            Parameters: Learn=${bktParams.learn}, Guess=${bktParams.guess}, Slip=${bktParams.slip}
+            Last Student Action: ${lastAnswer ? lastAnswer.toUpperCase() : 'None'}
+            History Length: ${masteryHistory.length} attempts
+
+            Explain how the mastery probability is updated based on the parameters and student performance.
+        `
+    );
 
     const currentMastery = useMemo(() => masteryHistory[masteryHistory.length - 1], [masteryHistory]);
 
@@ -52,32 +43,6 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
         setMasteryHistory([INITIAL_MASTERY]);
         setLastAnswer(null);
     };
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are simulating Bayesian Knowledge Tracing (BKT).
-            Current Mastery Probability: ${(currentMastery * 100).toFixed(1)}%
-            Parameters: Learn=${bktParams.learn}, Guess=${bktParams.guess}, Slip=${bktParams.slip}
-            Last Student Action: ${lastAnswer ? lastAnswer.toUpperCase() : 'None'}
-            History Length: ${masteryHistory.length} attempts
-            
-            User Question: ${msg}
-            
-            Explain how the mastery probability is updated based on the parameters and student performance.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the knowledge state right now.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [currentMastery, bktParams, lastAnswer, masteryHistory]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -105,9 +70,9 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-6">
                         <h3 className="text-lg font-semibold text-rose-400 mb-3 border-b border-rose-400/20 pb-2">BKT Model Parameters</h3>
-                        <Slider label="Learn Rate" value={bktParams.learn} min={0} max={1} step={0.01} onChange={(e) => setBktParams(p => ({ ...p, learn: +e.target.value }))} />
-                        <Slider label="Guess Rate" value={bktParams.guess} min={0} max={1} step={0.01} onChange={(e) => setBktParams(p => ({ ...p, guess: +e.target.value }))} />
-                        <Slider label="Slip Rate" value={bktParams.slip} min={0} max={1} step={0.01} onChange={(e) => setBktParams(p => ({ ...p, slip: +e.target.value }))} />
+                        <Slider label="Learn Rate" value={bktParams.learn} min={0} max={1} step={0.01} onChange={(e) => setBktParams(p => ({ ...p, learn: +e.target.value }))} format={(v) => v.toFixed(2)} />
+                        <Slider label="Guess Rate" value={bktParams.guess} min={0} max={1} step={0.01} onChange={(e) => setBktParams(p => ({ ...p, guess: +e.target.value }))} format={(v) => v.toFixed(2)} />
+                        <Slider label="Slip Rate" value={bktParams.slip} min={0} max={1} step={0.01} onChange={(e) => setBktParams(p => ({ ...p, slip: +e.target.value }))} format={(v) => v.toFixed(2)} />
                         <button onClick={resetSimulation} className="w-full mt-4 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
                             Reset Learner
                         </button>
@@ -117,7 +82,7 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
                         <UnifiedGenAIChat
                             moduleTitle="Knowledge Tracing"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

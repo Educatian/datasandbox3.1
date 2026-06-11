@@ -6,7 +6,7 @@ import { getPValueExplanation } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import DistributionChart from './DistributionChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
-import { getChatResponse } from '../services/geminiService';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface ZTestAnalysisProps {
     onBack: () => void;
@@ -66,14 +66,31 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
     const [dist1, setDist1] = useState<DistributionParams>({ mean: 45, stdDev: 10, size: 100 });
     const [dist2, setDist2] = useState<DistributionParams>({ mean: 55, stdDev: 10, size: 100 });
     const [testResult, setTestResult] = useState({ zScore: 0, pValue: 1 });
-    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        {
-            role: 'model', text: isRadarMode
-                ? "Welcome to The Radar Detector! 🎯 I'm Dr. Gem. Here, the null hypothesis is ALWAYS TRUE, but watch how we still get 'significant' results sometimes. That's a Type I Error - a False Alarm! Click 'Run 10 Samples' to start."
-                : "Hello! I'm Dr. Gem. 🧪 Ready to test our hypothesis? Adjust the group means and let's check that p-value!"
-        }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        isRadarMode
+            ? "Welcome to The Radar Detector! 🎯 I'm Dr. Gem. Here, the null hypothesis is ALWAYS TRUE, but watch how we still get 'significant' results sometimes. That's a Type I Error - a False Alarm! Click 'Run 10 Samples' to start."
+            : "Hello! I'm Dr. Gem. 🧪 Ready to test our hypothesis? Adjust the group means and let's check that p-value!",
+        () => isRadarMode
+            ? `
+                Radar Detector Simulation (Type I Error Demo):
+                Population Mean: ${POPULATION_MEAN}, Population Std: ${POPULATION_STD}
+                Sample Size: ${radarSampleSize}, Alpha: ${ALPHA}
+                Total Samples Run: ${totalRuns}
+                Total Rejections (Type I Errors): ${totalRejections}
+                Observed Error Rate: ${totalRuns > 0 ? ((totalRejections / totalRuns) * 100).toFixed(1) : 0}%
+                Expected Rate: 5%
+
+                IMPORTANT: The null hypothesis is ALWAYS TRUE in this simulation. Any rejection is a FALSE POSITIVE / TYPE I ERROR.
+                Teach that this happens by design at rate alpha (5%).
+            `
+            : `
+                Current Z-Test Simulation State:
+                Group 1 (Control): Mean=${dist1.mean}, StdDev=${dist1.stdDev}, Size=${dist1.size}
+                Group 2 (Experimental): Mean=${dist2.mean}, StdDev=${dist2.stdDev}, Size=${dist2.size}
+                Result: Z-Score=${testResult.zScore.toFixed(3)}, p-value=${testResult.pValue.toExponential(4)}
+                User Context: ${customContext || 'General Z-Test Analysis'}
+            `
+    );
     const [logPValue, setLogPValue] = useState(0);
 
     // ============ RADAR DETECTOR FUNCTIONS ============
@@ -144,43 +161,6 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
             }
         }
     }, [dist1, dist2, isRadarMode]);
-
-    const handleSendMessage = async (message: string) => {
-        const newHistory = [...chatHistory, { role: 'user' as const, text: message }];
-        setChatHistory(newHistory);
-        setIsChatLoading(true);
-
-        const context = isRadarMode
-            ? `
-                Radar Detector Simulation (Type I Error Demo):
-                Population Mean: ${POPULATION_MEAN}, Population Std: ${POPULATION_STD}
-                Sample Size: ${radarSampleSize}, Alpha: ${ALPHA}
-                Total Samples Run: ${totalRuns}
-                Total Rejections (Type I Errors): ${totalRejections}
-                Observed Error Rate: ${totalRuns > 0 ? ((totalRejections / totalRuns) * 100).toFixed(1) : 0}%
-                Expected Rate: 5%
-                
-                IMPORTANT: The null hypothesis is ALWAYS TRUE in this simulation. Any rejection is a FALSE POSITIVE / TYPE I ERROR.
-                Teach that this happens by design at rate alpha (5%).
-            `
-            : `
-                Current Z-Test Simulation State:
-                Group 1 (Control): Mean=${dist1.mean}, StdDev=${dist1.stdDev}, Size=${dist1.size}
-                Group 2 (Experimental): Mean=${dist2.mean}, StdDev=${dist2.stdDev}, Size=${dist2.size}
-                Result: Z-Score=${testResult.zScore.toFixed(3)}, p-value=${testResult.pValue.toExponential(4)}
-                User Context: ${customContext || 'General Z-Test Analysis'}
-            `;
-
-        try {
-            const response = await getChatResponse(message, context);
-            setChatHistory(prev => [...prev, { role: 'model' as const, text: response }]);
-        } catch (error) {
-            console.error("Chat error:", error);
-            setChatHistory(prev => [...prev, { role: 'model' as const, text: "Sorry, I encountered an error. Please try again." }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    };
 
     const handlePValueSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newLogP = parseFloat(e.target.value);
@@ -416,7 +396,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                             <UnifiedGenAIChat
                                 moduleTitle="Radar Detector"
                                 history={chatHistory}
-                                onSendMessage={handleSendMessage}
+                                onSendMessage={sendMessage}
                                 isLoading={isChatLoading}
                                 variant="embedded"
                                 className="h-full"
@@ -503,7 +483,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                         <UnifiedGenAIChat
                             moduleTitle={customTitle || "Z-Test Analysis"}
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

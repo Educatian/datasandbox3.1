@@ -1,29 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DecisionTreePoint, DecisionTreeNode } from '../types';
 import { calculateDecisionTree } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import DecisionTreeVisualizer from './DecisionTreeVisualizer';
 import DecisionBoundaryPlot from './DecisionBoundaryPlot';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface DecisionTreeAnalysisProps {
     onBack: () => void;
 }
-
-// Reusable Slider component
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value}</span>
-        </label>
-        <input
-            type="range" min={min} max={max} step={step} value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const generateMoonData = (n_samples: number, noise: number = 0.2): DecisionTreePoint[] => {
     const data: DecisionTreePoint[] = [];
@@ -67,11 +53,16 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
     const [data, setData] = useState<DecisionTreePoint[]>(() => generateMoonData(150));
     const [tree, setTree] = useState<DecisionTreeNode | null>(null);
 
-    // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can explain how this decision tree makes classifications. Click on any node, and I'll analyze the split logic for you!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can explain how this decision tree makes classifications. Click on any node, and I'll analyze the split logic for you!",
+        () => `
+            We are analyzing a Decision Tree Classifier.
+            Hyperparameters: Max Depth=${maxDepth}, Min Samples Split=${minSamplesSplit}.
+            Tree Nodes: ${tree ? 'Generated' : 'Pending'}.
+
+            Explain how decision trees define boundaries to classify the data points (moons dataset).
+        `
+    );
 
     const regenerateData = useCallback(() => setData(generateMoonData(150)), []);
 
@@ -80,35 +71,11 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
         setTree(newTree);
     }, [data, maxDepth, minSamplesSplit]);
 
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are analyzing a Decision Tree Classifier.
-            Hyperparameters: Max Depth=${maxDepth}, Min Samples Split=${minSamplesSplit}.
-            Tree Nodes: ${tree ? 'Generated' : 'Pending'}.
-            
-            User Question: ${msg}
-            
-            Explain how decision trees define boundaries to classify the data points (moons dataset).
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the tree right now.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [maxDepth, minSamplesSplit, tree]);
-
     const handleNodeClick = useCallback((node: DecisionTreeNode) => {
         if (!node.splitFeatureIndex === undefined || node.splitThreshold === undefined) return;
         const msg = `What does the split at Feature ${node.splitFeatureIndex} <= ${node.splitThreshold.toFixed(2)} mean?`;
-        handleSendMessage(msg);
-    }, [handleSendMessage]);
+        sendMessage(msg);
+    }, [sendMessage]);
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -147,7 +114,7 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
                         <UnifiedGenAIChat
                             moduleTitle="Decision Tree Analysis"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

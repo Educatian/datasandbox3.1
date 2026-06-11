@@ -1,31 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DistributionParams } from '../types';
 import { calculateAnova } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import DistributionChart from './DistributionChart';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface AnovaAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value.toFixed(1)}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const GroupControls: React.FC<{
     title: string;
@@ -39,7 +22,7 @@ const GroupControls: React.FC<{
         <div className="space-y-4 mt-3">
             <Slider label="Mean" value={params.mean} min={10} max={90} step={0.5} onChange={(e) => setParams(p => ({ ...p, mean: +e.target.value }))} />
             <Slider label="Standard Deviation" value={params.stdDev} min={2} max={20} step={0.5} onChange={(e) => setParams(p => ({ ...p, stdDev: +e.target.value }))} />
-            <Slider label="Sample Size (n)" value={params.size} min={5} max={200} step={1} onChange={(e) => setParams(p => ({ ...p, size: +e.target.value }))} />
+            <Slider label="Sample Size (n)" value={params.size} min={5} max={200} step={1} onChange={(e) => setParams(p => ({ ...p, size: +e.target.value }))} format={v => v.toFixed(1)} />
         </div>
     </div>
 );
@@ -53,10 +36,21 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
     const [anovaResult, setAnovaResult] = useState({ fStatistic: 0, pValue: 1 });
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you interpret these ANOVA results. Try adjusting the group means to see how the F-statistic changes!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you interpret these ANOVA results. Try adjusting the group means to see how the F-statistic changes!",
+        () => `
+            We are performing a One-Way ANOVA test.
+            Group 1 (Cyan): Mean=${group1.mean}, SD=${group1.stdDev}, N=${group1.size}
+            Group 2 (Pink): Mean=${group2.mean}, SD=${group2.stdDev}, N=${group2.size}
+            Group 3 (Lime): Mean=${group3.mean}, SD=${group3.stdDev}, N=${group3.size}
+
+            Current Results:
+            F-Statistic: ${anovaResult.fStatistic.toFixed(3)}
+            P-Value: ${anovaResult.pValue.toFixed(5)}
+
+            Explain the relationship between the group separation (between-group variance) and the spread within groups (within-group variance) and how that determines the F-statistic.
+        `
+    );
 
     const distributionsForChart = useMemo(() => [
         { mean: group1.mean, stdDev: group1.stdDev, color: 'rgb(34 211 238)' },  // Cyan
@@ -68,35 +62,6 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
         const result = calculateAnova([group1, group2, group3]);
         setAnovaResult(result);
     }, [group1, group2, group3]);
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are performing a One-Way ANOVA test.
-            Group 1 (Cyan): Mean=${group1.mean}, SD=${group1.stdDev}, N=${group1.size}
-            Group 2 (Pink): Mean=${group2.mean}, SD=${group2.stdDev}, N=${group2.size}
-            Group 3 (Lime): Mean=${group3.mean}, SD=${group3.stdDev}, N=${group3.size}
-            
-            Current Results:
-            F-Statistic: ${anovaResult.fStatistic.toFixed(3)}
-            P-Value: ${anovaResult.pValue.toFixed(5)}
-            
-            User Question: ${msg}
-            
-            Explain the relationship between the group separation (between-group variance) and the spread within groups (within-group variance) and how that determines the F-statistic.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the variance right now.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [group1, group2, group3, anovaResult]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -138,7 +103,7 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="ANOVA Analysis"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

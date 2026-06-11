@@ -1,29 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getChatResponse } from '../services/geminiService';
+import React, { useState, useEffect, useMemo } from 'react';
 import ProbabilityDistributionChart from './ProbabilityDistributionChart';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface BayesianAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value.toFixed(1)}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
     // Prior parameters (Beta distribution: Alpha, Beta)
@@ -31,17 +14,23 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
     // Observed data (counts of heads and tails)
     const [data, setData] = useState({ heads: 0, tails: 0 });
 
-    // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand Bayesian inference. Adjust your prior beliefs and add some data to see how your knowledge updates!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
-
     // Posterior is calculated by adding observed data to the prior
     const posteriorParams = useMemo(() => ({
         alpha: priorParams.alpha + data.heads,
         beta: priorParams.beta + data.tails
     }), [priorParams, data]);
+
+    const { chatHistory, isChatLoading, sendMessage, addBotMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you understand Bayesian inference. Adjust your prior beliefs and add some data to see how your knowledge updates!",
+        () => `
+            We are simulating Bayesian Inference (Beta-Binomial Conjugate Prior).
+            Prior Belief (Cyan): Alpha=${priorParams.alpha}, Beta=${priorParams.beta}.
+            Observed Data: ${data.heads} Heads, ${data.tails} Tails.
+            Posterior Belief (Lime): Alpha=${posteriorParams.alpha}, Beta=${posteriorParams.beta}.
+
+            Explain how the prior and data combine to form the posterior belief.
+        `
+    );
 
     const distributionsForChart = useMemo(() => [
         { ...priorParams, color: 'rgb(34 211 238)' },  // Prior (Cyan)
@@ -54,33 +43,8 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
 
     const resetData = () => {
         setData({ heads: 0, tails: 0 });
-        setChatHistory(prev => [...prev, { text: "Data reset. Back to our prior belief.", role: 'model' }]);
+        addBotMessage("Data reset. Back to our prior belief.");
     };
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are simulating Bayesian Inference (Beta-Binomial Conjugate Prior).
-            Prior Belief (Cyan): Alpha=${priorParams.alpha}, Beta=${priorParams.beta}.
-            Observed Data: ${data.heads} Heads, ${data.tails} Tails.
-            Posterior Belief (Lime): Alpha=${posteriorParams.alpha}, Beta=${posteriorParams.beta}.
-            
-            User Question: ${msg}
-            
-            Explain how the prior and data combine to form the posterior belief.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the probability distributions.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [priorParams, data, posteriorParams]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -123,7 +87,7 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="Bayesian Inference"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

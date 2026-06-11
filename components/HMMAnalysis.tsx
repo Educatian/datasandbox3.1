@@ -1,41 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HMMSequenceItem } from '../types';
 import { generateHMMSequence } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import HMMSequenceVisualizer from './HMMSequenceVisualizer';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface HMMAnalysisProps {
     onBack: () => void;
 }
 
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value.toFixed(2)}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
-
 const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
     const [transitionProbs, setTransitionProbs] = useState({ sunnyToSunny: 0.9, rainyToRainy: 0.6 });
     const [sequence, setSequence] = useState<HMMSequenceItem[]>([]);
 
-    // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you understand how hidden states (like weather) cause the observations you see (like activities). Adjust the probabilities to see what happens!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you understand how hidden states (like weather) cause the observations you see (like activities). Adjust the probabilities to see what happens!",
+        () => `
+            We are analyzing a Hidden Markov Model (HMM).
+            Transition Probabilities:
+            P(Sunny|Sunny) = ${transitionProbs.sunnyToSunny}
+            P(Rainy|Rainy) = ${transitionProbs.rainyToRainy}
+            sequence length: ${sequence.length}
+
+            Explain how the transition probabilities affect the stability of the weather states and the resulting observations.
+        `
+    );
 
     const generateNewSequence = useCallback(() => {
         const newSequence = generateHMMSequence(transitionProbs, 15);
@@ -46,32 +36,6 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
     useEffect(() => {
         generateNewSequence();
     }, []);
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are analyzing a Hidden Markov Model (HMM).
-            Transition Probabilities:
-            P(Sunny|Sunny) = ${transitionProbs.sunnyToSunny}
-            P(Rainy|Rainy) = ${transitionProbs.rainyToRainy}
-            sequence length: ${sequence.length}
-            
-            User Question: ${msg}
-            
-            Explain how the transition probabilities affect the stability of the weather states and the resulting observations.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the HMM sequence.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [transitionProbs, sequence]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -97,6 +61,7 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
                                     label="P(Sunny ☀️ → Sunny ☀️)"
                                     value={transitionProbs.sunnyToSunny}
                                     min={0.05} max={0.99} step={0.01}
+                                    format={(v) => v.toFixed(2)}
                                     onChange={(e) => {
                                         const newVal = +e.target.value;
                                         setTransitionProbs(p => ({ ...p, sunnyToSunny: newVal }));
@@ -107,6 +72,7 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
                                     label="P(Rainy 🌧️ → Rainy 🌧️)"
                                     value={transitionProbs.rainyToRainy}
                                     min={0.05} max={0.99} step={0.01}
+                                    format={(v) => v.toFixed(2)}
                                     onChange={(e) => {
                                         const newVal = +e.target.value;
                                         setTransitionProbs(p => ({ ...p, rainyToRainy: newVal }));
@@ -124,7 +90,7 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="Hidden Markov Model"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

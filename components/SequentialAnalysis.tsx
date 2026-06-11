@@ -1,31 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ValueTimePoint } from '../types';
 import { generateTimeSeriesData, calculateMovingAverage } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import LineChart from './LineChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface TimeSeriesAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
 
 const DATA_POINTS_COUNT = 50;
 
@@ -34,10 +17,18 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
     const [movingAverageWindow, setMovingAverageWindow] = useState<number>(5);
 
     // Chat State
-    const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([
-        { role: 'model', text: "Welcome to Time Series Analysis! 📈 I'm Dr. Gem. I can help you find trends and smooth out the noise." }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Welcome to Time Series Analysis! 📈 I'm Dr. Gem. I can help you find trends and smooth out the noise.",
+        () => `
+            Time Series Analysis:
+            - Data Points: ${data.length}
+            - Moving Average Window: ${movingAverageWindow}
+            - Data Sample (First 5): ${data.slice(0, 5).map(p => p.value.toFixed(1)).join(', ')}
+            - Data Sample (Last 5): ${data.slice(-5).map(p => p.value.toFixed(1)).join(', ')}
+
+            Goal: Identify trends (upward, downward, cyclic) and noise levels.
+        `
+    );
 
     const movingAverageData = useMemo(() => {
         return calculateMovingAverage(data, movingAverageWindow);
@@ -53,32 +44,8 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
         setData(generateTimeSeriesData(DATA_POINTS_COUNT));
     };
 
-    const handleSendMessage = async (msg: string) => {
-        setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
-        setIsChatLoading(true);
-
-        const context = `
-            Time Series Analysis:
-            - Data Points: ${data.length}
-            - Moving Average Window: ${movingAverageWindow}
-            - Data Sample (First 5): ${data.slice(0, 5).map(p => p.value.toFixed(1)).join(', ')}
-            - Data Sample (Last 5): ${data.slice(-5).map(p => p.value.toFixed(1)).join(', ')}
-            
-            Goal: Identify trends (upward, downward, cyclic) and noise levels.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { role: 'model', text: response }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { role: 'model', text: "I'm having trouble analyzing the data right now." }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    };
-
     const analyzePattern = () => {
-        handleSendMessage("Analyze the current time series pattern. Is there a trend?");
+        sendMessage("Analyze the current time series pattern. Is there a trend?");
     };
 
     return (
@@ -124,7 +91,7 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
                     <UnifiedGenAIChat
                         moduleTitle="Time Series Analysis"
                         history={chatHistory}
-                        onSendMessage={handleSendMessage}
+                        onSendMessage={sendMessage}
                         isLoading={isChatLoading}
                         variant="embedded"
                     />

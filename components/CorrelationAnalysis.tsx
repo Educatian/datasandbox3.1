@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Point, RegressionLine } from '../types';
 import { calculateCorrelation, calculateLinearRegression, generateCorrelatedData } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import ScatterPlot from './ScatterPlot';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
 import ReactionTimeVisualizer from './ReactionTimeVisualizer';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface CorrelationAnalysisProps {
     onBack: () => void;
@@ -12,35 +13,25 @@ interface CorrelationAnalysisProps {
     customContext?: string;
 }
 
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value.toFixed(2)}</span>
-        </label>
-        <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={onChange}
-            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-        />
-    </div>
-);
-
 const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, customTitle, customContext }) => {
     const [scenario, setScenario] = useState<'abstract' | 'experiment'>('abstract');
     const [points, setPoints] = useState<Point[]>([]);
     const [correlation, setCorrelation] = useState<number>(0);
     const [regressionLine, setRegressionLine] = useState<RegressionLine>({ slope: 0, intercept: 0 });
 
-    // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you analyze the correlation between these variables. Generate some data or run an experiment to get started!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage, addBotMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you analyze the correlation between these variables. Generate some data or run an experiment to get started!",
+        () => `
+            We are analyzing Correlation.
+            Scenario: ${scenario === 'abstract' ? 'Abstract Data' : 'Reaction Time Experiment (Distraction vs. Reaction)'}
+            Number of points: ${points.length}
+            Correlation Coefficient (r): ${correlation.toFixed(3)}
+            Correlation Strength: ${getCorrelationStrength(correlation)}
+            Regression Line: y = ${regressionLine.slope.toFixed(2)}x + ${regressionLine.intercept.toFixed(2)}
+
+            Explain the strength and direction of the relationship.
+        `
+    );
 
     // Abstract Mode State
     const [targetCorrelation, setTargetCorrelation] = useState(0.8);
@@ -57,10 +48,10 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
     useEffect(() => {
         if (scenario === 'abstract') {
             generateAbstractData();
-            setChatHistory(prev => [...prev, { text: "I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.", role: 'model' }]);
+            addBotMessage("I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.");
         } else {
             setPoints([]); // Clear for experiment
-            setChatHistory(prev => [...prev, { text: "We're running a Reaction Time experiment now. Set the distraction level and click 'Measure Reaction' to collect data points.", role: 'model' }]);
+            addBotMessage("We're running a Reaction Time experiment now. Set the distraction level and click 'Measure Reaction' to collect data points.");
         }
     }, [scenario, generateAbstractData]);
 
@@ -106,33 +97,6 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
         return `Strong ${direction}`;
     };
 
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are analyzing Correlation.
-            Scenario: ${scenario === 'abstract' ? 'Abstract Data' : 'Reaction Time Experiment (Distraction vs. Reaction)'}
-            Number of points: ${points.length}
-            Correlation Coefficient (r): ${correlation.toFixed(3)}
-            Correlation Strength: ${getCorrelationStrength(correlation)}
-            Regression Line: y = ${regressionLine.slope.toFixed(2)}x + ${regressionLine.intercept.toFixed(2)}
-            
-            User Question: ${msg}
-            
-            Explain the strength and direction of the relationship.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the correlation right now.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [points, correlation, regressionLine, scenario]);
-
     return (
         <div className="w-full max-w-7xl mx-auto">
             <header className="mb-8">
@@ -173,7 +137,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                     <ReactionTimeVisualizer distractionLevel={distractionLevel} onTest={handleExperimentTest} />
                     <div className="w-full mt-6 px-2 space-y-4">
                         <h4 className="text-sm font-semibold text-slate-300">Independent Variable</h4>
-                        <Slider label="Distraction Level" value={distractionLevel} min={0} max={100} step={5} onChange={(e) => setDistractionLevel(+e.target.value)} />
+                        <Slider label="Distraction Level" value={distractionLevel} min={0} max={100} step={5} onChange={(e) => setDistractionLevel(+e.target.value)} format={(v) => v.toFixed(2)} />
                     </div>
                 </div>
 
@@ -196,8 +160,8 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
 
                         {scenario === 'abstract' && (
                             <div className="space-y-4 animate-fade-in">
-                                <Slider label="Target Correlation (r)" value={targetCorrelation} min={-1} max={1} step={0.1} onChange={(e) => setTargetCorrelation(+e.target.value)} />
-                                <Slider label="Noise / Spread" value={spread} min={1} max={40} step={1} onChange={(e) => setSpread(+e.target.value)} />
+                                <Slider label="Target Correlation (r)" value={targetCorrelation} min={-1} max={1} step={0.1} onChange={(e) => setTargetCorrelation(+e.target.value)} format={(v) => v.toFixed(2)} />
+                                <Slider label="Noise / Spread" value={spread} min={1} max={40} step={1} onChange={(e) => setSpread(+e.target.value)} format={(v) => v.toFixed(2)} />
                                 <button
                                     onClick={generateAbstractData}
                                     className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
@@ -240,7 +204,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                         <UnifiedGenAIChat
                             moduleTitle="Correlation Analysis"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

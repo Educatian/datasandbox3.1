@@ -1,23 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StudentSequence, StudentAction } from '../types';
 import { generateSequenceData, calculateLagSequentialAnalysis } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
 import TransitionGraph from './TransitionGraph';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface LSAAnalysisProps {
     onBack: () => void;
 }
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, value, min, max, step, onChange }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{value}</span>
-        </label>
-        <input type="range" min={min} max={max} step={step} value={value} onChange={onChange} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
-    </div>
-);
 
 const ALL_ACTIONS: StudentAction[] = ['V', 'Q', 'A', 'F', 'P', 'E'];
 
@@ -26,10 +17,17 @@ const LSAAnalysis: React.FC<LSAAnalysisProps> = ({ onBack }) => {
     const [lag, setLag] = useState(1);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you analyze learning behaviors using Lag Sequential Analysis. Adjust the lag to see how actions influence subsequent behaviors!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you analyze learning behaviors using Lag Sequential Analysis. Adjust the lag to see how actions influence subsequent behaviors!",
+        () => `
+            We are performing Lag Sequential Analysis (LSA).
+            Current Lag: ${lag}
+            Comparing Group A (High-Achievers) vs Group B (Low-Achievers).
+            Available Actions: Video(V), Quiz(Q), Answer(A), Forum(F), Pass(P), Error(E).
+
+            Explain the significant transitions found in the graphs and what they imply about learning strategies.
+        `
+    );
 
     const regenerateData = useCallback(() => setSequences(generateSequenceData(100)), []);
 
@@ -40,31 +38,6 @@ const LSAAnalysis: React.FC<LSAAnalysisProps> = ({ onBack }) => {
         const resultB = calculateLagSequentialAnalysis(sequencesB, lag);
         return { resultA, resultB };
     }, [sequences, lag]);
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are performing Lag Sequential Analysis (LSA).
-            Current Lag: ${lag}
-            Comparing Group A (High-Achievers) vs Group B (Low-Achievers).
-            Available Actions: Video(V), Quiz(Q), Answer(A), Forum(F), Pass(P), Error(E).
-            
-            User Question: ${msg}
-            
-            Explain the significant transitions found in the graphs and what they imply about learning strategies.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the sequential patterns right now.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [lag]);
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -91,7 +64,7 @@ const LSAAnalysis: React.FC<LSAAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="Lag Sequential Analysis"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"

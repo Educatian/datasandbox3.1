@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StudentSequence, FrequentPattern, StudentAction } from '../types';
 import { generateSequenceData, findFrequentPatterns } from '../services/statisticsService';
-import { getChatResponse } from '../services/geminiService';
-import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import UnifiedGenAIChat from './UnifiedGenAIChat';
+import Slider from './ui/Slider';
+import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface SPMAnalysisProps {
     onBack: () => void;
@@ -16,16 +17,6 @@ const actionMap: Record<StudentAction, { emoji: string; name: string }> = {
     P: { emoji: '✅', name: 'Pass' },
     E: { emoji: '❌', name: 'Fail/Error' },
 };
-
-const Slider: React.FC<{ label: string, value: number, min: number, max: number, step: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, format?: (v: number) => string }> = ({ label, value, min, max, step, onChange, format }) => (
-    <div>
-        <label className="flex justify-between text-sm text-slate-400">
-            <span>{label}</span>
-            <span className="font-mono">{format ? format(value) : value}</span>
-        </label>
-        <input type="range" min={min} max={max} step={step} value={value} onChange={onChange} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
-    </div>
-);
 
 const PatternList: React.FC<{ title: string; patterns: FrequentPattern[] }> = ({ title, patterns }) => (
     <div className="bg-slate-900 p-4 rounded-lg h-96 overflow-y-auto">
@@ -58,10 +49,18 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
     const [patternLength, setPatternLength] = useState(3);
 
     // Chat state
-    const [chatHistory, setChatHistory] = useState<Message[]>([
-        { text: "Hello! I'm Dr. Gem. I can help you find frequent learning patterns. Compare Group A and Group B to see how their strategies differ!", role: 'model' }
-    ]);
-    const [isChatLoading, setIsChatLoading] = useState(false);
+    const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
+        "Hello! I'm Dr. Gem. I can help you find frequent learning patterns. Compare Group A and Group B to see how their strategies differ!",
+        () => `
+            We are performing Sequential Pattern Mining (SPM).
+            Minimum Support: ${(support * 100).toFixed(0)}%
+            Pattern Length: ${patternLength}
+            Found Patterns Group A: ${patternsA.length}
+            Found Patterns Group B: ${patternsB.length}
+
+            Compare the sequential patterns between the two groups and explain what they suggest about learning habits.
+        `
+    );
 
     const regenerateData = useCallback(() => setSequences(generateSequenceData(100)), []);
 
@@ -72,32 +71,6 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
         const patternsB = findFrequentPatterns(sequencesB, support, patternLength);
         return { patternsA, patternsB };
     }, [sequences, support, patternLength]);
-
-    const handleSendMessage = useCallback(async (msg: string) => {
-        setIsChatLoading(true);
-        setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
-
-        const context = `
-            We are performing Sequential Pattern Mining (SPM).
-            Minimum Support: ${(support * 100).toFixed(0)}%
-            Pattern Length: ${patternLength}
-            Found Patterns Group A: ${patternsA.length}
-            Found Patterns Group B: ${patternsB.length}
-            
-            User Question: ${msg}
-            
-            Compare the sequential patterns between the two groups and explain what they suggest about learning habits.
-        `;
-
-        try {
-            const response = await getChatResponse(msg, context);
-            setChatHistory(prev => [...prev, { text: response, role: 'model' }]);
-        } catch (error) {
-            setChatHistory(prev => [...prev, { text: "I'm having trouble analyzing the sequential patterns right now.", role: 'model' }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [support, patternLength, patternsA.length, patternsB.length]);
 
     return (
         <div className="w-full max-w-6xl mx-auto">
@@ -125,7 +98,7 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
                         <UnifiedGenAIChat
                             moduleTitle="Sequential Pattern Mining"
                             history={chatHistory}
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={sendMessage}
                             isLoading={isChatLoading}
                             variant="embedded"
                             className="h-full"
