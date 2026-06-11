@@ -5,7 +5,7 @@ import { supabase, isSupabaseConfigured, getSession, onAuthStateChange, signOut,
 import { GlobalClickLogger } from './components/GlobalClickLogger';
 import LoginPage from './components/LoginPage';
 import CurriculumView from './components/CurriculumView';
-import { ALL_TRACKS, getModuleDef, ModuleDef } from './curriculum';
+import { ALL_TRACKS, getModuleDef, ModuleDef, MODULE_SCENARIOS } from './curriculum';
 import { MODULE_REGISTRY } from './components/moduleRegistry';
 
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
@@ -63,6 +63,23 @@ const App: React.FC = () => {
     const [authLoading, setAuthLoading] = useState(!LOCAL_BYPASS);
     const [moduleSettings, setModuleSettings] = useState<Record<string, any>>({});
     const moduleSettingsRef = useRef<Record<string, any>>({});
+    const [exploredModuleIds, setExploredModuleIds] = useState<Set<string>>(new Set());
+
+    // Explored-module summary for portal chips + "next up" suggestion.
+    // Server-side aggregate (get_my_module_activity RPC); degrades silently
+    // if the RPC has not been applied yet.
+    useEffect(() => {
+        if (LOCAL_BYPASS || !isSupabaseConfigured || !user) return;
+        supabase.rpc('get_my_module_activity').then(({ data, error }) => {
+            if (error || !data) return;
+            const explored = new Set<string>(
+                (data as { page: string; events: number }[])
+                    .filter(r => Number(r.events) >= 5)
+                    .map(r => r.page)
+            );
+            setExploredModuleIds(explored);
+        });
+    }, [user, activeModuleId === null]); // refresh when returning to portal
 
     // Check for existing session on mount
     useEffect(() => {
@@ -213,12 +230,12 @@ const App: React.FC = () => {
             );
         }
         if (!activeModuleId) {
-            return <CurriculumView tracks={ALL_TRACKS} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
+            return <CurriculumView tracks={ALL_TRACKS} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} completedModuleIds={exploredModuleIds} />;
         }
 
         const moduleDef = getModuleDef(activeModuleId);
         if (!moduleDef) {
-            return <CurriculumView tracks={ALL_TRACKS} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} />;
+            return <CurriculumView tracks={ALL_TRACKS} navigateTo={navigateTo} settings={moduleSettings} isAdmin={isAdminState} completedModuleIds={exploredModuleIds} />;
         }
 
         const onBack = () => setActiveModuleId(null);
@@ -232,8 +249,18 @@ const App: React.FC = () => {
             return <PlaceholderModule moduleDef={moduleDef} onBack={onBack} />;
         }
 
+        const scenario = MODULE_SCENARIOS[moduleDef.id];
+
         return (
             <Suspense fallback={<LoadingScreen label={`Loading ${moduleDef.title}...`} />}>
+                {scenario && (
+                    <div className="w-full max-w-6xl mx-auto mb-6 bg-gradient-to-r from-violet-950/60 to-slate-900/60 border border-violet-500/30 rounded-2xl px-6 py-4 shadow-lg">
+                        <p className="text-[10px] uppercase tracking-widest text-violet-400 font-bold">
+                            Your role: <span className="text-violet-200">{scenario.role}</span>
+                        </p>
+                        <p className="text-sm text-slate-300 mt-1 leading-relaxed">{scenario.mission}</p>
+                    </div>
+                )}
                 <ModuleComponent
                     onBack={onBack}
                     customTitle={moduleDef.title}

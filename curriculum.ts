@@ -446,6 +446,121 @@ export const ADVANCED_TRACK: AssessmentDef[] = [
 
 export const ALL_TRACKS: AssessmentDef[] = [...CURRICULUM, ...ADVANCED_TRACK];
 
+//================================================
+// Endogenous scenario skins for the Advanced Track
+// (Malone & Lepper: fantasy tied to skillful use of
+// the concept itself, not decoration). Rendered as a
+// role/mission banner above the module.
+//================================================
+
+export interface ModuleScenario {
+    role: string;
+    mission: string;
+}
+
+export const MODULE_SCENARIOS: Record<string, ModuleScenario> = {
+    'anova': {
+        role: 'Program evaluator for a school district',
+        mission: 'Three teaching programs, three sets of scores. Decide whether the differences between programs are bigger than the noise within them, and defend your call with F and p.'
+    },
+    'chi-square': {
+        role: 'Forensic data journalist',
+        mission: 'Readers claim the outcome had nothing to do with group membership. Test whether the two categorical variables are really independent before you publish.'
+    },
+    'bayesian': {
+        role: 'Quality inspector with a suspicious coin',
+        mission: 'You start with a belief, the data starts arguing. Update your prior with each flip and report how strong your posterior conviction has become.'
+    },
+    'multi-level': {
+        role: 'Education researcher across 12 schools',
+        mission: 'Students sit inside classrooms inside schools. Separate the school-level story from the student-level story before someone averages it all away.'
+    },
+    'mixed-methods': {
+        role: 'UX researcher closing the loop',
+        mission: 'Interview themes on one side, satisfaction scores on the other. Find which qualitative theme actually travels with the numbers.'
+    },
+    'psm': {
+        role: 'Policy analyst under deadline',
+        mission: 'The treatment group started ahead, so a raw comparison would flatter the program. Match comparable students first, then estimate the real effect.'
+    },
+    'rdd': {
+        role: 'Scholarship program auditor',
+        mission: 'Students just below the cutoff got the program, students just above did not. Use the jump at the threshold to estimate what the program actually did.'
+    },
+    'sem': {
+        role: 'Theory builder defending a model',
+        mission: 'You believe motivation drives study habits, which drive grades. Draw the paths, check CFI and RMSEA, and find out whether your theory survives contact with data.'
+    },
+    'survival': {
+        role: 'Student-success coordinator',
+        mission: 'Every week, some students drop out. Compare survival curves with and without mentoring and decide whether the program is keeping students enrolled.'
+    },
+    'irt': {
+        role: 'Test designer building an item bank',
+        mission: 'Tune an item\'s difficulty and discrimination, and decide which ability range this question actually measures well.'
+    },
+    'factor-analysis': {
+        role: 'Survey methodologist',
+        mission: 'Six questions, but how many underlying traits? Find the latent factors hiding behind the item correlations and name them.'
+    },
+    'knowledge-tracing': {
+        role: 'Adaptive-tutor engineer',
+        mission: 'The system must guess what a student knows from right/wrong answers alone. Tune learn, guess, and slip until the mastery estimate behaves sensibly.'
+    },
+    'logistic': {
+        role: 'Early-warning system designer',
+        mission: 'Predict a pass/fail outcome from one predictor. Fit the S-curve, find the decision boundary, and decide where the risk really starts.'
+    },
+    'decision-tree': {
+        role: 'Triage rule designer',
+        mission: 'Carve the feature space into decision rules a human can read. Then fight overfitting: how deep is too deep?'
+    },
+    'k-means': {
+        role: 'Learner-profile discoverer',
+        mission: 'Nobody labeled these students. Run the centroid dance, watch inertia fall, and decide how many groups the data actually supports.'
+    },
+    'pca': {
+        role: 'Dimensionality negotiator',
+        mission: 'Three correlated measures, one budget for two axes. Find the projection that keeps the most variance and report what was lost.'
+    },
+    'lpa': {
+        role: 'Typology researcher',
+        mission: 'Students may belong to hidden profiles, partially. Run EM until the soft memberships sharpen, and defend your choice of profile count.'
+    },
+    'xai': {
+        role: 'Accountable-AI officer',
+        mission: 'The model flagged a student as at-risk. Decompose the prediction into feature contributions and explain it in one sentence a teacher can act on.'
+    },
+    'hmm': {
+        role: 'Behavior decoder',
+        mission: 'You can only see actions, not states. Tune the transition probabilities until the hidden weather behind the activity sequence becomes legible.'
+    },
+    'spm': {
+        role: 'Learning-analytics miner',
+        mission: 'High and low achievers leave different action trails. Mine the frequent sequences and report the pattern that separates them.'
+    },
+    'lsa': {
+        role: 'Interaction sequence analyst',
+        mission: 'Which action significantly FOLLOWS which? Compare lag-1 transitions across groups and find the transition that defines each group.'
+    },
+    'sequential': {
+        role: 'Trend forecaster',
+        mission: 'The raw series is noise on top of signal. Widen the smoothing window until the seasonality emerges, without erasing it.'
+    },
+    'sna': {
+        role: 'Classroom community designer',
+        mission: 'Map who talks to whom. Find the hub carrying the class and the isolated student nobody noticed, then decide where one new connection would matter most.'
+    },
+    'topic-modeling': {
+        role: 'Essay-corpus cartographer',
+        mission: 'A pile of student essays, no labels. Choose the number of topics, read the keyword clusters, and give each discovered theme an honest name.'
+    },
+    'multimodal': {
+        role: 'Collaboration analyst',
+        mission: 'Speech, gaze, and clicks on one timeline. Scrub to the auto-bookmarked moment and judge: was that joint attention or coincidence?'
+    },
+};
+
 export const getModuleDef = (id: string, tracks: AssessmentDef[] = ALL_TRACKS): ModuleDef | null => {
     for (const assessment of tracks) {
         const found = assessment.modules.find(m => m.id === id);

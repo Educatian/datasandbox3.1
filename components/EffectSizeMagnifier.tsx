@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
 import { tCDF } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import PredictGate from './ui/PredictGate';
 
 interface EffectSizeMagnifierProps {
     onBack: () => void;
@@ -194,6 +195,17 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="effect-magnifier-tradeoff"
+                question="Two particle clouds differ by a tiny true effect (d = 0.2). With n = 20 per group, will the detection scanner call the difference significant?"
+                options={[
+                    { id: 'probably_not', label: 'Probably not: small effects need large samples, so power is low here', correct: true },
+                    { id: 'real_detectable', label: 'Yes: if the difference is real, the test will find it', misconception: 'signal_needs_big_n_only' },
+                    { id: 'never_visible', label: 'No, and no realistic sample size could ever detect something that small', misconception: 'variability_invisible' },
+                    { id: 'coin_flip', label: 'Yes and no equally: detection at this setting is a 50/50 coin flip' }
+                ]}
+                watchFor="Set Effect Size to 0.2 and n to 20, run the scanner several times, then pump n toward 200 and scan again. Count how often each setting detects the difference."
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* Left: Visualization */}
@@ -263,6 +275,7 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

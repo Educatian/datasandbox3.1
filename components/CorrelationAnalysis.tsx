@@ -8,6 +8,9 @@ import Slider from './ui/Slider';
 import DataContextCard from './ui/DataContextCard';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { bivariateDatasets, getDataset, scalePointsToViewport, BivariateDataset } from '../data/realDatasets';
+import MissionPanel, { MissionDef } from './ui/MissionPanel';
+import { logEvent } from '../services/loggingService';
+import { supabase, isSupabaseConfigured } from '../services/supabaseService';
 
 interface CorrelationAnalysisProps {
     onBack: () => void;
@@ -45,6 +48,9 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
     // Experiment Mode State
     const [distractionLevel, setDistractionLevel] = useState(10);
 
+    // Cooperative class dataset state (pooled experiment trials from all users)
+    const [classDataStatus, setClassDataStatus] = useState<'idle' | 'loading' | 'loaded' | 'insufficient' | 'error'>('idle');
+
     const generateAbstractData = useCallback(() => {
         const data = generateCorrelatedData(30, targetCorrelation, spread);
         setPoints(data);
@@ -58,6 +64,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
     }, []);
 
     useEffect(() => {
+        setClassDataStatus('idle');
         if (scenario === 'abstract') {
             generateAbstractData();
             addBotMessage("I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.");
@@ -96,6 +103,34 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
         };
 
         setPoints(prev => [...prev, newPoint]);
+
+        // Contribute this trial to the pooled class dataset
+        logEvent('experiment_trial', 'correlation-maker', { x: newPoint.x, y: newPoint.y });
+    };
+
+    // Load the pooled class dataset (anonymous trials from all users) via RPC.
+    // Degrades gracefully: the RPC may not be applied yet, or may hold too few rows.
+    const loadClassDataset = async () => {
+        if (!isSupabaseConfigured) return;
+        setClassDataStatus('loading');
+        try {
+            const { data, error } = await supabase.rpc('get_class_experiment_points', {
+                p_module: 'correlation-maker',
+                p_limit: 300
+            });
+            if (error) throw error;
+            const rows = ((data || []) as Array<{ x: number; y: number }>)
+                .filter(r => typeof r.x === 'number' && typeof r.y === 'number' && Number.isFinite(r.x) && Number.isFinite(r.y));
+            if (rows.length < 5) {
+                setClassDataStatus('insufficient');
+                return;
+            }
+            const base = Date.now();
+            setPoints(rows.map((r, i) => ({ id: base + i, x: r.x, y: r.y })));
+            setClassDataStatus('loaded');
+        } catch {
+            setClassDataStatus('error');
+        }
     };
 
     const handlePointUpdate = useCallback((id: number, newX: number, newY: number) => {
@@ -112,6 +147,31 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
         if (abs < 0.7) return `Moderate ${direction}`;
         return `Strong ${direction}`;
     };
+
+    // Mission layer: goals checked against the live points and r
+    const missions: MissionDef[] = [
+        {
+            id: 'build-strong',
+            title: 'Build a strong positive',
+            brief: 'Get r to +0.9 or higher with at least 10 points on the board. Use the Abstract generator, drag points by hand, or run enough clean experiment trials.',
+            hint: 'In Abstract mode, push Target Correlation up and Noise down, then Generate. Or drag points into a tight rising band.',
+            check: () => points.length >= 10 && correlation >= 0.9
+        },
+        {
+            id: 'crash-it',
+            title: 'Crash the correlation',
+            brief: 'With at least 12 points on the board, land r between +0.2 and +0.4. The spirit of the challenge: start from a strong upward pattern and see how few moved or added points it takes to wreck it.',
+            hint: 'One or two points dragged far off the band do shocking damage. r is fragile to outliers.',
+            check: () => points.length >= 12 && correlation >= 0.2 && correlation <= 0.4
+        },
+        {
+            id: 'negative-territory',
+            title: 'Negative territory',
+            brief: 'Reach r of -0.7 or lower with at least 10 points, in the Reaction experiment or Abstract mode. Make Y fall as X rises.',
+            hint: 'In the experiment, the true relation is positive, so you will have to drag points. In Abstract mode, slide Target Correlation below -0.7.',
+            check: () => points.length >= 10 && correlation <= -0.7
+        }
+    ];
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -177,6 +237,8 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
 
                 {/* Right Panel: Controls & Metrics */}
                 <div className={`${scenario === 'experiment' ? 'lg:col-span-3' : 'lg:col-span-4'} flex flex-col space-y-8`}>
+                    <MissionPanel moduleId="correlation-maker" missions={missions} accentClass="text-cyan-400" />
+
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-cyan-400 mb-3">Data Controls</h3>
 
@@ -203,6 +265,32 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                                 >
                                     Reset Experiment
                                 </button>
+                                {isSupabaseConfigured && (
+                                    <div className="pt-3 border-t border-slate-700 space-y-2">
+                                        <button
+                                            onClick={loadClassDataset}
+                                            disabled={classDataStatus === 'loading'}
+                                            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                                        >
+                                            {classDataStatus === 'loading' ? 'Loading...' : 'Load Class Dataset'}
+                                        </button>
+                                        {classDataStatus === 'loaded' && (
+                                            <p className="text-xs text-slate-400 text-center">
+                                                Pooled anonymous trials from everyone who ran this experiment
+                                            </p>
+                                        )}
+                                        {classDataStatus === 'insufficient' && (
+                                            <p className="text-xs text-slate-500 text-center">
+                                                Not enough class data yet. Run a few trials to contribute.
+                                            </p>
+                                        )}
+                                        {classDataStatus === 'error' && (
+                                            <p className="text-xs text-slate-500 text-center">
+                                                Class dataset is not available right now.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {scenario === 'real' && (

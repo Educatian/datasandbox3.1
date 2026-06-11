@@ -10,6 +10,18 @@ interface CurriculumViewProps {
 }
 
 const CurriculumView: React.FC<CurriculumViewProps> = ({ tracks, navigateTo, settings = null, isAdmin = false, completedModuleIds }) => {
+    // "Next up" suggestion: first visible module not yet explored. A nudge,
+    // not a gate — every visible module stays one click away.
+    const isModuleVisible = (modId: string) => {
+        const setting = settings?.[modId];
+        const state = setting?.visibility_state || 'hidden';
+        const releaseAt = setting?.release_at ? new Date(setting.release_at) : null;
+        return isAdmin || state === 'visible' || (state === 'scheduled' && !!releaseAt && new Date() >= releaseAt);
+    };
+    const suggestedId = completedModuleIds
+        ? tracks.flatMap(t => t.modules).find(m => isModuleVisible(m.id) && !completedModuleIds.has(m.id))?.id
+        : undefined;
+
     return (
         <div className="w-full max-w-6xl mx-auto">
             <header className="relative text-center mb-16 rounded-3xl overflow-hidden border border-slate-700/40 shadow-2xl">
@@ -81,6 +93,11 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({ tracks, navigateTo, set
                                                         {mod.title}
                                                     </h3>
                                                     <div className="flex items-center gap-1.5 shrink-0">
+                                                        {mod.id === suggestedId && (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-violet-900/60 text-violet-300 border-violet-700 animate-pulse" title="Suggested next step (you choose your own path)">
+                                                                ★ NEXT UP
+                                                            </span>
+                                                        )}
                                                         {isCompleted && (
                                                             <span className="text-[10px] px-1.5 py-0.5 rounded border bg-cyan-900/50 text-cyan-300 border-cyan-800" title="You have explored this module">
                                                                 ✓ DONE

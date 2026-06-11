@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import PredictGate from './ui/PredictGate';
 
 interface SignalNoiseRadioProps {
     onBack: () => void;
@@ -123,6 +124,17 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="signal-noise-paths"
+                question="Your t-value is too small to detect the signal. Which actions can raise it enough to reach significance?"
+                options={[
+                    { id: 'any_path', label: 'Any of these: a bigger mean difference, less noise, or more data, because t is a ratio', correct: true },
+                    { id: 'only_n', label: 'Only collecting more data helps', misconception: 'signal_needs_big_n_only' },
+                    { id: 'only_signal', label: 'Only a bigger mean difference helps: noise is fixed by nature' },
+                    { id: 'pure_luck', label: 'None of them reliably: crossing the threshold is luck' }
+                ]}
+                watchFor="Hold the Signal knob fixed and turn the Noise knob down: watch the t readout climb without a single extra observation. Then try the reverse."
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 flex flex-col space-y-6">
                     {/* Oscilloscope */}
@@ -182,6 +194,7 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

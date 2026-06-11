@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import PredictGate from './ui/PredictGate';
 
 interface BalanceBeamProps {
     onBack: () => void;
@@ -265,6 +266,17 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="balance-beam-outlier"
+                question="Five weights sit in a tight group on the beam. One gets thrown far out to one side, an extreme outlier. What happens to the mean and the median?"
+                options={[
+                    { id: 'mean_shifts', label: 'The mean shifts substantially toward the outlier, the median barely moves', correct: true },
+                    { id: 'mean_resists', label: 'The mean barely moves: one value cannot outweigh the rest', misconception: 'mean_robust_to_outliers' },
+                    { id: 'both_equal', label: 'Both shift toward the outlier by about the same amount' },
+                    { id: 'median_chases', label: 'The median chases the outlier more than the mean does' }
+                ]}
+                watchFor="Click Create Outlier! (or drag one weight to 99) and compare how far the amber fulcrum (mean) jumps versus how much the cyan median marker moves."
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center">
                     <svg ref={svgRef} className="w-full h-full min-h-[400px]" style={{ overflow: 'visible' }}></svg>
@@ -285,6 +297,7 @@ const BalanceBeam: React.FC<BalanceBeamProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

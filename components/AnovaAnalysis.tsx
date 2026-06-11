@@ -7,6 +7,7 @@ import Slider from './ui/Slider';
 import DataContextCard from './ui/DataContextCard';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { getDataset, GroupedDataset } from '../data/realDatasets';
+import MissionPanel, { MissionDef } from './ui/MissionPanel';
 
 interface AnovaAnalysisProps {
     onBack: () => void;
@@ -120,6 +121,37 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
         setAnovaResult(result);
     }, [group1, group2, group3]);
 
+    // Pairwise gaps between the three group means, for mission checks
+    const pairwiseGaps = () => {
+        const [a, b, c] = [group1.mean, group2.mean, group3.mean];
+        return [Math.abs(a - b), Math.abs(a - c), Math.abs(b - c)];
+    };
+
+    // Mission layer: goals checked against live group params + ANOVA result
+    const missions: MissionDef[] = [
+        {
+            id: 'reach-significance',
+            title: 'Reach significance',
+            brief: 'Separate the three group means until the p-value drops below .05. How far apart do the curves have to sit before the F-test calls them different?',
+            hint: 'F grows when between-group separation outpaces within-group spread. Drag the means apart, or shrink the SDs.',
+            check: () => anovaResult.fStatistic > 0 && anovaResult.pValue < 0.05
+        },
+        {
+            id: 'lose-it',
+            title: 'Now lose it',
+            brief: 'Keep every pair of means at least 8 units apart, but push the p-value above .20 anyway. Same separation, no significance. What did you have to sacrifice?',
+            hint: 'You cannot collapse the means for this one. Widen the within-group SDs and pull the sample sizes down.',
+            check: () => anovaResult.pValue > 0.20 && Math.min(...pairwiseGaps()) >= 8
+        },
+        {
+            id: 'power-play',
+            title: 'Power play',
+            brief: 'Squeeze all three means to within 8 units of each other, then reach p below .05 anyway. Tiny differences can still be significant.',
+            hint: 'Sample size is statistical power. Crank n toward 200 and tighten the SDs.',
+            check: () => anovaResult.pValue < 0.05 && Math.max(...pairwiseGaps()) <= 8
+        }
+    ];
+
     return (
         <div className="w-full max-w-6xl mx-auto">
             <header className="mb-8">
@@ -131,10 +163,17 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
             </header>
 
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4">
-                    <DistributionChart distributions={distributionsForChart} />
+                <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
+                    <div className="sticky top-6">
+                        <DistributionChart distributions={distributionsForChart} />
+                        <div className="mt-4 text-center text-xs text-slate-500">
+                            Three group distributions. The F-test asks: is the separation between curves large relative to their spread?
+                        </div>
+                    </div>
                 </div>
                 <div className="lg:col-span-2 flex flex-col space-y-8">
+                    <MissionPanel moduleId="anova" missions={missions} accentClass="text-cyan-400" />
+
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-emerald-400 mb-3"><span aria-hidden="true">🌍</span> Real Data</h3>
                         <div className="space-y-4">

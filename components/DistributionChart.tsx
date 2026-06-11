@@ -77,7 +77,7 @@ const DistributionChart: React.FC<DistributionChartProps> = ({ distributions }) 
 
     }, [distributions]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[640px]" role="img" aria-label="Overlaid normal distribution curves"></svg>;
 };
 
 export default DistributionChart;

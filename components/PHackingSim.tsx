@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { getChatResponse } from '../services/geminiService';
+import PredictGate from './ui/PredictGate';
 
 interface PHackingSimProps {
     onBack: () => void;
@@ -81,6 +82,17 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="p-hacking-noise"
+                question="We run 20 experiments on PURE NOISE (no jelly bean color actually causes acne), each tested at alpha = .05. How many will come out 'significant'?"
+                options={[
+                    { id: 'about_one', label: 'About 1 on a typical run: sometimes 0, sometimes 2 or 3', correct: true },
+                    { id: 'none_real', label: 'None: pure noise cannot produce a significant result', misconception: 'significant_means_real' },
+                    { id: 'p_near_one', label: 'None, and every p-value will sit near 1: the null is true, so p should say so', misconception: 'p_value_h0_prob' },
+                    { id: 'five_plus', label: 'Five or more: noise is messy, so lots of tests will light up' }
+                ]}
+                watchFor="Click RUN 20 RANDOM EXPERIMENTS several times and count how many panels light up green on each run. Also scan the p-values of the non-significant panels."
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-6">
                     <button onClick={runSim} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-4 rounded-lg mb-6 shadow-lg transform active:scale-95 transition-all">
@@ -113,6 +125,7 @@ const PHackingSim: React.FC<PHackingSimProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

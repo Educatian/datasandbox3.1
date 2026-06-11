@@ -31,6 +31,58 @@ CREATE POLICY "Admins can read all logs" ON user_logs
     )
   );
 
+-- ============================================================
+-- RPC functions for social/aggregate features (SECURITY DEFINER:
+-- they return only anonymous aggregates, never identities)
+-- ============================================================
+
+-- Anonymous class distribution of PredictGate predictions.
+-- Extracts fields from the JSON details string without casting (robust to
+-- any malformed rows), restricted to prediction_commit events.
+CREATE OR REPLACE FUNCTION get_prediction_distribution(p_prediction_id text)
+RETURNS TABLE(option_id text, picks bigint)
+LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT substring(target_class from '"option":"([^"]+)"') AS option_id,
+         count(*) AS picks
+  FROM user_logs
+  WHERE target_id = 'prediction_commit'
+    AND target_tag = 'PredictGate'
+    AND target_class LIKE '%"predictionId":"' || p_prediction_id || '"%'
+  GROUP BY 1
+  HAVING substring(target_class from '"option":"([^"]+)"') IS NOT NULL;
+$$;
+GRANT EXECUTE ON FUNCTION get_prediction_distribution(text) TO authenticated;
+
+-- Pooled class dataset from experiment trials (e.g. the Reaction Time
+-- experiment): every student's trials combine into one shared dataset.
+CREATE OR REPLACE FUNCTION get_class_experiment_points(p_module text, p_limit int DEFAULT 500)
+RETURNS TABLE(x real, y real)
+LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT substring(target_class from '"x":([0-9.eE+-]+)')::real AS x,
+         substring(target_class from '"y":([0-9.eE+-]+)')::real AS y
+  FROM user_logs
+  WHERE target_id = 'experiment_trial'
+    AND target_tag = p_module
+    AND substring(target_class from '"x":([0-9.eE+-]+)') IS NOT NULL
+    AND substring(target_class from '"y":([0-9.eE+-]+)') IS NOT NULL
+  ORDER BY timestamp DESC
+  LIMIT p_limit;
+$$;
+GRANT EXECUTE ON FUNCTION get_class_experiment_points(text, int) TO authenticated;
+
+-- Per-user module activity summary (drives the portal's explored-module
+-- chips and "next up" suggestion without shipping raw logs to the client).
+CREATE OR REPLACE FUNCTION get_my_module_activity()
+RETURNS TABLE(page text, events bigint)
+LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT page, count(*) AS events
+  FROM user_logs
+  WHERE (user_id = auth.email() OR user_id = auth.uid()::text)
+    AND page IS NOT NULL AND page <> 'portal'
+  GROUP BY page;
+$$;
+GRANT EXECUTE ON FUNCTION get_my_module_activity() TO authenticated;
+
 -- Module settings for the new Advanced Track modules (admin can then toggle
 -- visibility in the dashboard; default hidden, same as core modules).
 INSERT INTO module_settings (module_id, visibility_state)

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getChatResponse } from '../services/geminiService';
 import { normalCDF } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import PredictGate from './ui/PredictGate';
 
 interface CoinFlipperProps {
     onBack: () => void;
@@ -124,6 +125,17 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
                 </div>
             </header>
 
+            <PredictGate
+                predictionId="coin-flipper-streaks"
+                question="You flip a perfectly FAIR coin 100 times. What is the longest run of identical outcomes (all heads or all tails in a row) you should expect?"
+                options={[
+                    { id: 'short', label: 'Around 3 at most: a longer streak would mean the coin is biased', misconception: 'streak_means_bias' },
+                    { id: 'six_plus', label: 'A streak of 6 or more is more likely than not, even from a fair coin', correct: true },
+                    { id: 'self_correct', label: 'Streaks stay short: after a few heads, tails becomes due and breaks the run', misconception: 'gamblers_fallacy' },
+                    { id: 'four_five', label: 'About 4 or 5, runs of 6 or more are very rare' }
+                ]}
+                watchFor="Keep GOD MODE at Fair (50%) and flip your way to 100. Notice how lopsided some stretches of heads or tails look while the p-value stays calm."
+            >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left: Experiment */}
                 <div className="lg:col-span-2 flex flex-col space-y-6">
@@ -212,6 +224,7 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

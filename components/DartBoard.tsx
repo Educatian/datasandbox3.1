@@ -5,6 +5,7 @@ import { logEvent } from '../services/loggingService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { generateSampleData } from '../services/statisticsService';
 import PredictGate from './ui/PredictGate';
+import MissionPanel, { MissionDef } from './ui/MissionPanel';
 
 interface DartBoardProps {
     onBack: () => void;
@@ -72,6 +73,47 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
         if (player2Shots.length === 0) return 0;
         return player2Shots.reduce((sum, s) => sum + s.distance, 0) / player2Shots.length;
     }, [player2Shots]);
+
+    // How far the cloud's center of mass sits from the bullseye (data units)
+    const centerOffset = (shotList: Shot[]): number => {
+        if (shotList.length === 0) return Number.POSITIVE_INFINITY;
+        const mx = shotList.reduce((s, p) => s + p.x, 0) / shotList.length;
+        const my = shotList.reduce((s, p) => s + p.y, 0) / shotList.length;
+        return Math.hypot(mx, my);
+    };
+
+    // Mission layer: concrete goals checked against the live shot data.
+    // Board geometry in data units (solo view): rings at 5, 15, 25, 35 from center.
+    const missions: MissionDef[] = [
+        {
+            id: 'olympic-95',
+            title: 'Olympic consistency',
+            brief: 'Tune the SD so at least 95% of the 50 shots land within 25 units of the bullseye (about the second ring). Shots re-roll every time you move the slider, so your setting has to survive the luck of the draw.',
+            hint: 'The 95% coverage radius runs near 2.45 times the SD. What SD keeps that under 25? Nudge the slider to re-roll if one volley gets unlucky.',
+            check: () => shots.length >= 20 && shots.filter(s => s.distance <= 25).length >= Math.ceil(shots.length * 0.95)
+        },
+        {
+            id: 'spread-3x',
+            title: 'Same aim, triple the spread',
+            brief: 'Turn on Compare Players and make Player B average at least 3 times as far from the bullseye as Player A, while BOTH clouds stay centered on the target. Spread changes, aim does not.',
+            hint: 'SD only stretches the cloud. Set the two SD dials far apart (try A near 5 and B near 30) and compare the Avg Distance readouts.',
+            check: () =>
+                comparisonMode &&
+                shots.length > 0 &&
+                player2Shots.length > 0 &&
+                avgDistance > 0 &&
+                p2AvgDistance >= 3 * avgDistance &&
+                centerOffset(shots) < 10 &&
+                centerOffset(player2Shots) < 10
+        },
+        {
+            id: 'inner-ring-50',
+            title: 'Push the inner-ring limit',
+            brief: 'Find the largest SD that still keeps half your shots inside the inner ring: the green 50% coverage radius must stay at 5 units or less while SD is at least 4. How high can you push it before the median shot escapes?',
+            hint: 'The median shot distance sits near 1.18 times the SD, so the ceiling is lower than you might guess. Creep the slider up one notch at a time.',
+            check: () => stdDev >= 4 && shots.length >= 20 && coverage50.radius > 0 && coverage50.radius <= 5
+        }
+    ];
 
     // Initial Shots
     useEffect(() => {
@@ -275,7 +317,11 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                     { id: 'a-better-score', label: "A's darts always land closer to the bullseye than every one of B's darts", misconception: 'sd_as_strict_bound' },
                     { id: 'same-picture', label: 'The two patterns will look about the same; 50 darts is too few to see any difference', misconception: 'variability_invisible' }
                 ]}
+                watchFor="Turn on Compare Players, set the two SD dials far apart, and check both the scatter AND each player's average distance from center."
             >
+            <div className="mb-6">
+                <MissionPanel moduleId="dart-board" missions={missions} />
+            </div>
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-slate-900 rounded-xl border-4 border-slate-800 shadow-2xl p-4 flex flex-col items-center">
 

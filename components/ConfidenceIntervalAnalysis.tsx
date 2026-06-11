@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ConfidenceInterval } from '../types';
 import { generateSampleData, calculateConfidenceInterval } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import PredictGate from './ui/PredictGate';
 import ConfidenceIntervalChart from './ConfidenceIntervalChart';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
@@ -80,6 +81,17 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                 </div>
             )}
 
+            <PredictGate
+                predictionId="ci-meaning"
+                question="You pump the sample size from n = 5 up to n = 100. What happens to (a) the spread of the raw data and (b) the width of the 95% CI for the mean?"
+                options={[
+                    { id: 'ci_narrows', label: 'Raw data spread stays roughly the same, but the CI narrows sharply', correct: true },
+                    { id: 'both_wider', label: 'Both get wider: more values means more variability to cover', misconception: 'larger_n_more_variable' },
+                    { id: 'ci_tracks_data', label: 'Both stay matched: the CI has to keep covering 95% of the data points', misconception: 'ci_contains_data' },
+                    { id: 'both_shrink', label: 'Both shrink together: bigger samples tame the data and the interval' }
+                ]}
+                watchFor="Run 100 samples at n = 5, then slide Sample Size (n) up to 100 and run 100 more: compare the interval widths, and remember the population SD never changed."
+            >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <ConfidenceIntervalChart
@@ -131,6 +143,7 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                     </div>
                 </div>
             </main>
+            </PredictGate>
         </div>
     );
 };

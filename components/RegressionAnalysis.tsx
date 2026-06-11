@@ -9,6 +9,7 @@ import Slider from './ui/Slider';
 import DataContextCard from './ui/DataContextCard';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { bivariateDatasets, getDataset, scalePointsToViewport, BivariateDataset } from '../data/realDatasets';
+import MissionPanel, { MissionDef } from './ui/MissionPanel';
 
 interface RegressionAnalysisProps {
     onBack: () => void;
@@ -260,6 +261,31 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
     // Predicted Y for the tool
     const predictedY = effectiveLine.slope * predictX + effectiveLine.intercept;
 
+    // Mission layer (Residual Rain): goals checked against the live line, SSE, and R-squared
+    const missions: MissionDef[] = [
+        {
+            id: 'beat-the-rain',
+            title: 'Beat the rain by hand',
+            brief: 'Tilt the line yourself until your SSE lands within 10% of the best possible SSE. Snap to Best Fit does not count: the check only passes while your line is your own.',
+            hint: 'The line rotates around the data\'s center, so the slope slider is all you need. Watch the SSE number against the Best possible SSE below it.',
+            check: () => isManualMode && !isSnapping && points.length >= 5 && autoSse > 0 && sse > autoSse && sse <= autoSse * 1.1
+        },
+        {
+            id: 'r2-architect',
+            title: 'Build an R-squared above 0.9',
+            brief: 'Push R-squared above 0.9 with at least 10 points on the board. Drag the dots into a tight rising band, then line the model up with it.',
+            hint: 'R-squared compares your line\'s errors to a flat mean line. Tighten the points around a clear trend, then tilt or snap the line to match.',
+            check: () => points.length >= 10 && rSquared > 0.9
+        },
+        {
+            id: 'leverage-lesson',
+            title: 'Leverage lesson',
+            brief: 'With at least 15 points on the board, drag ONE point somewhere extreme and watch even the computer\'s best possible fit collapse: get the best-fit R-squared below 0.5.',
+            hint: 'A single far-out point dominates the squared errors. Drag one dot toward a corner of the canvas and check the Best R-squared readout.',
+            check: () => points.length >= 15 && Number.isFinite(autoRSquared) && autoRSquared < 0.5
+        }
+    ];
+
     return (
         <div className="w-full max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
             <header className="mb-4 shrink-0">
@@ -343,6 +369,11 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
 
                     {/* Scrollable Side Content */}
                     <div className="flex-grow overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                        {/* Mission layer (Residual Rain module) */}
+                        {moduleId === 'residual-rain' && (
+                            <MissionPanel moduleId="residual-rain" missions={missions} accentClass="text-yellow-400" />
+                        )}
+
                         {/* Mode Toggle & Controls */}
                         <div className="bg-slate-800/50 p-5 rounded-lg border border-slate-700/50 shadow-lg">
                             <div className="flex items-center justify-between mb-4">
