@@ -3,10 +3,22 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
+import DataContextCard from './ui/DataContextCard';
+import { getDataset, GroupedDataset } from '../data/realDatasets';
 
 interface BoxPlotBuilderProps {
     onBack: () => void;
 }
+
+const MICHELSON = getDataset('michelson-speed') as GroupedDataset;
+/** Keep loaded real data draggable: cap how many points we plot at once. */
+const MAX_REAL_POINTS = 25;
+/** True speed of light (299,792 km/s) on the dataset's km/s-minus-299,000 offset scale. */
+const TRUE_C_OFFSET = 792;
+
+/** 1-D linear rescale of a value from [lo, hi] into the module's working range. */
+const rescale1D = (v: number, lo: number, hi: number, min = 5, max = 95): number =>
+    hi === lo ? (min + max) / 2 : min + ((v - lo) / (hi - lo)) * (max - min);
 
 const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
     // Initial Data: a simple spread
@@ -17,7 +29,50 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
     ]);
     const [isChatLoading, setIsChatLoading] = useState(false);
 
+    // Real-data (Michelson 1879) state
+    const [realGroup, setRealGroup] = useState<string>('all');
+    const [realActive, setRealActive] = useState(false);
+    const [realShown, setRealShown] = useState<{ shown: number; total: number } | null>(null);
+    // Canvas position of the true speed of light (792 on the offset scale), when in range
+    const [trueCPosition, setTrueCPosition] = useState<number | null>(null);
+
     const svgRef = useRef<SVGSVGElement | null>(null);
+
+    const loadMichelson = (groupKey: string) => {
+        const values = groupKey === 'all'
+            ? MICHELSON.groups.flatMap(g => g.values)
+            : (MICHELSON.groups.find(g => g.label === groupKey)?.values ?? []);
+        if (values.length === 0) return;
+
+        // Sample evenly if the selection exceeds the point cap
+        let chosen = values;
+        if (values.length > MAX_REAL_POINTS) {
+            const step = values.length / MAX_REAL_POINTS;
+            chosen = Array.from({ length: MAX_REAL_POINTS }, (_, i) => values[Math.floor(i * step)]);
+        }
+
+        const lo = Math.min(...chosen);
+        const hi = Math.max(...chosen);
+        setData(chosen.map(v => rescale1D(v, lo, hi)));
+
+        const cPos = rescale1D(TRUE_C_OFFSET, lo, hi);
+        setTrueCPosition(cPos >= 0 && cPos <= 100 ? cPos : null);
+        setRealActive(true);
+        setRealShown({ shown: chosen.length, total: values.length });
+
+        const label = groupKey === 'all' ? 'all 100 measurements' : groupKey;
+        setChatHistory(prev => [...prev, {
+            role: 'model' as const,
+            text: `Loaded Michelson's 1879 speed-of-light data (${label}). Every point is a real measurement, rescaled to this canvas. The dashed green line marks the true speed of light, 299,792 km/s. Where does the median sit relative to it?`
+        }]);
+    };
+
+    const handleRandomize = () => {
+        setData(d => d.map(() => Math.random() * 80 + 10));
+        setRealActive(false);
+        setRealShown(null);
+        setTrueCPosition(null);
+    };
 
     // Statistics
     const stats = useMemo(() => {
@@ -192,7 +247,27 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
         // Draw faint lines from data to box plot if sorted? Too messy.
         // Instead, just dashed lines from stats to axis
 
-    }, [data, stats]);
+        // --- 3. True speed-of-light reference line (Michelson real data) ---
+        if (trueCPosition !== null) {
+            const cy = y(trueCPosition);
+            svg.append('line')
+                .attr('x1', margin.left + 10)
+                .attr('x2', boxCenter + boxWidth / 2)
+                .attr('y1', cy)
+                .attr('y2', cy)
+                .attr('stroke', '#34d399') // Emerald-400
+                .attr('stroke-width', 1.5)
+                .attr('stroke-dasharray', '6 4');
+            svg.append('text')
+                .attr('x', boxCenter + boxWidth / 2)
+                .attr('y', cy - 6)
+                .attr('text-anchor', 'end')
+                .attr('fill', '#34d399')
+                .style('font-size', '11px')
+                .text('True speed of light (792)');
+        }
+
+    }, [data, stats, trueCPosition]);
 
     const handleSendMessage = async (message: string) => {
         const newHistory = [...chatHistory, { role: 'user' as const, text: message }];
@@ -204,6 +279,7 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
             Min: ${stats.min}, Q1: ${stats.q1}, Median: ${stats.median}, Q3: ${stats.q3}, Max: ${stats.max}, IQR: ${stats.iqr}
             Data Points: [${data.map(d => d.toFixed(0)).join(', ')}]
             User Context: Learning about Box Plots, Quartiles, and Interquartile Range.
+            ${realActive ? `The points are REAL data: Michelson's 1879 speed-of-light measurements (${realGroup === 'all' ? 'all 5 experiments' : realGroup}), linearly rescaled from a km/s-minus-299,000 offset scale onto this 0-100 canvas. The true speed of light is 299,792 km/s (792 on the offset scale)${trueCPosition !== null ? `, which sits at ${trueCPosition.toFixed(1)} on the canvas, marked by the dashed green line` : ''}. Source: ${MICHELSON.source}. Context: ${MICHELSON.contextNote} Ground explanations of the box, median, and spread in this measurement-variability story.` : ''}
         `;
 
         try {
@@ -240,8 +316,46 @@ const BoxPlotBuilder: React.FC<BoxPlotBuilderProps> = ({ onBack }) => {
                             <div className="flex justify-between"><span className="text-slate-400">IQR (Box Height):</span> <span>{stats.q3.toFixed(0)} - {stats.q1.toFixed(0)} = {stats.iqr.toFixed(0)}</span></div>
                             <div className="flex justify-between text-yellow-400 font-bold border-t border-slate-700 pt-2"><span>Median:</span> <span>{stats.median.toFixed(1)}</span></div>
                         </div>
-                        <button onClick={() => setData(d => d.map(() => Math.random() * 80 + 10))} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 p-2 rounded text-white">Randomize Data</button>
+                        <button onClick={handleRandomize} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 p-2 rounded text-white">Randomize Data</button>
                     </div>
+
+                    {/* Real Data: Michelson 1879 */}
+                    <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
+                        <h3 className="text-lg font-semibold text-emerald-400 mb-3">Load Real Data</h3>
+                        <p className="text-sm text-slate-400 mb-3">
+                            Michelson's 1879 speed-of-light measurements: pick one experiment, or all 100.
+                        </p>
+                        <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold" htmlFor="michelson-group-select">Experiment</label>
+                        <select
+                            id="michelson-group-select"
+                            value={realGroup}
+                            onChange={(e) => setRealGroup(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:border-emerald-500 outline-none"
+                        >
+                            {MICHELSON.groups.map(g => (
+                                <option key={g.label} value={g.label}>{g.label} ({g.values.length} values)</option>
+                            ))}
+                            <option value="all">All 100 measurements</option>
+                        </select>
+                        <button
+                            onClick={() => loadMichelson(realGroup)}
+                            className="mt-3 w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                        >
+                            Load Measurements
+                        </button>
+                        {realActive && realShown && realShown.shown < realShown.total && (
+                            <p className="mt-2 text-xs text-slate-500">
+                                Showing {realShown.shown} of {realShown.total} measurements, evenly sampled so every point stays draggable.
+                            </p>
+                        )}
+                        {realActive && (
+                            <p className="mt-2 text-xs text-emerald-300/80 leading-snug">
+                                Values are km/s minus 299,000, rescaled to this canvas. The true speed of light is 299,792 km/s, that is 792 on the offset scale{trueCPosition !== null ? ': the dashed green line shows where it falls relative to the box' : ''}.
+                            </p>
+                        )}
+                    </div>
+
+                    {realActive && <DataContextCard dataset={MICHELSON} />}
                     {/* Chat - constrained height to improve graph visibility */}
                     <div className="h-[300px] rounded-lg">
                         <UnifiedGenAIChat

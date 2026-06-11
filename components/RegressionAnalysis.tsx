@@ -6,7 +6,9 @@ import RegressionScatterPlot from './RegressionScatterPlot';
 import SpringVisualizer from './SpringVisualizer';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import DataContextCard from './ui/DataContextCard';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import { bivariateDatasets, getDataset, scalePointsToViewport, BivariateDataset } from '../data/realDatasets';
 
 interface RegressionAnalysisProps {
     onBack: () => void;
@@ -61,14 +63,17 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
             - Standard Error: ${standardError.toFixed(2)}
             - Manual Mode: ${isManualMode}
             - Has Outlier: ${hasOutlier}
-
+            ${scenario === 'real' && realDataset ? `- REAL dataset: ${realDataset.name} (X = ${realDataset.xLabel} in ${realDataset.unitX}, Y = ${realDataset.yLabel} in ${realDataset.unitY}; values linearly rescaled to a 0-100 canvas, so the pattern and R-squared are unchanged but slope/intercept are in canvas units). Source: ${realDataset.source}. Context: ${realDataset.contextNote}
+            Ground every explanation of the fit, residuals, and R-squared in the real-world meaning of these variables.` : ''}
             Goal: Understand relationship between X and Y.
         `
     );
     const [hasOutlier, setHasOutlier] = useState<boolean>(false);
 
     // Mode Selection
-    const [scenario, setScenario] = useState<'abstract' | 'physics'>('abstract');
+    const [scenario, setScenario] = useState<'abstract' | 'physics' | 'real'>('abstract');
+    const [datasetId, setDatasetId] = useState<string>('galton-heights');
+    const realDataset = scenario === 'real' ? (getDataset(datasetId) as BivariateDataset | undefined) : undefined;
 
     // Interaction States — Manual mode ON by default for hands-on learning
     const [isManualMode, setIsManualMode] = useState(true);
@@ -114,9 +119,18 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
         ]);
     }, []);
 
+    const loadRealDataset = useCallback((id: string) => {
+        const ds = getDataset(id) as BivariateDataset | undefined;
+        if (!ds || ds.kind !== 'bivariate') return;
+        const scaled = scalePointsToViewport(ds.points);
+        setPoints(scaled.map((p, i) => ({ id: i, x: p.x, y: p.y, yHat: 0, residual: 0 })));
+    }, []);
+
     const resetData = () => {
         if (scenario === 'physics') {
             setPoints([]);
+        } else if (scenario === 'real') {
+            loadRealDataset(datasetId);
         } else if (moduleId === 'prediction-painter') {
             setPoints(generateRandomCloud(25));
         } else {
@@ -130,11 +144,15 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
             setPoints([]); // Clear points for fresh experiment
             setManualLine({ slope: 0.6, intercept: 20 }); // Close to 'true' physics params
             addBotMessage("Entering Physics Mode! 🧪 Use the slider to change mass, then click 'Measure' to collect data. Can you discover Hooke's Law?");
+        } else if (scenario === 'real') {
+            const ds = getDataset(datasetId);
+            loadRealDataset(datasetId);
+            addBotMessage(`Loaded real data: ${ds?.name}. Every point is a real measurement, rescaled to this canvas. Try fitting the line by hand, then snap to the best fit and see how close you got.`);
         } else {
             setPoints(generateInitialData(25));
             addBotMessage("Back to Abstract Mode. Try to minimize the squared errors!");
         }
-    }, [scenario]);
+    }, [scenario, datasetId, loadRealDataset]);
 
     // Physics measurement logic
     const handleMeasureSpring = () => {
@@ -249,7 +267,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                 <div className="flex justify-between items-end">
                     <div>
                         <h1 className="text-3xl font-bold text-yellow-400 leading-tight">{customTitle || "Regression Analysis"}</h1>
-                        <p className="text-slate-400 text-sm">{scenario === 'physics' ? "Hooke's Law Experiment: Mass vs. Spring Extension" : "Minimizing Prediction Error (Least Squares)"}</p>
+                        <p className="text-slate-400 text-sm">{scenario === 'physics' ? "Hooke's Law Experiment: Mass vs. Spring Extension" : scenario === 'real' && realDataset ? `Real data: ${realDataset.name}. Fit the line to actual measurements.` : "Minimizing Prediction Error (Least Squares)"}</p>
                     </div>
 
                     <div className={`${moduleId === 'residual-rain' || moduleId === 'prediction-painter' ? 'hidden' : ''}`}>
@@ -265,6 +283,12 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                 className={`px-3 py-1.5 rounded-md transition-colors ${scenario === 'physics' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
                             >
                                 <span aria-hidden="true">🧪</span> Physics Experiment
+                            </button>
+                            <button
+                                onClick={() => setScenario('real')}
+                                className={`px-3 py-1.5 rounded-md transition-colors ${scenario === 'real' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                <span aria-hidden="true">🌍</span> Real Data
                             </button>
                         </div>
                     </div>
@@ -301,8 +325,8 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                             showMeanLine={showMeanLine}
                             predictX={predictX}
                             onPredictXChange={setPredictX}
-                            xAxisLabel={scenario === 'physics' ? "Mass (grams)" : (moduleId === 'prediction-painter' ? "Particle Position" : "Independent Variable (X)")}
-                            yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : (moduleId === 'prediction-painter' ? "Energy State" : "Dependent Variable (Y)")}
+                            xAxisLabel={scenario === 'physics' ? "Mass (grams)" : scenario === 'real' && realDataset ? `${realDataset.xLabel} (${realDataset.unitX}, rescaled)` : (moduleId === 'prediction-painter' ? "Particle Position" : "Independent Variable (X)")}
+                            yAxisLabel={scenario === 'physics' ? "Spring Length (cm)" : scenario === 'real' && realDataset ? `${realDataset.yLabel} (${realDataset.unitY}, rescaled)` : (moduleId === 'prediction-painter' ? "Energy State" : "Dependent Variable (Y)")}
                             pointColor={moduleId === 'prediction-painter' ? 'rgb(192 38 211)' : undefined}
                             lineColor={moduleId === 'prediction-painter' ? 'rgb(249 115 22)' : undefined}
                             isQuantumMode={moduleId === 'prediction-painter'}
@@ -370,6 +394,26 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                             <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-6' : 'left-1'}`} />
                                         </button>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Real Dataset Picker */}
+                            {scenario === 'real' && (
+                                <div className="mb-4 space-y-2 animate-fade-in">
+                                    <label className="text-xs text-slate-400 block uppercase tracking-wider font-bold" htmlFor="regression-dataset-select">Dataset</label>
+                                    <select
+                                        id="regression-dataset-select"
+                                        value={datasetId}
+                                        onChange={(e) => setDatasetId(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:border-emerald-500 outline-none"
+                                    >
+                                        {bivariateDatasets().map(d => (
+                                            <option key={d.id} value={d.id}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[11px] text-slate-500 leading-snug">
+                                        Real measurements, rescaled to this canvas. Drag points or tilt the line: the goal is to fit the line to the real pattern. Reset Data restores the original measurements.
+                                    </p>
                                 </div>
                             )}
 
@@ -448,6 +492,8 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                             </div>
                         </div>
 
+                        {scenario === 'real' && realDataset && <DataContextCard dataset={realDataset} />}
+
                         {/* Model Metrics */}
                         <div className="bg-slate-800/50 p-5 rounded-lg border border-slate-700/50 shadow-lg space-y-3">
                             <h3 className="text-base font-semibold text-white uppercase tracking-wider mb-2">Model Metrics</h3>
@@ -523,7 +569,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                             <h3 className="text-base font-semibold text-teal-400 uppercase tracking-wider mb-3">Prediction Tool</h3>
                             <div className="space-y-3">
                                 <label className="flex flex-col text-sm text-slate-400">
-                                    <span>Input {scenario === 'physics' ? 'Mass (g)' : 'X Value'}:</span>
+                                    <span>Input {scenario === 'physics' ? 'Mass (g)' : scenario === 'real' && realDataset ? `${realDataset.xLabel} (rescaled)` : 'X Value'}:</span>
                                     <div className="flex items-center space-x-3 mt-1">
                                         <input
                                             type="range" min={0} max={100} value={predictX}
@@ -534,7 +580,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                     </div>
                                 </label>
                                 <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                                    <span className="text-slate-300">Predicted {scenario === 'physics' ? 'Length' : 'Y'}:</span>
+                                    <span className="text-slate-300">Predicted {scenario === 'physics' ? 'Length' : scenario === 'real' && realDataset ? realDataset.yLabel : 'Y'}:</span>
                                     <span className="text-xl font-bold font-mono text-teal-400">
                                         {Math.min(100, Math.max(0, predictedY)).toFixed(1)}
                                     </span>

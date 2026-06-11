@@ -5,7 +5,9 @@ import ScatterPlot from './ScatterPlot';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import ReactionTimeVisualizer from './ReactionTimeVisualizer';
 import Slider from './ui/Slider';
+import DataContextCard from './ui/DataContextCard';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import { bivariateDatasets, getDataset, scalePointsToViewport, BivariateDataset } from '../data/realDatasets';
 
 interface CorrelationAnalysisProps {
     onBack: () => void;
@@ -14,22 +16,25 @@ interface CorrelationAnalysisProps {
 }
 
 const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, customTitle, customContext }) => {
-    const [scenario, setScenario] = useState<'abstract' | 'experiment'>('abstract');
+    const [scenario, setScenario] = useState<'abstract' | 'experiment' | 'real'>('abstract');
+    const [datasetId, setDatasetId] = useState<string>('galton-heights');
     const [points, setPoints] = useState<Point[]>([]);
     const [correlation, setCorrelation] = useState<number>(0);
     const [regressionLine, setRegressionLine] = useState<RegressionLine>({ slope: 0, intercept: 0 });
 
+    const realDataset = scenario === 'real' ? (getDataset(datasetId) as BivariateDataset | undefined) : undefined;
+
     const { chatHistory, isChatLoading, sendMessage, addBotMessage } = useGeminiChat(
-        "Hello! I'm Dr. Gem. I can help you analyze the correlation between these variables. Generate some data or run an experiment to get started!",
+        "Hello! I'm Dr. Gem. I can help you analyze the correlation between these variables. Generate some data, run an experiment, or load a real dataset to get started!",
         () => `
             We are analyzing Correlation.
-            Scenario: ${scenario === 'abstract' ? 'Abstract Data' : 'Reaction Time Experiment (Distraction vs. Reaction)'}
+            Scenario: ${scenario === 'abstract' ? 'Abstract Data' : scenario === 'experiment' ? 'Reaction Time Experiment (Distraction vs. Reaction)' : `REAL dataset: ${realDataset?.name} (${realDataset?.xLabel} vs ${realDataset?.yLabel}; ${realDataset?.source}). Context: ${realDataset?.contextNote}`}
             Number of points: ${points.length}
             Correlation Coefficient (r): ${correlation.toFixed(3)}
             Correlation Strength: ${getCorrelationStrength(correlation)}
             Regression Line: y = ${regressionLine.slope.toFixed(2)}x + ${regressionLine.intercept.toFixed(2)}
 
-            Explain the strength and direction of the relationship.
+            Explain the strength and direction of the relationship.${scenario === 'real' ? ' Ground every explanation in the real-world meaning of these variables.' : ''}
         `
     );
 
@@ -45,15 +50,26 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
         setPoints(data);
     }, [targetCorrelation, spread]);
 
+    const loadRealDataset = useCallback((id: string) => {
+        const ds = getDataset(id) as BivariateDataset | undefined;
+        if (!ds) return;
+        const scaled = scalePointsToViewport(ds.points);
+        setPoints(scaled.map((p, i) => ({ id: i, x: p.x, y: p.y })));
+    }, []);
+
     useEffect(() => {
         if (scenario === 'abstract') {
             generateAbstractData();
             addBotMessage("I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.");
+        } else if (scenario === 'real') {
+            const ds = getDataset(datasetId);
+            loadRealDataset(datasetId);
+            addBotMessage(`Loaded real data: ${ds?.name}. Every point is a real measurement — try dragging one into an outlier position and watch what happens to r.`);
         } else {
             setPoints([]); // Clear for experiment
             addBotMessage("We're running a Reaction Time experiment now. Set the distraction level and click 'Measure Reaction' to collect data points.");
         }
-    }, [scenario, generateAbstractData]);
+    }, [scenario, datasetId, generateAbstractData, loadRealDataset]);
 
     useEffect(() => {
         const corr = calculateCorrelation(points);
@@ -127,6 +143,12 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                     >
                         <span aria-hidden="true">🧠</span> Reaction Experiment
                     </button>
+                    <button
+                        onClick={() => setScenario('real')}
+                        className={`px-4 py-2 rounded-md transition-colors ${scenario === 'real' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        <span aria-hidden="true">🌍</span> Real Data
+                    </button>
                 </div>
             </div>
 
@@ -148,8 +170,8 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                         line={regressionLine}
                         onPointUpdate={handlePointUpdate}
                         showRegressionLine={false}
-                        xAxisLabel={scenario === 'experiment' ? "Distraction Level" : "Variable X"}
-                        yAxisLabel={scenario === 'experiment' ? "Reaction Time (ms)" : "Variable Y"}
+                        xAxisLabel={scenario === 'experiment' ? "Distraction Level" : realDataset ? `${realDataset.xLabel} (${realDataset.unitX}, rescaled)` : "Variable X"}
+                        yAxisLabel={scenario === 'experiment' ? "Reaction Time (ms)" : realDataset ? `${realDataset.yLabel} (${realDataset.unitY}, rescaled)` : "Variable Y"}
                     />
                 </div>
 
@@ -183,7 +205,30 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                                 </button>
                             </div>
                         )}
+                        {scenario === 'real' && (
+                            <div className="space-y-4 animate-fade-in">
+                                <label className="text-sm text-slate-400 block" htmlFor="dataset-select">Dataset</label>
+                                <select
+                                    id="dataset-select"
+                                    value={datasetId}
+                                    onChange={(e) => setDatasetId(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded-lg px-3 py-2 focus:border-emerald-500 outline-none"
+                                >
+                                    {bivariateDatasets().map(d => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={() => loadRealDataset(datasetId)}
+                                    className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                                >
+                                    Reload Original Data
+                                </button>
+                            </div>
+                        )}
                     </div>
+
+                    {realDataset && <DataContextCard dataset={realDataset} />}
 
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-cyan-400 mb-3">Statistics</h3>
