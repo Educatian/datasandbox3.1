@@ -2,17 +2,19 @@
 import { GoogleGenAI } from "@google/genai";
 import { Observation, ValueTimePoint, FrequentPattern, LagAnalysisResult, StudentAction, FactorLoading, SNANode, BKTParams, FitIndices, SEMPath, PredictionResult, Bookmark, IRTParams, Topic, QualitativeTheme, Participant } from '../types';
 
-// Ensure the API_KEY is available in the environment variables
+// API key (vite injects process.env.API_KEY). Lazy init so a missing key does NOT
+// crash module load — the simulation modules don't use Gemini, only Dr. Gem chat does.
 const apiKey = process.env.API_KEY;
-if (!apiKey) {
-    throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey });
+let ai: GoogleGenAI | null = null;
+const getAi = (): GoogleGenAI => {
+    if (!apiKey) throw new Error("API_KEY environment variable not set");
+    if (!ai) ai = new GoogleGenAI({ apiKey });
+    return ai;
+};
 
 const callGemini = async (prompt: string, retries = 3, delay = 1000): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
+        const response = await getAi().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
         });

@@ -287,7 +287,8 @@ const SECTION_THEMES = [
         bgColor: 'bg-cyan-500/5',
         accentColor: 'text-cyan-400',
         hoverBorder: 'hover:border-cyan-400',
-        icon: 'text-cyan-500/20'
+        icon: 'text-cyan-500/20',
+        glow: 'bg-cyan-500/30'
     },
     {
         titleColor: 'text-emerald-400',
@@ -295,7 +296,8 @@ const SECTION_THEMES = [
         bgColor: 'bg-emerald-500/5',
         accentColor: 'text-emerald-400',
         hoverBorder: 'hover:border-emerald-400',
-        icon: 'text-emerald-500/20'
+        icon: 'text-emerald-500/20',
+        glow: 'bg-emerald-500/30'
     },
     {
         titleColor: 'text-violet-400',
@@ -303,7 +305,8 @@ const SECTION_THEMES = [
         bgColor: 'bg-violet-500/5',
         accentColor: 'text-violet-400',
         hoverBorder: 'hover:border-violet-400',
-        icon: 'text-violet-500/20'
+        icon: 'text-violet-500/20',
+        glow: 'bg-violet-500/30'
     },
     {
         titleColor: 'text-amber-400',
@@ -311,7 +314,8 @@ const SECTION_THEMES = [
         bgColor: 'bg-amber-500/5',
         accentColor: 'text-amber-400',
         hoverBorder: 'hover:border-amber-400',
-        icon: 'text-amber-500/20'
+        icon: 'text-amber-500/20',
+        glow: 'bg-amber-500/30'
     },
     {
         titleColor: 'text-rose-400',
@@ -319,7 +323,8 @@ const SECTION_THEMES = [
         bgColor: 'bg-rose-500/5',
         accentColor: 'text-rose-400',
         hoverBorder: 'hover:border-rose-400',
-        icon: 'text-rose-500/20'
+        icon: 'text-rose-500/20',
+        glow: 'bg-rose-500/30'
     }
 ];
 
@@ -401,7 +406,7 @@ const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void, setting
                                                 </div>
                                             </div>
                                             {/* Decor element */}
-                                            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl transition-all opacity-0 group-hover:opacity-20 ${theme.bgColor.replace('/5', '/30')}`}></div>
+                                            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl transition-all opacity-0 group-hover:opacity-20 ${theme.glow}`}></div>
                                         </button>
                                     );
                                 })}
@@ -419,16 +424,24 @@ const CurriculumView: React.FC<{ navigateTo: (moduleId: string) => void, setting
 //================================================
 
 const App: React.FC = () => {
+    // Dev-only screencast bypass: ?demo=1 skips the Supabase login gate so modules
+    // can be captured without credentials. Guarded by import.meta.env.DEV, so
+    // production builds never honor it.
+    const LOCAL_BYPASS = import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('demo=1');
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-    const [user, setUserState] = useState<User | null>(null);
+    const [user, setUserState] = useState<User | null>(
+        LOCAL_BYPASS ? ({ id: 'local-demo', email: 'demo@local.dev' } as unknown as User) : null
+    );
     const [isAdminState, setIsAdminState] = useState(false);
 
-    const [authLoading, setAuthLoading] = useState(true);
+    const [authLoading, setAuthLoading] = useState(!LOCAL_BYPASS);
     const [moduleSettings, setModuleSettings] = useState<Record<string, any>>({});
     const moduleSettingsRef = useRef<Record<string, any>>({});
 
     // Check for existing session on mount
     useEffect(() => {
+        // Local screencast bypass: never touch Supabase auth.
+        if (LOCAL_BYPASS) { setAuthLoading(false); return; }
         // If Supabase is not configured, show login page immediately
         if (!isSupabaseConfigured) {
             setAuthLoading(false);
@@ -464,6 +477,7 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (LOCAL_BYPASS) return;
         if (user) {
             isAdmin(user).then(setIsAdminState);
         } else {
@@ -474,6 +488,13 @@ const App: React.FC = () => {
 
 
     useEffect(() => {
+        // Local screencast bypass: mark every module visible (skip Supabase).
+        if (LOCAL_BYPASS) {
+            const all: Record<string, any> = {};
+            for (const a of CURRICULUM) for (const m of a.modules) all[m.id] = { module_id: m.id, visibility_state: 'visible' };
+            setModuleSettings(all);
+            return;
+        }
         // Fetch module settings for everyone (RLS allows reading)
         const fetchSettings = async () => {
             const { data } = await supabase.from('module_settings').select('*');

@@ -30,11 +30,12 @@ const Slider: React.FC<{ label: string, value: number, min: number, max: number,
 const GroupControls: React.FC<{
     title: string;
     colorClass: string;
+    borderClass: string;
     params: DistributionParams;
     setParams: React.Dispatch<React.SetStateAction<DistributionParams>>;
-}> = ({ title, colorClass, params, setParams }) => (
+}> = ({ title, colorClass, borderClass, params, setParams }) => (
     <div>
-        <h3 className={`text-lg font-semibold ${colorClass} mb-3 border-b ${colorClass.replace('text-', 'border-')}/20 pb-2`}>{title}</h3>
+        <h3 className={`text-lg font-semibold ${colorClass} mb-3 border-b ${borderClass} pb-2`}>{title}</h3>
         <div className="space-y-4 mt-3">
             <Slider label="Mean" value={params.mean} min={10} max={90} step={0.5} onChange={(e) => setParams(p => ({ ...p, mean: +e.target.value }))} />
             <Slider label="Standard Deviation" value={params.stdDev} min={2} max={20} step={0.5} onChange={(e) => setParams(p => ({ ...p, stdDev: +e.target.value }))} />
@@ -113,9 +114,9 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
                 </div>
                 <div className="lg:col-span-2 flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-6">
-                        <GroupControls title="Group 1 (Cyan)" colorClass="text-cyan-400" params={group1} setParams={setGroup1} />
-                        <GroupControls title="Group 2 (Pink)" colorClass="text-pink-500" params={group2} setParams={setGroup2} />
-                        <GroupControls title="Group 3 (Lime)" colorClass="text-lime-400" params={group3} setParams={setGroup3} />
+                        <GroupControls title="Group 1 (Cyan)" colorClass="text-cyan-400" borderClass="border-cyan-400/20" params={group1} setParams={setGroup1} />
+                        <GroupControls title="Group 2 (Pink)" colorClass="text-pink-500" borderClass="border-pink-500/20" params={group2} setParams={setGroup2} />
+                        <GroupControls title="Group 3 (Lime)" colorClass="text-lime-400" borderClass="border-lime-400/20" params={group3} setParams={setGroup3} />
                     </div>
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-cyan-400 mb-3">Test Results</h3>

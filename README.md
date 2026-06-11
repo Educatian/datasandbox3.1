@@ -1,20 +1,37 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Data Sandbox
 
-# Run and deploy your AI Studio app
+An interactive statistics playground for learning data analysis by doing. Students manipulate
+simulations (dart boards, balance beams, Galton boards, p-hacking fishers, ...) organized into a
+10-assessment curriculum, with an AI tutor ("Dr. Gem") available inside each module and full
+interaction telemetry for learning-analytics research.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/drive/1ynzu_5NwQqge7N6sxgNnRCcRd_Fmwl0T
+- React 19 + TypeScript + Vite, Tailwind CSS v4 (compiled via `@tailwindcss/vite`)
+- Supabase: auth, module visibility scheduling (`module_settings`), interaction logs (`user_logs`)
+- Gemini (`gemini-2.5-flash`) for the in-module AI tutor
+- D3 for visualizations
 
-## Run Locally
+## Run locally
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+npm run dev        # http://localhost:3000
+```
 
+Environment variables (`.env.local`):
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+| Variable | Purpose |
+|---|---|
+| `GEMINI_API_KEY` | Dev-only direct Gemini access (production should use the worker proxy) |
+| `VITE_GEMINI_PROXY_URL` | Cloudflare Worker proxy endpoint for Gemini (production) |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Supabase project |
+
+Without Supabase configured the app shows the login page; with `?demo=1` in **dev builds only**
+the login gate is bypassed (used by `scripts/run_screencast.mjs` for presentation capture).
+
+## Scripts
+
+- `npm run dev` / `npm run build` / `npm run preview`
+- `npm test` — vitest golden-value tests for the statistics engine
+- `node scripts/run_screencast.mjs` — automated Playwright screencast capture (run from repo root)
