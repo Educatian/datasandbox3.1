@@ -5,7 +5,7 @@ import { supabase, isSupabaseConfigured, getSession, onAuthStateChange, signOut,
 import { GlobalClickLogger } from './components/GlobalClickLogger';
 import LoginPage from './components/LoginPage';
 import CurriculumView from './components/CurriculumView';
-import { ALL_TRACKS, getModuleDef, ModuleDef, MODULE_SCENARIOS } from './curriculum';
+import { ALL_TRACKS, getModuleDef, ModuleDef, MODULE_SCENARIOS, DEMO_MODULE_IDS } from './curriculum';
 import { MODULE_REGISTRY } from './components/moduleRegistry';
 
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
@@ -66,17 +66,19 @@ const PlaceholderModule: React.FC<{ moduleDef: ModuleDef; onBack: () => void }> 
 );
 
 const App: React.FC = () => {
-    // Dev-only screencast bypass: ?demo=1 skips the Supabase login gate so modules
-    // can be captured without credentials. Guarded by import.meta.env.DEV, so
-    // production builds never honor it.
-    const LOCAL_BYPASS = import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('demo=1');
+    // Public demo mode: ?demo=1 skips the login gate and exposes a curated set
+    // of flagship modules as a guest (telemetry logs as the demo guest id, no
+    // progress persistence). In dev builds the same flag exposes EVERY module
+    // (used by the screencast scripts).
+    const DEMO_MODE = typeof window !== 'undefined' && window.location.search.includes('demo=1');
+    const LOCAL_BYPASS = import.meta.env.DEV && DEMO_MODE;
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
     const [user, setUserState] = useState<User | null>(
-        LOCAL_BYPASS ? ({ id: 'local-demo', email: 'demo@local.dev' } as unknown as User) : null
+        DEMO_MODE ? ({ id: 'demo-guest', email: 'demo@guest' } as unknown as User) : null
     );
     const [isAdminState, setIsAdminState] = useState(false);
 
-    const [authLoading, setAuthLoading] = useState(!LOCAL_BYPASS);
+    const [authLoading, setAuthLoading] = useState(!DEMO_MODE);
     const [moduleSettings, setModuleSettings] = useState<Record<string, any>>({});
     const moduleSettingsRef = useRef<Record<string, any>>({});
     const [exploredModuleIds, setExploredModuleIds] = useState<Set<string>>(new Set());
@@ -85,7 +87,7 @@ const App: React.FC = () => {
     // Server-side aggregate (get_my_module_activity RPC); degrades silently
     // if the RPC has not been applied yet.
     useEffect(() => {
-        if (LOCAL_BYPASS || !isSupabaseConfigured || !user) return;
+        if (DEMO_MODE || !isSupabaseConfigured || !user) return;
         supabase.rpc('get_my_module_activity').then(({ data, error }) => {
             if (error || !data) return;
             const explored = new Set<string>(
@@ -99,8 +101,12 @@ const App: React.FC = () => {
 
     // Check for existing session on mount
     useEffect(() => {
-        // Local screencast bypass: never touch Supabase auth.
-        if (LOCAL_BYPASS) { setAuthLoading(false); return; }
+        // Demo mode: never touch Supabase auth; log interactions as the guest.
+        if (DEMO_MODE) {
+            setUser('demo-guest');
+            setAuthLoading(false);
+            return;
+        }
         // If Supabase is not configured, show login page immediately
         if (!isSupabaseConfigured) {
             setAuthLoading(false);
@@ -136,7 +142,7 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (LOCAL_BYPASS) return;
+        if (DEMO_MODE) return;
         if (user) {
             isAdmin(user).then(setIsAdminState);
         } else {
@@ -145,10 +151,17 @@ const App: React.FC = () => {
     }, [user]);
 
     useEffect(() => {
-        // Local screencast bypass: mark every module visible (skip Supabase).
-        if (LOCAL_BYPASS) {
+        // Demo mode: skip Supabase settings. Dev demo exposes everything
+        // (screencast scripts); production demo exposes the curated tour.
+        if (DEMO_MODE) {
             const all: Record<string, any> = {};
-            for (const a of ALL_TRACKS) for (const m of a.modules) all[m.id] = { module_id: m.id, visibility_state: 'visible' };
+            for (const a of ALL_TRACKS) {
+                for (const m of a.modules) {
+                    if (LOCAL_BYPASS || DEMO_MODULE_IDS.includes(m.id)) {
+                        all[m.id] = { module_id: m.id, visibility_state: 'visible' };
+                    }
+                }
+            }
             setModuleSettings(all);
             return;
         }
@@ -306,23 +319,25 @@ const App: React.FC = () => {
                         {user.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <span className="text-sm text-slate-300 hidden sm:block max-w-[150px] truncate">
-                        {user.email}
+                        {DEMO_MODE ? 'Demo Guest' : user.email}
                     </span>
+                    {!DEMO_MODE && (
+                        <button
+                            onClick={() => setActiveModuleId(activeModuleId === 'my_progress' ? null : 'my_progress')}
+                            className={`transition-colors p-1 ${activeModuleId === 'my_progress' ? 'text-cyan-300' : 'text-slate-400 hover:text-cyan-300'}`}
+                            title="My Progress"
+                            aria-label="My progress"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6m4 6V9m4 10V5M5 19h14" />
+                            </svg>
+                        </button>
+                    )}
                     <button
-                        onClick={() => setActiveModuleId(activeModuleId === 'my_progress' ? null : 'my_progress')}
-                        className={`transition-colors p-1 ${activeModuleId === 'my_progress' ? 'text-cyan-300' : 'text-slate-400 hover:text-cyan-300'}`}
-                        title="My Progress"
-                        aria-label="My progress"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6m4 6V9m4 10V5M5 19h14" />
-                        </svg>
-                    </button>
-                    <button
-                        onClick={handleLogout}
+                        onClick={DEMO_MODE ? () => { window.location.href = window.location.pathname; } : handleLogout}
                         className="text-slate-400 hover:text-red-400 transition-colors p-1"
-                        title="Sign Out"
-                        aria-label="Sign out"
+                        title={DEMO_MODE ? 'Exit demo' : 'Sign Out'}
+                        aria-label={DEMO_MODE ? 'Exit demo' : 'Sign out'}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -342,7 +357,24 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            <GlobalClickLogger userId={user?.email || user?.id || 'anonymous'} page={activeModuleId || 'portal'} />
+            <GlobalClickLogger userId={DEMO_MODE ? 'demo-guest' : (user?.email || user?.id || 'anonymous')} page={activeModuleId || 'portal'} />
+
+            {/* Demo mode banner */}
+            {DEMO_MODE && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-violet-950/90 backdrop-blur-sm border border-violet-500/40 rounded-full px-5 py-2 shadow-2xl">
+                    <span className="text-xs text-violet-200">
+                        <span className="font-bold uppercase tracking-wider mr-2">Demo</span>
+                        A guided taste of the sandbox. Progress is not saved.
+                    </span>
+                    <button
+                        onClick={() => { window.location.href = window.location.pathname; }}
+                        className="text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-full px-3 py-1 transition-colors"
+                    >
+                        Sign in for everything
+                    </button>
+                </div>
+            )}
+
             {renderPage()}
             <footer className="text-center text-slate-600 mt-24 pb-8 w-full border-t border-slate-800/50 pt-8">
                 <p className="font-medium">Data Sandbox 2.0</p>

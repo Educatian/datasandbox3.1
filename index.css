@@ -6,7 +6,11 @@ body {
 }
 
 .font-game {
-  font-family: 'Press Start 2P', cursive;
+  /* Arcade/sci-fi display face: keeps the retro vibe of the old pixel font
+     (Press Start 2P) but stays readable at every size. */
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 p {

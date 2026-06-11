@@ -179,6 +179,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                                 </button>
                             </form>
 
+                            <div className="relative flex items-center my-6" aria-hidden="true">
+                                <div className="flex-grow border-t border-slate-700/60"></div>
+                                <span className="mx-3 text-[10px] uppercase tracking-widest text-slate-600">or</span>
+                                <div className="flex-grow border-t border-slate-700/60"></div>
+                            </div>
+
+                            <a
+                                href="/?demo=1"
+                                className="block w-full py-3 rounded-xl font-bold text-center text-violet-200 border border-violet-500/40 bg-violet-600/10 hover:bg-violet-600/25 hover:border-violet-400 transition-all"
+                            >
+                                🎮 Try the demo, no account needed
+                            </a>
+                            <p className="text-center text-[11px] text-slate-500 mt-2">
+                                9 flagship modules, missions and the AI tutor included.
+                            </p>
+
                             <div className="text-center text-slate-500 text-xs mt-6">
                                 <p className="mb-2">Need an account?</p>
                                 <p className="text-slate-400">

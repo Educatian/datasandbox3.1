@@ -446,6 +446,20 @@ export const ADVANCED_TRACK: AssessmentDef[] = [
 
 export const ALL_TRACKS: AssessmentDef[] = [...CURRICULUM, ...ADVANCED_TRACK];
 
+// Modules exposed in the public demo mode (?demo=1 on production builds):
+// a curated tour of the flagship interactions, no account required.
+export const DEMO_MODULE_IDS: string[] = [
+    'data-sorter',      // drag-and-drop measurement scales
+    'galton-board',     // CLT + PredictGate
+    'dart-board',       // SD + PredictGate + missions
+    'coin-flipper',     // p-values + PredictGate
+    'p-hacking',        // multiple comparisons + PredictGate
+    'power-triangle',   // power station game
+    'correlation-maker', // real data + missions + class dataset
+    'residual-rain',    // regression + missions
+    'anova',            // advanced track taste + scenario skin
+];
+
 //================================================
 // Endogenous scenario skins for the Advanced Track
 // (Malone & Lepper: fantasy tied to skillful use of
