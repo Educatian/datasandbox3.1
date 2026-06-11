@@ -161,7 +161,7 @@ const DataDetective: React.FC<DataDetectiveProps> = ({ onBack }) => {
                     onClick={handleReset}
                     className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-full transition-all border border-slate-600 flex items-center gap-2"
                 >
-                    <span className="text-lg">🔄</span> Reset Quartet
+                    <span className="text-lg" aria-hidden="true">🔄</span> Reset Quartet
                 </button>
             </header>
 

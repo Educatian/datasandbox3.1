@@ -23,7 +23,7 @@ const KMeansPlot: React.FC<KMeansPlotProps> = ({ points, centroids, k, onCentroi
         const width = 500, height = 500;
         const margin = { top: 20, right: 20, bottom: 30, left: 40 };
 
-        svg.attr('width', width).attr('height', height);
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
 
         const x = d3.scaleLinear().domain([0, 100]).range([margin.left, width - margin.right]);
         const y = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
@@ -82,7 +82,7 @@ const KMeansPlot: React.FC<KMeansPlotProps> = ({ points, centroids, k, onCentroi
         
     }, [points, centroids, k, isSettingInitial, onCentroidsChange]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
 };
 
 export default KMeansPlot;

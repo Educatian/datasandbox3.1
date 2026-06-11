@@ -64,7 +64,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
         const height = 500;
         const margin = { top: 30, right: 20, bottom: 50, left: 60 }; // Increased margins for labels
 
-        svg.attr('width', width).attr('height', height);
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
 
         // Initialize layers
         if (svg.select('.bg-layer').empty()) {
@@ -544,7 +544,7 @@ const RegressionScatterPlot: React.FC<RegressionScatterPlotProps> = ({
 
     }, [data, line, onPointUpdate, onAddPoint, showSquares, showSAE, showMeanLine, showPredictionInterval, showConfidenceCone, predictX, onPredictXChange, xAxisLabel, yAxisLabel, pointColor, lineColor, isQuantumMode, rSquared, meanPoint, interactionMode]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
 };
 
 export default RegressionScatterPlot;

@@ -23,7 +23,7 @@ const LogisticRegressionPlot: React.FC<LogisticRegressionPlotProps> = ({ data, c
         if (!svgRef.current) return;
 
         const svg = d3.select(svgRef.current);
-        svg.attr('width', width).attr('height', height);
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
 
         // Initialize layers
         if (svg.select('.bg-layer').empty()) {
@@ -130,7 +130,7 @@ const LogisticRegressionPlot: React.FC<LogisticRegressionPlotProps> = ({ data, c
 
     }, [data, curveParams, onUpdatePoint, onAddPoint, onSelectPoint, selectedPointId]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
 };
 
 export default LogisticRegressionPlot;

@@ -250,7 +250,203 @@ export const CURRICULUM: AssessmentDef[] = [
     }
 ];
 
-export const getModuleDef = (id: string, tracks: AssessmentDef[] = CURRICULUM): ModuleDef | null => {
+//================================================
+// Advanced Track — research methods & EDM modules
+// (components existed but were unreachable before;
+// visibility is admin-controlled like everything else)
+//================================================
+
+export const ADVANCED_TRACK: AssessmentDef[] = [
+    {
+        id: 'advanced-01',
+        title: 'Advanced Inference',
+        subTitle: 'Beyond two groups',
+        modules: [
+            {
+                id: 'anova', title: 'ANOVA Analysis',
+                description: 'Compare the means of three groups at once with the F-statistic.',
+                manipulation: 'Drag group means apart and squeeze their spreads to pump the F-statistic.',
+                component: 'anova'
+            },
+            {
+                id: 'chi-square', title: 'Chi-Square Test',
+                description: 'Independence of categorical variables in a contingency table.',
+                manipulation: 'Edit the contingency table counts and watch expected vs. observed clash.',
+                component: 'chi-square'
+            },
+            {
+                id: 'bayesian', title: 'Bayesian Updater',
+                description: 'Prior beliefs + evidence = posterior beliefs.',
+                manipulation: 'Set a prior about a coin, flip it, and watch the Beta posterior sharpen.',
+                component: 'bayesian'
+            },
+            {
+                id: 'multi-level', title: 'Multi-Level Modeler',
+                description: 'Students nested in schools: random intercepts and slopes.',
+                manipulation: 'Crank up between-group variance and watch group lines fan out.',
+                component: 'multi-level'
+            },
+            {
+                id: 'mixed-methods', title: 'Mixed Methods Linker',
+                description: 'Connect qualitative themes to quantitative scores.',
+                manipulation: 'Click a theme cloud word to see that subgroup\'s score distribution.',
+                component: 'mixed-methods'
+            }
+        ]
+    },
+    {
+        id: 'advanced-02',
+        title: 'Causal Inference',
+        subTitle: 'From correlation to cause',
+        modules: [
+            {
+                id: 'psm', title: 'Propensity Score Matching',
+                description: 'Balance selection bias by matching comparable students.',
+                manipulation: 'Inject selection bias, then run matching and watch the groups balance.',
+                component: 'psm'
+            },
+            {
+                id: 'rdd', title: 'Regression Discontinuity',
+                description: 'Estimate a treatment effect from a cutoff rule.',
+                manipulation: 'Move the cutoff and effect size; read the jump at the threshold.',
+                component: 'rdd'
+            },
+            {
+                id: 'sem', title: 'SEM Builder',
+                description: 'Draw a structural equation model and check its fit.',
+                manipulation: 'Toggle paths between latent variables and chase a better CFI/RMSEA.',
+                component: 'sem'
+            },
+            {
+                id: 'survival', title: 'Survival Analysis',
+                description: 'Kaplan-Meier curves of who persists and who drops out.',
+                manipulation: 'Strengthen the intervention and watch the survival curves separate.',
+                component: 'survival'
+            }
+        ]
+    },
+    {
+        id: 'advanced-03',
+        title: 'Measurement',
+        subTitle: 'Quantifying knowledge itself',
+        modules: [
+            {
+                id: 'irt', title: 'Item Response Theory',
+                description: '2PL item characteristic curves: difficulty and discrimination.',
+                manipulation: 'Bend the ICC with the a/b parameter sliders.',
+                component: 'irt'
+            },
+            {
+                id: 'factor-analysis', title: 'Factor Analyzer',
+                description: 'Find the latent traits behind survey items.',
+                manipulation: 'Generate survey data and watch items cluster onto factors.',
+                component: 'factor-analysis'
+            },
+            {
+                id: 'knowledge-tracing', title: 'Knowledge Tracer (BKT)',
+                description: 'Bayesian Knowledge Tracing of a student\'s mastery.',
+                manipulation: 'Feed correct/incorrect answers and tune learn/guess/slip rates.',
+                component: 'knowledge-tracing'
+            }
+        ]
+    },
+    {
+        id: 'advanced-04',
+        title: 'Machine Learning',
+        subTitle: 'Prediction and pattern discovery',
+        modules: [
+            {
+                id: 'logistic', title: 'Logistic Regression',
+                description: 'An S-curve that turns scores into probabilities.',
+                manipulation: 'Drag points across the boundary and watch the curve re-fit (real IRLS).',
+                component: 'logistic'
+            },
+            {
+                id: 'decision-tree', title: 'Decision Tree',
+                description: 'Recursive splits that carve up the feature space.',
+                manipulation: 'Limit depth and min-samples to fight overfitting.',
+                component: 'decision-tree'
+            },
+            {
+                id: 'k-means', title: 'K-Means Clusterer',
+                description: 'Iterative centroid dance toward stable clusters.',
+                manipulation: 'Step through assign/update rounds and watch inertia fall.',
+                component: 'k-means'
+            },
+            {
+                id: 'pca', title: 'PCA Projector',
+                description: 'Squash 3D data onto its most informative plane.',
+                manipulation: 'Rotate the cloud and project it onto the principal components.',
+                component: 'pca'
+            },
+            {
+                id: 'lpa', title: 'Latent Profile Analyzer',
+                description: 'Soft clustering: every student belongs to every profile, partially.',
+                manipulation: 'Run EM steps and watch responsibilities sharpen into profiles.',
+                component: 'lpa'
+            },
+            {
+                id: 'xai', title: 'Explainable AI',
+                description: 'Why did the model predict that? Feature contributions.',
+                manipulation: 'Move a student\'s features and watch each contribution bar push the prediction.',
+                component: 'xai'
+            }
+        ]
+    },
+    {
+        id: 'advanced-05',
+        title: 'Learning Analytics',
+        subTitle: 'Sequences, networks, text, and signals',
+        modules: [
+            {
+                id: 'hmm', title: 'Hidden Markov Model',
+                description: 'Infer hidden states from observable behavior.',
+                manipulation: 'Tune transition probabilities and watch activity sequences change.',
+                component: 'hmm'
+            },
+            {
+                id: 'spm', title: 'Sequential Pattern Miner',
+                description: 'Frequent behavior patterns of high vs. low achievers.',
+                manipulation: 'Raise minimum support and watch noise patterns drop out.',
+                component: 'spm'
+            },
+            {
+                id: 'lsa', title: 'Lag Sequential Analyzer',
+                description: 'Which action significantly follows which?',
+                manipulation: 'Switch the lag and compare transition z-scores between groups.',
+                component: 'lsa'
+            },
+            {
+                id: 'sequential', title: 'Time Series Explorer',
+                description: 'Trends, cycles, and smoothing in longitudinal data.',
+                manipulation: 'Widen the moving-average window until the seasonality emerges.',
+                component: 'sequential'
+            },
+            {
+                id: 'sna', title: 'Social Network Analyzer',
+                description: 'Who talks to whom: centrality and isolation in class networks.',
+                manipulation: 'Generate interactions and find the hub and the isolated students.',
+                component: 'sna'
+            },
+            {
+                id: 'topic-modeling', title: 'Topic Modeler (LDA)',
+                description: 'Discover themes in a pile of student essays.',
+                manipulation: 'Change the number of topics and name what emerges.',
+                component: 'topic-modeling'
+            },
+            {
+                id: 'multimodal', title: 'Multimodal Analyzer',
+                description: 'Speech, gaze, and clicks on one timeline.',
+                manipulation: 'Scrub the timeline to the auto-bookmarked joint-attention moment.',
+                component: 'multimodal'
+            }
+        ]
+    }
+];
+
+export const ALL_TRACKS: AssessmentDef[] = [...CURRICULUM, ...ADVANCED_TRACK];
+
+export const getModuleDef = (id: string, tracks: AssessmentDef[] = ALL_TRACKS): ModuleDef | null => {
     for (const assessment of tracks) {
         const found = assessment.modules.find(m => m.id === id);
         if (found) return found;

@@ -177,7 +177,7 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
                             {/* Hopper - reduced size to avoid covering sigma */}
                             <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-20 h-8 bg-slate-700 [clip-path:polygon(0%_0%,100%_0%,75%_100%,25%_100%)]"></div>
                             <div className="text-9xl font-black text-indigo-500 select-none">Σ</div>
-                            <div className={`absolute top-4 right-4 w-3 h-3 rounded-full ${isCrunching ? 'bg-red-500 animate-ping' : 'bg-green-500'}`}></div>
+                            <div role="status" aria-label={isCrunching ? 'Machine running' : 'Machine idle'} className={`absolute top-4 right-4 w-3 h-3 rounded-full ${isCrunching ? 'bg-red-500 animate-ping' : 'bg-green-500'}`}></div>
                         </div>
 
                         <div className="flex items-center space-x-2 mt-2 bg-slate-800 p-2 rounded-lg border border-indigo-500/50">
@@ -204,14 +204,14 @@ const SummationMachine: React.FC<SummationMachineProps> = ({ onBack }) => {
                                         <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold shadow-lg border-2 transition-all duration-500 ${isFlying ? 'opacity-0 translate-y-[-200px] scale-50' : 'opacity-100'} ${isSelected ? 'bg-indigo-600 border-indigo-300 text-white ring-2 ring-indigo-500/50' : 'bg-slate-700 border-slate-600 text-slate-400'}`}>
                                             <input className="bg-transparent w-full text-center outline-none" value={orb.value} onChange={(e) => handleValueChange(orb.id, e.target.value)} />
                                         </div>
-                                        <button onClick={() => handleRemoveOrb(orb.id)} className="absolute -bottom-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                                        <button onClick={() => handleRemoveOrb(orb.id)} aria-label={`Remove orb with value ${orb.value}`} className="absolute -bottom-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                                         {isFlying && (
                                             <div className="fixed z-50 w-12 h-12 bg-indigo-400 rounded-full flex items-center justify-center text-white font-bold animate-suck-in pointer-events-none" style={{ left: `calc(50% + ${(index - (data.length - 1) / 2) * 60}px)` }}>{orb.value}</div>
                                         )}
                                     </div>
                                 );
                             })}
-                            <button onClick={handleAddOrb} className="w-16 h-16 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500 hover:text-white hover:border-slate-400 transition-colors">+</button>
+                            <button onClick={handleAddOrb} aria-label="Add a data orb" className="w-16 h-16 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500 hover:text-white hover:border-slate-400 transition-colors">+</button>
                         </div>
                         <div className="h-4 bg-black mt-2 rounded-full overflow-hidden">
                             <div className="h-full w-full bg-[linear-gradient(90deg,transparent_50%,#334155_50%)] [background-size:20px_100%] animate-conveyor"></div>

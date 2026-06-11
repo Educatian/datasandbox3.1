@@ -2,8 +2,22 @@
 
 An interactive statistics playground for learning data analysis by doing. Students manipulate
 simulations (dart boards, balance beams, Galton boards, p-hacking fishers, ...) organized into a
-10-assessment curriculum, with an AI tutor ("Dr. Gem") available inside each module and full
-interaction telemetry for learning-analytics research.
+10-assessment core curriculum plus a 25-module Advanced Track (ANOVA, SEM, IRT, BKT, SNA, LDA,
+HMM, ...), with a Socratic AI tutor ("Dr. Gem") inside each module and full interaction telemetry
+for learning-analytics research.
+
+Key learning-experience features:
+
+- **Predict-commit-test gates** (`components/ui/PredictGate.tsx`): learners commit to a prediction
+  and a confidence judgment before a simulation unlocks; commitments are logged as conceptual
+  telemetry (predict-observe-explain; Chance, delMas & Garfield 2004).
+- **Exact statistics engine**: F/χ²/t p-values via real incomplete gamma/beta CDFs, t-based CIs,
+  IRLS logistic regression; golden-value tested against scipy (`npm test`).
+- **My Progress**: student dashboard over their own telemetry (modules explored, sessions, tutor use).
+- **Admin analytics**: concept x day engagement heatmap and module reach for instructors,
+  plus module visibility scheduling.
+- **Advanced Track**: 25 research-methods/EDM modules, admin-gated like the core curriculum
+  (run `docs/supabase_policies.sql` once to register them).
 
 ## Stack
 

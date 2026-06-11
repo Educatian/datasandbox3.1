@@ -225,6 +225,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                             <input
                                 type="range" min="0" max="100"
                                 value={inputValue}
+                                aria-label="Input control (X)"
                                 onChange={(e) => setInputValue(parseFloat(e.target.value))}
                                 onMouseUp={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'InputX', value: parseFloat((e.target as HTMLInputElement).value) })}
                                 onTouchEnd={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'InputX', value: parseFloat((e.target as HTMLInputElement).value) })}
@@ -248,6 +249,7 @@ const PredictionLaser: React.FC<PredictionLaserProps> = ({ onBack }) => {
                             <input
                                 type="range" min="-1" max="1" step="0.05"
                                 value={correlation}
+                                aria-label="Correlation strength (r)"
                                 onChange={(e) => { setCorrelation(parseFloat(e.target.value)); setGemControlled(false); }}
                                 onMouseUp={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'Correlation_r', value: parseFloat((e.target as HTMLInputElement).value) })}
                                 onTouchEnd={(e) => logEvent('slider_change', 'PredictionLaser', { control: 'Correlation_r', value: parseFloat((e.target as HTMLInputElement).value) })}

@@ -152,7 +152,7 @@ const PCAVisualizer: React.FC<PCAVisualizerProps> = ({ data3D, pcaResult }) => {
             </div>
             <div className="mt-4 p-2 bg-slate-900 rounded-lg">
                 <h4 className="text-center text-sm text-slate-300 mb-1">2D Projection</h4>
-                <svg ref={svg2DRef} width="250" height="250"></svg>
+                <svg ref={svg2DRef} width="250" height="250" className="max-w-full h-auto"></svg>
             </div>
         </div>
     );

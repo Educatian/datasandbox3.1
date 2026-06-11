@@ -60,10 +60,10 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
                     <MasteryBarChart mastery={currentMastery} />
                     <div className="grid grid-cols-2 gap-4 pt-4">
                         <button onClick={() => handleAnswer(true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 text-lg">
-                            Correct Answer ✅
+                            Correct Answer <span aria-hidden="true">✅</span>
                         </button>
                         <button onClick={() => handleAnswer(false)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 text-lg">
-                            Incorrect Answer ❌
+                            Incorrect Answer <span aria-hidden="true">❌</span>
                         </button>
                     </div>
                 </div>

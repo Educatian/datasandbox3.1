@@ -12,13 +12,28 @@ interface CurriculumViewProps {
 const CurriculumView: React.FC<CurriculumViewProps> = ({ tracks, navigateTo, settings = null, isAdmin = false, completedModuleIds }) => {
     return (
         <div className="w-full max-w-6xl mx-auto">
-            <header className="text-center mb-16 pt-8">
-                <h1 className="text-4xl sm:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400 font-game tracking-tight filter drop-shadow-lg">
-                    Data Sandbox
-                </h1>
-                <p className="text-slate-400 mt-4 text-xl font-light tracking-wide">
-                    Interactive Statistics Curriculum
-                </p>
+            <header className="relative text-center mb-16 rounded-3xl overflow-hidden border border-slate-700/40 shadow-2xl">
+                <img
+                    src="/brand/hero.webp"
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover opacity-80"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900"></div>
+                <div className="relative z-10 pt-12 pb-16 px-4">
+                    <div className="flex items-center justify-center gap-4 mb-2">
+                        <img src="/brand/logo.webp" alt="Data Sandbox logo" className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl shadow-lg shadow-cyan-500/20" />
+                        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-violet-300 font-game tracking-tight filter drop-shadow-lg">
+                            Data Sandbox
+                        </h1>
+                    </div>
+                    <p className="text-slate-300 mt-4 text-lg sm:text-xl font-light tracking-wide drop-shadow">
+                        Interactive Statistics Playground
+                    </p>
+                    <p className="text-slate-400/80 mt-2 text-sm max-w-xl mx-auto">
+                        Don't just read about statistics. Grab it, drag it, break it, and watch the concepts emerge.
+                    </p>
+                </div>
             </header>
 
             <div className="space-y-16">

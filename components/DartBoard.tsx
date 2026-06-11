@@ -354,6 +354,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                             </label>
                             <input
                                 type="range" min="1" max="50" value={stdDev}
+                                aria-label={comparisonMode ? 'Player A standard deviation' : 'Standard deviation (spread)'}
                                 onChange={handleSliderChange}
                                 className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
                             />
@@ -375,6 +376,7 @@ const DartBoard: React.FC<DartBoardProps> = ({ onBack }) => {
                                 </label>
                                 <input
                                     type="range" min="1" max="50" value={player2StdDev}
+                                    aria-label="Player B standard deviation"
                                     onChange={handlePlayer2SliderChange}
                                     className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
                                 />

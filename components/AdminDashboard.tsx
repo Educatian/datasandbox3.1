@@ -266,7 +266,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
                         <h2 className="text-xl font-bold text-slate-200">User Management <span className="text-sm font-normal text-slate-500">({userList.length})</span></h2>
                         <div className="flex gap-2 items-center mt-1">
                             <p className="text-xs text-slate-500 uppercase tracking-widest">Manage Roles & Permissions</p>
-                            <button onClick={fetchUserList} className="text-[10px] bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded text-slate-300">↻ Refresh</button>
+                            <button onClick={fetchUserList} className="text-[10px] bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded text-slate-300"><span aria-hidden="true">↻</span> Refresh</button>
                         </div>
                     </div>
                     <div className="relative">

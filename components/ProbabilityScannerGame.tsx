@@ -224,8 +224,9 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
                     <button
                         onClick={onBack}
                         className="p-3 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                        aria-label="Back to Portal"
                     >
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                     </button>
@@ -241,7 +242,7 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
                         <span className="text-xs uppercase opacity-70">Signal Integrity</span>
                         <span className="font-bold flex items-center gap-2 text-lg">
                             ACTIVE
-                            <span className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_#22d3ee]"></span>
+                            <span aria-hidden="true" className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_#22d3ee]"></span>
                         </span>
                     </div>
                 </div>

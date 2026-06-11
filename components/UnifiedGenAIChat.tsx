@@ -88,6 +88,7 @@ const UnifiedGenAIChat: React.FC<UnifiedGenAIChatProps> = ({
                             <button
                                 onClick={() => setShowOnboarding(false)}
                                 className="text-slate-500 hover:text-white transition-colors"
+                                aria-label="Dismiss onboarding tip"
                             >
                                 ✕
                             </button>
@@ -119,8 +120,9 @@ const UnifiedGenAIChat: React.FC<UnifiedGenAIChatProps> = ({
                     <button
                         onClick={() => setIsOpen(true)}
                         className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 hover:scale-110 transition-transform group border border-cyan-400/30"
+                        aria-label="Open AI chat"
                     >
-                        <span className="text-2xl group-hover:animate-bounce">🤖</span>
+                        <span className="text-2xl group-hover:animate-bounce" aria-hidden="true">🤖</span>
                     </button>
                 </div>
             )}
@@ -164,8 +166,9 @@ const UnifiedGenAIChat: React.FC<UnifiedGenAIChatProps> = ({
                             <button
                                 onClick={onClose}
                                 className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                aria-label="Close chat"
                             >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
@@ -221,8 +224,9 @@ const UnifiedGenAIChat: React.FC<UnifiedGenAIChatProps> = ({
                             type="submit"
                             disabled={!input.trim() || isLoading}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-500 disabled:opacity-50 disabled:hover:bg-cyan-600 transition-colors"
+                            aria-label="Send message"
                         >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
                         </button>

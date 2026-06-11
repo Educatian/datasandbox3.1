@@ -131,8 +131,9 @@ const PowerAnalysisGame: React.FC<PowerAnalysisGameProps> = ({ onBack }) => {
                     <button
                         onClick={onBack}
                         className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                        aria-label="Back to Portal"
                     >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                     </button>
@@ -148,7 +149,7 @@ const PowerAnalysisGame: React.FC<PowerAnalysisGameProps> = ({ onBack }) => {
                         <span className="text-[10px] uppercase opacity-50">Grid Status</span>
                         <span className="font-bold flex items-center gap-2">
                             {power >= 0.8 ? "ONLINE" : "OFFLINE"}
-                            <span className={`w-2 h-2 rounded-full ${power >= 0.8 ? 'bg-amber-400 animate-pulse' : 'bg-red-500'}`}></span>
+                            <span aria-hidden="true" className={`w-2 h-2 rounded-full ${power >= 0.8 ? 'bg-amber-400 animate-pulse' : 'bg-red-500'}`}></span>
                         </span>
                     </div>
                 </div>
@@ -253,6 +254,7 @@ const PowerAnalysisGame: React.FC<PowerAnalysisGameProps> = ({ onBack }) => {
                                 type="range"
                                 min="5" max="200" step="5"
                                 value={sampleSize}
+                                aria-label="Sample size (n)"
                                 onChange={(e) => setSampleSize(Number(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
                             />
@@ -273,6 +275,7 @@ const PowerAnalysisGame: React.FC<PowerAnalysisGameProps> = ({ onBack }) => {
                                 type="range"
                                 min="0.1" max="1.5" step="0.1"
                                 value={effectSize}
+                                aria-label="Effect size (d)"
                                 onChange={(e) => setEffectSize(Number(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition-all"
                             />
@@ -296,6 +299,7 @@ const PowerAnalysisGame: React.FC<PowerAnalysisGameProps> = ({ onBack }) => {
                                 type="range"
                                 min="0.01" max="0.20" step="0.01"
                                 value={alpha}
+                                aria-label="Alpha (significance level)"
                                 onChange={(e) => setAlpha(Number(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500 hover:accent-rose-400 transition-all"
                             />

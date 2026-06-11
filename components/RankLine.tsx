@@ -161,6 +161,7 @@ const RankLine: React.FC<RankLineProps> = ({ onBack }) => {
                                 min="1"
                                 max="100"
                                 value={percentile}
+                                aria-label="Percentile rank"
                                 onChange={(e) => setPercentile(parseInt(e.target.value))}
                                 className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 z-10 relative"
                             />

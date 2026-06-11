@@ -22,7 +22,7 @@ const LoadingScreen: React.FC<{ label?: string }> = ({ label = 'Loading...' }) =
 const PlaceholderModule: React.FC<{ moduleDef: ModuleDef; onBack: () => void }> = ({ moduleDef, onBack }) => (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center max-w-3xl mx-auto px-4">
         <button onClick={onBack} className="self-start text-cyan-400 hover:text-cyan-300 mb-8 flex items-center">
-            <span className="mr-2">&larr;</span> Back to Curriculum
+            <span className="mr-2" aria-hidden="true">&larr;</span> Back to Curriculum
         </button>
 
         <h1 className="text-5xl font-bold text-slate-200 mb-4">{moduleDef.title}</h1>

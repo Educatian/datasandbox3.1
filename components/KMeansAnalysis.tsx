@@ -166,7 +166,7 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
                                 <span>Number of Clusters (K)</span>
                                 <span className="font-mono">{k}</span>
                             </label>
-                            <input type="range" min={2} max={6} step={1} value={k} onChange={(e) => handleKChange(+e.target.value)} className="w-full h-2 bg-slate-700 rounded-lg" />
+                            <input type="range" min={2} max={6} step={1} value={k} onChange={(e) => handleKChange(+e.target.value)} aria-label="Number of clusters (K)" className="w-full h-2 bg-slate-700 rounded-lg" />
                         </div>
                         <div className="flex space-x-2">
                             <button onClick={handlePlayPause} disabled={centroids.length < k} className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-700 disabled:bg-slate-600 p-2 rounded">{isAnimating ? 'Pause' : 'Play'}</button>

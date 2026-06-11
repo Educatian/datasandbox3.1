@@ -138,7 +138,7 @@ const SpringVisualizer: React.FC<SpringVisualizerProps> = ({ mass, onMeasure }) 
                 onClick={onMeasure}
                 className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
             >
-                <span>📏 Measure & Record</span>
+                <span><span aria-hidden="true">📏</span> Measure & Record</span>
             </button>
         </div>
     );

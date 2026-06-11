@@ -51,7 +51,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
         const height = 500;
         const margin = { top: 20, right: 20, bottom: 50, left: 50 };
 
-        svg.attr('width', width).attr('height', height);
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
 
         // Initialize layers if they don't exist
         if (svg.select('.bg-layer').empty()) {
@@ -210,7 +210,7 @@ const ScatterPlot: React.FC<ScatterPlotProps> = ({
 
     }, [data, line, onPointUpdate, xAxisLabel, yAxisLabel, showRegressionLine]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
 };
 
 export default ScatterPlot;

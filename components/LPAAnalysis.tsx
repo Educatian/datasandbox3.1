@@ -151,7 +151,7 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
                                 <span>Number of Profiles (K)</span>
                                 <span className="font-mono">{k}</span>
                             </label>
-                            <input type="range" min={2} max={5} step={1} value={k} onChange={(e) => setK(+e.target.value)} className="w-full h-2 bg-slate-700 rounded-lg" />
+                            <input type="range" min={2} max={5} step={1} value={k} onChange={(e) => setK(+e.target.value)} aria-label="Number of profiles (K)" className="w-full h-2 bg-slate-700 rounded-lg" />
                         </div>
                         <div className="flex space-x-2">
                             <button onClick={startAnimation} disabled={isAnimating} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 p-2 rounded">Run Analysis</button>

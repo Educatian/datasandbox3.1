@@ -45,6 +45,39 @@ const CONCEPT_MAP: Record<string, string> = {
 
   // Effect Size & Advanced
   'effect-magnifier': 'EffectSize_Cohen',
+
+  // Advanced Track: inference & causal
+  'anova': 'ANOVA_FStatistic',
+  'chi-square': 'ChiSquare_Independence',
+  'bayesian': 'Bayesian_Updating',
+  'multi-level': 'MultiLevel_RandomEffects',
+  'mixed-methods': 'MixedMethods_Integration',
+  'psm': 'PropensityScoreMatching',
+  'rdd': 'RegressionDiscontinuity',
+  'sem': 'SEM_ModelFit',
+  'survival': 'Survival_KaplanMeier',
+
+  // Advanced Track: measurement
+  'irt': 'IRT_2PL',
+  'factor-analysis': 'FactorAnalysis_Latent',
+  'knowledge-tracing': 'BKT_Mastery',
+
+  // Advanced Track: ML / EDM
+  'logistic': 'LogisticRegression',
+  'decision-tree': 'DecisionTree_Gini',
+  'k-means': 'KMeans_Clustering',
+  'pca': 'PCA_DimReduction',
+  'lpa': 'LPA_Profiles',
+  'xai': 'XAI_FeatureContribution',
+
+  // Advanced Track: learning analytics
+  'hmm': 'HMM_HiddenStates',
+  'spm': 'SequentialPatternMining',
+  'lsa': 'LagSequentialAnalysis',
+  'sequential': 'TimeSeries_Smoothing',
+  'sna': 'SNA_Centrality',
+  'topic-modeling': 'LDA_TopicModeling',
+  'multimodal': 'Multimodal_JointAttention',
 };
 
 export interface LogPayload {

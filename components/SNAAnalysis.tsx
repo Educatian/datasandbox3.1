@@ -112,7 +112,7 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
                                 <span>Time / Interaction Step</span>
                                 <span className="font-mono">{allInteractions.length > 0 ? time + 1 : 0} / {allInteractions.length}</span>
                             </label>
-                            <input type="range" min={0} max={allInteractions.length > 0 ? allInteractions.length - 1 : 0} value={time} onChange={(e) => setTime(+e.target.value)} className="w-full h-2 bg-slate-700 rounded-lg" />
+                            <input type="range" min={0} max={allInteractions.length > 0 ? allInteractions.length - 1 : 0} value={time} onChange={(e) => setTime(+e.target.value)} aria-label="Time / interaction step" className="w-full h-2 bg-slate-700 rounded-lg" />
                         </div>
                         <div className="flex space-x-2">
                             <button onClick={() => setIsAnimating(!isAnimating)} className="flex-1 bg-sky-600 hover:bg-sky-700 p-2 rounded">{isAnimating ? 'Pause' : 'Play'}</button>

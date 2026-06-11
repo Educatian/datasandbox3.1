@@ -83,7 +83,7 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
                             <span>Number of Factors</span>
                             <span className="font-mono">{numFactors}</span>
                         </label>
-                        <input type="range" min={2} max={3} step={1} value={numFactors} onChange={e => setNumFactors(+e.target.value)} className="w-full h-2 bg-slate-700 rounded-lg" />
+                        <input type="range" min={2} max={3} step={1} value={numFactors} onChange={e => setNumFactors(+e.target.value)} aria-label="Number of factors" className="w-full h-2 bg-slate-700 rounded-lg" />
                         <p className="text-xs text-slate-500 mt-1">Total Variance Explained: {totalVarianceExplained.toFixed(1)}%</p>
                     </div>
                     <div>

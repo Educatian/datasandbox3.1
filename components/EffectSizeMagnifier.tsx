@@ -217,6 +217,7 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
                             <input
                                 type="range" min="0" max="2" step="0.1"
                                 value={effectSize}
+                                aria-label="Effect size (contrast)"
                                 onChange={(e) => setEffectSize(parseFloat(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                             />
@@ -234,6 +235,7 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
                             <input
                                 type="range" min="5" max="200" step="5"
                                 value={sampleSize}
+                                aria-label="Sample size (resolution)"
                                 onChange={(e) => setSampleSize(parseInt(e.target.value))}
                                 className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                             />

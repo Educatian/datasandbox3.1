@@ -155,8 +155,8 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
                 {/* Left Column: The Simulation */}
                 <div className="flex flex-col space-y-6">
                     <div className="bg-slate-800 p-2 rounded-xl flex shadow-lg border border-slate-700">
-                        <button onClick={() => setMode('observational')} className={`flex-1 py-3 rounded-lg font-bold transition-all duration-300 ${mode === 'observational' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}>📷 Observational</button>
-                        <button onClick={() => setMode('experimental')} className={`flex-1 py-3 rounded-lg font-bold transition-all duration-300 ${mode === 'experimental' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}>🧪 God Mode</button>
+                        <button onClick={() => setMode('observational')} className={`flex-1 py-3 rounded-lg font-bold transition-all duration-300 ${mode === 'observational' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}><span aria-hidden="true">📷</span> Observational</button>
+                        <button onClick={() => setMode('experimental')} className={`flex-1 py-3 rounded-lg font-bold transition-all duration-300 ${mode === 'experimental' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}><span aria-hidden="true">🧪</span> God Mode</button>
                     </div>
 
                     <div className="relative h-80 w-full bg-slate-900 rounded-2xl overflow-hidden border-4 border-slate-800 shadow-2xl group">
@@ -200,7 +200,7 @@ const GodModeSwitch: React.FC<GodModeSwitchProps> = ({ onBack }) => {
                         {mode === 'experimental' ? (
                             <div className="mb-6">
                                 <label className="flex justify-between text-sm text-cyan-400 font-bold mb-2"><span>Manipulate Variable: Sunlight</span><span>{sunlightInput}%</span></label>
-                                <input type="range" min="0" max="100" value={sunlightInput} onChange={(e) => setSunlightInput(+e.target.value)} className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                <input type="range" min="0" max="100" value={sunlightInput} onChange={(e) => setSunlightInput(+e.target.value)} aria-label="Manipulate variable: sunlight" className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
                             </div>
                         ) : (
                             <div className="mb-6 p-4 bg-amber-900/20 border border-amber-500/30 rounded-lg"><p className="text-amber-200 text-sm flex items-center gap-2"><span>🚫</span><span>Variable manipulation locked.</span></p></div>

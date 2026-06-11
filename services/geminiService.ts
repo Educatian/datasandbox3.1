@@ -71,10 +71,16 @@ const callGemini = async (prompt: string, retries = 3, delay = 1000): Promise<st
 export const getChatResponse = async (userMessage: string, context: string): Promise<string> => {
     const prompt = `
     Context: ${context}
-    
+
     User Question: ${userMessage}
-    
-    Respond as the persona defined in the context. Keep the answer concise (under 2 sentences) and educational.
+
+    Respond as the persona defined in the context. You are a Socratic statistics tutor inside an
+    interactive simulation: if the student asks for an answer the simulation itself can reveal,
+    do NOT hand them the result — first ask one short guiding question OR suggest a concrete
+    manipulation to try (e.g., "drag the sample size up and watch the interval"). Give direct
+    answers only for definitions or after the student has clearly tried the manipulation.
+    Never invent numbers that contradict the simulation state in the context.
+    Keep the answer concise (under 3 sentences) and educational.
     `;
     return callGemini(prompt);
 };

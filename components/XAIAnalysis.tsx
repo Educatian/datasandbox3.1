@@ -35,6 +35,7 @@ const FeatureSlider: React.FC<{
             step={1}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value, 10))}
+            aria-label={label}
             className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
         />
     </div>

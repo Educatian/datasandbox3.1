@@ -255,7 +255,7 @@ const DataSorterGame: React.FC<DataSorterGameProps> = ({ onBack }) => {
             {/* Header */}
             <header className="bg-[#181825] p-4 flex justify-between items-center border-b border-[#313244] z-50">
                 <button onClick={onBack} className="text-[#89b4fa] hover:text-white flex items-center gap-2">
-                    <span>&larr;</span> Exit Simulation
+                    <span aria-hidden="true">&larr;</span> Exit Simulation
                 </button>
                 <div className="text-center">
                     <h1 className="text-xl font-bold">Data Sorter Sandbox</h1>

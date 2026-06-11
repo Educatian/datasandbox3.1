@@ -264,7 +264,7 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                 onClick={() => setScenario('physics')}
                                 className={`px-3 py-1.5 rounded-md transition-colors ${scenario === 'physics' ? 'bg-yellow-600 text-white' : 'text-slate-400 hover:text-white'}`}
                             >
-                                🧪 Physics Experiment
+                                <span aria-hidden="true">🧪</span> Physics Experiment
                             </button>
                         </div>
                     </div>
@@ -364,6 +364,8 @@ const RegressionAnalysis: React.FC<RegressionAnalysisProps> = ({ onBack, customT
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] text-slate-400 font-bold uppercase">Confidence Cone</span>
                                         <button onClick={() => setShowConfidenceCone(!showConfidenceCone)}
+                                            aria-label="Toggle confidence cone"
+                                            aria-pressed={showConfidenceCone}
                                             className={`w-10 h-5 rounded-full transition-colors relative ${showConfidenceCone ? 'bg-teal-500' : 'bg-slate-700'}`}>
                                             <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showConfidenceCone ? 'left-6' : 'left-1'}`} />
                                         </button>

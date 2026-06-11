@@ -19,7 +19,7 @@ const ICCChart: React.FC<ICCChartProps> = ({ params }) => {
         const margin = { top: 20, right: 20, bottom: 50, left: 50 };
 
         svg.selectAll('*').remove();
-        svg.attr('width', width).attr('height', height);
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
 
         const x = d3.scaleLinear()
             .domain([-3, 3])
@@ -110,7 +110,7 @@ const ICCChart: React.FC<ICCChartProps> = ({ params }) => {
 
     }, [params]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
 };
 
 export default ICCChart;

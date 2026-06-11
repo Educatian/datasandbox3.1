@@ -125,7 +125,7 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                         onClick={() => setScenario('experiment')}
                         className={`px-4 py-2 rounded-md transition-colors ${scenario === 'experiment' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'}`}
                     >
-                        🧠 Reaction Experiment
+                        <span aria-hidden="true">🧠</span> Reaction Experiment
                     </button>
                 </div>
             </div>

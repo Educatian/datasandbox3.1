@@ -21,7 +21,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, movingAverageData, onPointU
         const height = 500;
         const margin = { top: 20, right: 20, bottom: 30, left: 40 };
 
-        svg.attr('width', width).attr('height', height);
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
 
         // Initialize layers
         if (svg.select('.bg-layer').empty()) {
@@ -112,7 +112,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, movingAverageData, onPointU
 
     }, [data, movingAverageData, onPointUpdate]);
 
-    return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} className="w-full h-auto max-w-[500px]"></svg>;
 };
 
 export default LineChart;

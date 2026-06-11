@@ -139,6 +139,7 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
                                 type="range"
                                 min="0" max="100"
                                 value={signal}
+                                aria-label="Signal strength (mean difference)"
                                 onChange={(e) => setSignal(parseInt(e.target.value))}
                                 className="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                             />
@@ -150,6 +151,7 @@ const SignalNoiseRadio: React.FC<SignalNoiseRadioProps> = ({ onBack }) => {
                                 type="range"
                                 min="5" max="100"
                                 value={noise}
+                                aria-label="Static noise (standard error)"
                                 onChange={(e) => setNoise(parseInt(e.target.value))}
                                 className="w-full h-3 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-rose-500"
                             />

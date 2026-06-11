@@ -36,6 +36,7 @@ const Slider: React.FC<{ label: string, value: number, min: number, max: number,
             value={value}
             onChange={onChange}
             onMouseUp={onMouseUp}
+            aria-label={label}
             className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
         />
     </div>
@@ -292,7 +293,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                     disabled={isAutoRunning}
                                     className="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-600 text-white font-bold py-4 rounded-lg shadow-lg transition-all transform active:scale-95"
                                 >
-                                    🎯 Run {BATCH_SIZE} Samples
+                                    <span aria-hidden="true">🎯</span> Run {BATCH_SIZE} Samples
                                 </button>
                                 <button
                                     onClick={() => setIsAutoRunning(!isAutoRunning)}
@@ -323,7 +324,7 @@ const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, cust
                                 onClick={resetRadar}
                                 className="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg text-sm"
                             >
-                                🔄 Reset Experiment
+                                <span aria-hidden="true">🔄</span> Reset Experiment
                             </button>
                         </div>
                     </div>
