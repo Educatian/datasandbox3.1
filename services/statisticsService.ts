@@ -2,6 +2,151 @@
 
 import { Point, RegressionLine, DistributionParams, HiddenState, Observation, HMMSequenceItem, GroupPoint, ContingencyTableData, ChiSquareResult, LogisticPoint, LogisticCurveParams, DecisionTreePoint, DecisionTreeNode, KMeansPoint, Centroid, PCA3DPoint, PCAResult, ValueTimePoint, LPAPoint, Profile, StudentSequence, StudentAction, FrequentPattern, TransitionMatrix, LagAnalysisResult, SurveyItem, FactorAnalysisResult, FactorLoading, Interaction, SNANode, SNALink, BKTParams, SurvivalDataPoint, SurvivalCurvePoint, SEMModel, FitIndices, PSMDataPoint, StudentFeatures, PredictionResult, FeatureContribution, MultimodalData, Bookmark, IRTParams, LDAResult, LdaDocument, Topic, Keyword, Participant, QualitativeTheme, RddPoint, RddResult, ResidualPoint } from '../types';
 
+//================================================
+// Special functions (exact distribution CDFs)
+//
+// Numerical Recipes-style implementations so the
+// p-values students see are statistically correct,
+// not visual approximations.
+//================================================
+
+export const logGamma = (x: number): number => {
+    // Lanczos approximation (g=7, n=9), accurate to ~15 significant digits.
+    const c = [
+        0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+        771.32342877765313, -176.61502916214059, 12.507343278686905,
+        -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+    ];
+    if (x < 0.5) {
+        return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+    }
+    x -= 1;
+    let a = c[0];
+    const t = x + 7.5;
+    for (let i = 1; i < 9; i++) a += c[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+};
+
+// Regularized lower incomplete gamma P(a, x).
+export const lowerRegularizedGamma = (a: number, x: number): number => {
+    if (x <= 0) return 0;
+    if (a <= 0) return 1;
+    const EPS = 3e-14;
+    if (x < a + 1) {
+        // Series representation
+        let ap = a;
+        let sum = 1 / a;
+        let del = sum;
+        for (let n = 1; n < 500; n++) {
+            ap += 1;
+            del *= x / ap;
+            sum += del;
+            if (Math.abs(del) < Math.abs(sum) * EPS) break;
+        }
+        return sum * Math.exp(-x + a * Math.log(x) - logGamma(a));
+    }
+    // Continued fraction for Q(a, x), then P = 1 - Q
+    const FPMIN = 1e-300;
+    let b = x + 1 - a;
+    let c = 1 / FPMIN;
+    let d = 1 / b;
+    let h = d;
+    for (let i = 1; i < 500; i++) {
+        const an = -i * (i - a);
+        b += 2;
+        d = an * d + b;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = b + an / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1 / d;
+        const del = d * c;
+        h *= del;
+        if (Math.abs(del - 1) < EPS) break;
+    }
+    return 1 - Math.exp(-x + a * Math.log(x) - logGamma(a)) * h;
+};
+
+// Continued fraction for the regularized incomplete beta function.
+const betaContinuedFraction = (a: number, b: number, x: number): number => {
+    const EPS = 3e-14;
+    const FPMIN = 1e-300;
+    const qab = a + b;
+    const qap = a + 1;
+    const qam = a - 1;
+    let c = 1;
+    let d = 1 - qab * x / qap;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    d = 1 / d;
+    let h = d;
+    for (let m = 1; m <= 500; m++) {
+        const m2 = 2 * m;
+        let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        d = 1 + aa * d;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = 1 + aa / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1 / d;
+        h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        d = 1 + aa * d;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        c = 1 + aa / c;
+        if (Math.abs(c) < FPMIN) c = FPMIN;
+        d = 1 / d;
+        const del = d * c;
+        h *= del;
+        if (Math.abs(del - 1) < EPS) break;
+    }
+    return h;
+};
+
+// Regularized incomplete beta I_x(a, b).
+export const regularizedIncompleteBeta = (x: number, a: number, b: number): number => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const lnFront = logGamma(a + b) - logGamma(a) - logGamma(b)
+        + a * Math.log(x) + b * Math.log(1 - x);
+    const front = Math.exp(lnFront);
+    if (x < (a + 1) / (a + b + 2)) {
+        return front * betaContinuedFraction(a, b, x) / a;
+    }
+    return 1 - front * betaContinuedFraction(b, a, 1 - x) / b;
+};
+
+// Chi-square survival function (upper tail p-value), df degrees of freedom.
+export const chiSquarePValue = (chi2: number, df: number): number => {
+    if (chi2 <= 0) return 1;
+    return Math.max(0, Math.min(1, 1 - lowerRegularizedGamma(df / 2, chi2 / 2)));
+};
+
+// F-distribution survival function (upper tail p-value).
+export const fPValue = (f: number, df1: number, df2: number): number => {
+    if (f <= 0) return 1;
+    return Math.max(0, Math.min(1, regularizedIncompleteBeta(df2 / (df2 + df1 * f), df2 / 2, df1 / 2)));
+};
+
+// Student's t CDF.
+export const tCDF = (t: number, df: number): number => {
+    if (df <= 0) return NaN;
+    const x = df / (df + t * t);
+    const tail = 0.5 * regularizedIncompleteBeta(x, df / 2, 0.5);
+    return t >= 0 ? 1 - tail : tail;
+};
+
+// Inverse t CDF via bisection (only used for critical values, so speed is fine).
+export const tQuantile = (p: number, df: number): number => {
+    if (p <= 0) return -Infinity;
+    if (p >= 1) return Infinity;
+    if (p === 0.5) return 0;
+    let lo = -500, hi = 500;
+    for (let i = 0; i < 200; i++) {
+        const mid = (lo + hi) / 2;
+        if (tCDF(mid, df) < p) lo = mid; else hi = mid;
+        if (hi - lo < 1e-10) break;
+    }
+    return (lo + hi) / 2;
+};
+
 export const calculateCorrelation = (data: Point[]): number => {
   if (data.length < 2) return 0;
 
@@ -130,24 +275,14 @@ export const calculateConfidenceInterval = (data: number[], confidenceLevel: num
     const stdDev = Math.sqrt(variance);
     const stdError = stdDev / Math.sqrt(n);
     
-    // Z-score approximation for simplicity (strictly should be t-score for small n)
-    let zScore = 1.96; // Default 95%
-    if (confidenceLevel === 80) zScore = 1.282;
-    if (confidenceLevel === 85) zScore = 1.440;
-    if (confidenceLevel === 90) zScore = 1.645;
-    if (confidenceLevel === 95) zScore = 1.960;
-    if (confidenceLevel === 99) zScore = 2.576;
-    // Interpolate roughly for slider values
-    if (confidenceLevel > 80 && confidenceLevel < 99) {
-        // Simple linear-ish mapping for the slider demo
-        // Not statistically exact for all integers, but sufficient for the visual
-         zScore = 1.28 + (confidenceLevel - 80) * (2.576 - 1.28) / 19;
-    }
+    // Exact t critical value (correct for small n, converges to z for large n)
+    const alpha = 1 - confidenceLevel / 100;
+    const tCrit = n > 1 ? tQuantile(1 - alpha / 2, n - 1) : 0;
 
     return {
         sampleMean: mean,
-        lowerBound: mean - zScore * stdError,
-        upperBound: mean + zScore * stdError
+        lowerBound: mean - tCrit * stdError,
+        upperBound: mean + tCrit * stdError
     };
 };
 
@@ -190,12 +325,10 @@ export const calculateMean2ForPValue = (targetPValue: number, dist1: Distributio
     }
 };
 
-function normalCDF(x: number): number {
-    var t = 1 / (1 + .2316419 * Math.abs(x));
-    var d = .3989423 * Math.exp(-x * x / 2);
-    var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-    if (x > 0) prob = 1 - prob;
-    return prob;
+export function normalCDF(x: number): number {
+    // Phi(x) via the regularized incomplete gamma: erf(z) = P(1/2, z^2) for z >= 0.
+    const p = lowerRegularizedGamma(0.5, x * x / 2);
+    return x >= 0 ? 0.5 * (1 + p) : 0.5 * (1 - p);
 }
 
 function approximateInverseNormalCDF(p: number): number {
@@ -284,30 +417,17 @@ export const calculateAnova = (groups: DistributionParams[]): { fStatistic: numb
     const msBetween = ssBetween / dfBetween;
     const msWithin = ssWithin / dfWithin;
     
+    if (msWithin === 0) return { fStatistic: Infinity, pValue: 0 };
     const fStatistic = msBetween / msWithin;
-    
-    // F-distribution p-value approximation (simplified)
-    // For interactive visualization, precise p-value is less critical than responsiveness
-    // We'll use a simplified lookup logic or library if needed, but for now 
-    // we can use a basic inverse relationship for visual feedback
-    
-    // Very rough approximation for demo purposes
-    const pValue = 1 / (1 + fStatistic); 
 
-    return { fStatistic, pValue: Math.max(0, Math.min(1, pValue * 0.5)) }; // Scaled for effect
+    return { fStatistic, pValue: fPValue(fStatistic, dfBetween, dfWithin) };
 };
 
 export const pdfBeta = (x: number, alpha: number, beta: number): number => {
     if (x <= 0 || x >= 1) return 0;
-    // Log-gamma function approximation or library is usually needed for Beta PDF normalization (B(alpha, beta))
-    // B(a,b) = Gamma(a)Gamma(b) / Gamma(a+b)
-    
-    // Simple approximation for visual shape:
-    // f(x) proportional to x^(a-1) * (1-x)^(b-1)
-    
-    return Math.pow(x, alpha - 1) * Math.pow(1 - x, beta - 1);
-    // Note: This is unnormalized height, which is fine for relative shape visualization in D3 
-    // if we scale the Y axis dynamically.
+    // Properly normalized: f(x) = x^(a-1) (1-x)^(b-1) / B(a, b)
+    const lnB = logGamma(alpha) + logGamma(beta) - logGamma(alpha + beta);
+    return Math.exp((alpha - 1) * Math.log(x) + (beta - 1) * Math.log(1 - x) - lnB);
 };
 
 // HMM Logic
@@ -403,31 +523,51 @@ export const calculateChiSquareTest = (observed: ContingencyTableData): ChiSquar
     }
 
     const degreesOfFreedom = (totalRows - 1) * (totalCols - 1);
-    // Rough approximation for p-value
-    // For df=1, chi2=3.84 is p=0.05. 
-    // This is just a placeholder for a real library call.
-    const pValue = 1 / (1 + chi2 * 0.5); 
+    const pValue = chiSquarePValue(chi2, degreesOfFreedom);
 
     return { chi2, pValue, degreesOfFreedom, expected };
 };
 
 
-// Logistic Regression (Simple Gradient Descent or approx)
+// Logistic Regression: maximum-likelihood fit via Newton-Raphson (IRLS)
+// on a standardized predictor for numerical stability.
 export const calculateLogisticRegression = (data: LogisticPoint[]): LogisticCurveParams => {
-    // Simplified estimation for visualization
-    // We assume a single predictor x
-    // We want to fit P(y=1) = 1 / (1 + exp(-(b0 + b1*x)))
-    
-    // Heuristic initialization
-    const meanX1 = calculateMean(data.filter(p => p.outcome === 1).map(p => p.x));
-    const meanX0 = calculateMean(data.filter(p => p.outcome === 0).map(p => p.x));
-    
-    // If class 1 has higher X, beta1 is positive.
-    const diff = meanX1 - meanX0;
-    const beta1 = diff * 0.05; // Scaling factor heuristic
-    const beta0 = -beta1 * ((meanX1 + meanX0) / 2); // Decision boundary roughly between means
+    const n = data.length;
+    if (n === 0) return { beta0: 0, beta1: 0 };
 
-    // In a real app, run a few epochs of Gradient Descent here.
+    const xs = data.map(p => p.x);
+    const ys = data.map(p => p.outcome);
+    const meanX = xs.reduce((a, b) => a + b, 0) / n;
+    const sdX = Math.sqrt(xs.reduce((s, x) => s + Math.pow(x - meanX, 2), 0) / n) || 1;
+
+    // Coefficients on the standardized scale z = (x - meanX) / sdX
+    let b0 = 0, b1 = 0;
+    const CAP = 30; // bounds the fit under complete separation
+
+    for (let iter = 0; iter < 100; iter++) {
+        let g0 = 0, g1 = 0, h00 = 0, h01 = 0, h11 = 0;
+        for (let i = 0; i < n; i++) {
+            const z = (xs[i] - meanX) / sdX;
+            const p = 1 / (1 + Math.exp(-(b0 + b1 * z)));
+            const w = p * (1 - p);
+            g0 += ys[i] - p;
+            g1 += (ys[i] - p) * z;
+            h00 += w;
+            h01 += w * z;
+            h11 += w * z * z;
+        }
+        const det = h00 * h11 - h01 * h01;
+        if (Math.abs(det) < 1e-12) break;
+        const d0 = (h11 * g0 - h01 * g1) / det;
+        const d1 = (-h01 * g0 + h00 * g1) / det;
+        b0 = Math.max(-CAP, Math.min(CAP, b0 + d0));
+        b1 = Math.max(-CAP, Math.min(CAP, b1 + d1));
+        if (Math.abs(d0) < 1e-10 && Math.abs(d1) < 1e-10) break;
+    }
+
+    // Back-transform to the original x scale
+    const beta1 = b1 / sdX;
+    const beta0 = b0 - b1 * meanX / sdX;
     return { beta0, beta1 };
 };
 

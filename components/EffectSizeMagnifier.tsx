@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { getChatResponse } from '../services/geminiService';
+import { tCDF } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface EffectSizeMagnifierProps {
@@ -133,10 +134,13 @@ const EffectSizeMagnifier: React.FC<EffectSizeMagnifierProps> = ({ onBack }) => 
             const pooledSE = Math.sqrt((varA / sampleSize) + (varB / sampleSize));
             const t = Math.abs(meanA - meanB) / pooledSE;
 
-            // Rough p-value approx from t
-            // t > 2 is approx significant for reasonable N
-            const isSig = t > 2.0;
-            const pVal = isSig ? 0.01 : 0.2; // Dummy values for display logic
+            // Welch t-test: exact two-tailed p with Welch-Satterthwaite df
+            const seA = varA / sampleSize;
+            const seB = varB / sampleSize;
+            const df = Math.pow(seA + seB, 2) /
+                ((seA * seA) / (sampleSize - 1) + (seB * seB) / (sampleSize - 1));
+            const pVal = 2 * (1 - tCDF(t, Math.max(1, df)));
+            const isSig = pVal < 0.05;
 
             setScanResult({ detected: isSig, pValue: pVal });
 

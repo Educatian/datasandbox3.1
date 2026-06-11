@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { getChatResponse } from '../services/geminiService';
+import { normalCDF } from '../services/statisticsService';
 
 interface PowerAnalysisGameProps {
     onBack: () => void;
@@ -21,14 +22,6 @@ const PowerAnalysisGame: React.FC<PowerAnalysisGameProps> = ({ onBack }) => {
     ]);
     const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
 
-    // --- Statistical Utils (Local) ---
-    const normalCDF = (x: number): number => {
-        var t = 1 / (1 + .2316419 * Math.abs(x));
-        var d = .3989423 * Math.exp(-x * x / 2);
-        var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-        if (x > 0) prob = 1 - prob;
-        return prob;
-    };
 
     const invNorm = (p: number): number => {
         // Simple approx for key values or Beasley-Springer-Moro if needed. 

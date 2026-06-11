@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getChatResponse } from '../services/geminiService';
+import { normalCDF } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 
 interface CoinFlipperProps {
@@ -77,13 +78,6 @@ const CoinFlipper: React.FC<CoinFlipperProps> = ({ onBack }) => {
         }
     };
 
-    function normalCDF(x: number) {
-        var t = 1 / (1 + .2316419 * Math.abs(x));
-        var d = .3989423 * Math.exp(-x * x / 2);
-        var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-        if (x > 0) prob = 1 - prob;
-        return prob;
-    }
 
     const addBotMessage = (text: string) => {
         setChatHistory(prev => [...prev, { text, role: 'model' }]);

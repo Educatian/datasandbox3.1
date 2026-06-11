@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import { getChatResponse } from '../services/geminiService';
+import { normalCDF } from '../services/statisticsService';
 
 interface ProbabilityScannerGameProps {
     onBack: () => void;
@@ -24,14 +25,6 @@ const ProbabilityScannerGame: React.FC<ProbabilityScannerGameProps> = ({ onBack 
     // Refs
     const svgRef = useRef<SVGSVGElement | null>(null);
 
-    // --- Stats Utils ---
-    const normalCDF = (x: number): number => {
-        var t = 1 / (1 + .2316419 * Math.abs(x));
-        var d = .3989423 * Math.exp(-x * x / 2);
-        var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-        if (x > 0) prob = 1 - prob;
-        return prob;
-    };
 
     const pdf = (x: number) => {
         return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x);

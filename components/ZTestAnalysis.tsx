@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { DistributionParams } from '../types';
-import { calculateZTest, calculateMean2ForPValue, generateSampleData, calculateMean } from '../services/statisticsService';
+import { calculateZTest, calculateMean2ForPValue, generateSampleData, calculateMean, normalCDF } from '../services/statisticsService';
 import { getPValueExplanation } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import DistributionChart from './DistributionChart';
@@ -41,14 +41,6 @@ const Slider: React.FC<{ label: string, value: number, min: number, max: number,
     </div>
 );
 
-// Normal CDF for z-score calculations
-const normalCDF = (x: number): number => {
-    var t = 1 / (1 + .2316419 * Math.abs(x));
-    var d = .3989423 * Math.exp(-x * x / 2);
-    var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-    if (x > 0) prob = 1 - prob;
-    return prob;
-};
 
 const ZTestAnalysis: React.FC<ZTestAnalysisProps> = ({ onBack, customTitle, customContext, moduleId }) => {
     // Check if this is Radar Detector mode
