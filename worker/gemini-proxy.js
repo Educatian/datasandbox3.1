@@ -1,12 +1,18 @@
-// Cloudflare Worker: Gemini proxy for Data Sandbox.
-// Keeps the GEMINI_API_KEY server-side; the client bundle never sees it.
+// Cloudflare Worker: LLM proxy for Data Sandbox (Dr. Gem).
+// Keeps API keys server-side; the client bundle never sees them.
+//
+// Providers (first configured secret wins):
+//   OPENROUTER_API_KEY -> OpenRouter chat completions (model: OPENROUTER_MODEL
+//                         var, default google/gemini-2.5-flash)
+//   GEMINI_API_KEY     -> Google Gemini direct
 //
 // Deploy:   cd worker && npx wrangler deploy
-// Secret:   npx wrangler secret put GEMINI_API_KEY
-// Optional: ALLOWED_ORIGINS env var = comma-separated origins (default: allow all)
+// Secret:   npx wrangler secret put OPENROUTER_API_KEY   (or GEMINI_API_KEY)
+// Optional: ALLOWED_ORIGINS var = comma-separated origins (default: allow all)
 // Client:   set VITE_GEMINI_PROXY_URL to the deployed worker URL.
 
 const MODEL = 'gemini-2.5-flash';
+const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash';
 const MAX_PROMPT_CHARS = 8000;
 
 const corsHeaders = (allowOrigin) => ({
@@ -32,8 +38,8 @@ export default {
         if (request.method !== 'POST') {
             return Response.json({ error: 'POST only' }, { status: 405, headers: corsHeaders(allowOrigin) });
         }
-        if (!env.GEMINI_API_KEY) {
-            return Response.json({ error: 'GEMINI_API_KEY secret not configured' }, { status: 500, headers: corsHeaders(allowOrigin) });
+        if (!env.OPENROUTER_API_KEY && !env.GEMINI_API_KEY) {
+            return Response.json({ error: 'No LLM secret configured (OPENROUTER_API_KEY or GEMINI_API_KEY)' }, { status: 500, headers: corsHeaders(allowOrigin) });
         }
 
         let prompt;
@@ -50,29 +56,49 @@ export default {
             return Response.json({ error: 'Prompt too long' }, { status: 413, headers: corsHeaders(allowOrigin) });
         }
 
-        const upstream = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-            {
+        let upstream;
+        let extractText;
+
+        if (env.OPENROUTER_API_KEY) {
+            upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-goog-api-key': env.GEMINI_API_KEY,
+                    'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+                    'HTTP-Referer': 'https://datasandbox-36k.pages.dev',
+                    'X-Title': 'Data Sandbox - Dr. Gem',
                 },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-            }
-        );
+                body: JSON.stringify({
+                    model: env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
+                    messages: [{ role: 'user', content: prompt }],
+                    max_tokens: 600,
+                }),
+            });
+            extractText = (data) => data?.choices?.[0]?.message?.content || '';
+        } else {
+            upstream = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': env.GEMINI_API_KEY,
+                    },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+                }
+            );
+            extractText = (data) => (data?.candidates?.[0]?.content?.parts || [])
+                .map(p => p.text || '')
+                .join('');
+        }
 
         if (!upstream.ok) {
             // Pass 429 through so the client's backoff/retry logic still works.
             const status = upstream.status === 429 ? 429 : 502;
-            return Response.json({ error: `Gemini upstream error ${upstream.status}` }, { status, headers: corsHeaders(allowOrigin) });
+            return Response.json({ error: `LLM upstream error ${upstream.status}` }, { status, headers: corsHeaders(allowOrigin) });
         }
 
         const data = await upstream.json();
-        const text = (data?.candidates?.[0]?.content?.parts || [])
-            .map(p => p.text || '')
-            .join('');
-
-        return Response.json({ text }, { headers: corsHeaders(allowOrigin) });
+        return Response.json({ text: extractText(data) }, { headers: corsHeaders(allowOrigin) });
     },
 };
