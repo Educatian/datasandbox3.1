@@ -192,7 +192,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                                 🎮 Try the demo, no account needed
                             </a>
                             <p className="text-center text-[11px] text-slate-500 mt-2">
-                                9 flagship modules, missions and the AI tutor included.
+                                9 flagship modules, missions and the AI tutor included. {' '}
+                                <a href="/guide/index.html" className="text-cyan-400 hover:text-cyan-300 underline decoration-dotted">Watch the 60-second guide</a>
                             </p>
 
                             <div className="text-center text-slate-500 text-xs mt-6">

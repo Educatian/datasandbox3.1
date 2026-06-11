@@ -26,3 +26,6 @@ dist-ssr
 # local env
 .env.local
 .env*.local
+
+# guide build intermediates
+scripts/guide_assets/

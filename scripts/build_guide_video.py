@@ -21,33 +21,28 @@ VOICE = "en-US-AndrewNeural"
 
 NARRATION = {
     "landing": (
-        "Welcome to Data Sandbox, an interactive statistics playground where you don't just "
-        "read about statistics, you grab it. Fifty hands-on simulations, thirteen real datasets, "
-        "and a Socratic AI tutor called Doctor Gem."
+        "Welcome to Data Sandbox: statistics you can grab. Fifty simulations, "
+        "thirteen real datasets, and a Socratic AI tutor."
     ),
     "portal": (
-        "Jump straight in with the free demo. The portal organizes everything from measurement "
-        "scales to ANOVA, marks what you've explored, and suggests a next step, while leaving "
-        "the path entirely up to you."
+        "Jump in with the free demo. The portal spans measurement scales to ANOVA, "
+        "tracks what you've explored, and suggests a next step. The path stays yours."
     ),
     "predict": (
-        "Most modules begin by asking what YOU think will happen. You lock in a prediction, and "
-        "how confident you are, before the simulation unlocks. That commitment is where the "
-        "learning happens."
+        "Modules start by asking what YOU think. Lock in a prediction, and your "
+        "confidence, before the simulation unlocks. That commitment is where learning happens."
     ),
     "observe": (
-        "Now experiment. Watch a hundred random bounces pile up into a bell curve. Then ask the "
-        "app to explain what you saw, including the documented misconception your intuition may "
-        "have been using."
+        "Then experiment: a hundred random bounces pile into a bell curve. Afterwards the app "
+        "explains what you saw, including the misconception your intuition may have used."
     ),
     "missions": (
-        "Every simulation has two gears. Free sandbox play, or missions: concrete challenges "
-        "with live goal tracking. Add real datasets, anonymous class comparisons, and a tutor "
-        "that asks before it answers."
+        "Every simulation has two gears: free sandbox play, or missions with live goal "
+        "tracking. Add real data, class comparisons, and a tutor that asks before it answers."
     ),
     "outro": (
-        "Everything you do, every prediction, mission, and experiment, is collected into your "
-        "personal lab notebook. Data Sandbox. Statistics you can grab."
+        "Everything you do becomes your personal lab notebook. "
+        "Data Sandbox: statistics you can grab."
     ),
 }
 
@@ -75,41 +70,51 @@ def main():
 
     starts = {s["name"]: s["ms"] / 1000.0 for s in scenes}
 
-    # 1. Synthesize each scene's narration
-    clips: list[tuple[str, Path, float]] = []
+    # 1. Synthesize each scene's narration, then schedule clips sequentially:
+    #    a clip starts at its scene timestamp OR right after the previous clip
+    #    ends (+0.3s breath), whichever is later, so voices never overlap.
+    clips: list[tuple[str, Path, float, float]] = []  # (name, path, start, dur)
+    cursor = 0.0
     for name, text in NARRATION.items():
         if name not in starts:
             continue
         mp3 = ASSETS / f"narr_{name}.mp3"
-        run(["edge-tts", "--voice", VOICE, "--rate", "+4%", "--text", text,
+        run(["edge-tts", "--voice", VOICE, "--rate", "+8%", "--text", text,
              "--write-media", str(mp3)])
-        clips.append((name, mp3, starts[name]))
-        print(f"  {name}: starts {starts[name]:.1f}s, length {duration_of(mp3):.1f}s")
+        dur = duration_of(mp3)
+        start = max(starts[name], cursor)
+        cursor = start + dur + 0.3
+        clips.append((name, mp3, start, dur))
+        print(f"  {name}: scene {starts[name]:.1f}s -> speaks {start:.1f}-{start + dur:.1f}s")
 
-    # 2. Delay each clip to its scene start and mix
+    audio_end = cursor
+    video_dur = duration_of(video)
+    # Extend the video by cloning the last frame if narration runs longer
+    extend = max(0.0, audio_end - video_dur + 0.2)
+    total = max(video_dur, audio_end + 0.2)
+
+    # 2. Delay each clip to its start and mix (audio inputs begin at index 1)
     inputs: list[str] = []
-    filters: list[str] = []
-    for i, (name, mp3, start) in enumerate(clips):
+    filters: list[str] = [f"[0:v]tpad=stop_mode=clone:stop_duration={extend:.2f}[vout]"]
+    for i, (name, mp3, start, _dur) in enumerate(clips):
         inputs += ["-i", str(mp3)]
         delay_ms = max(0, int(start * 1000))
-        filters.append(f"[{i}:a]adelay={delay_ms}|{delay_ms},apad[a{i}]")
+        filters.append(f"[{i + 1}:a]adelay={delay_ms}|{delay_ms},apad[a{i}]")
     mix_inputs = "".join(f"[a{i}]" for i in range(len(clips)))
     filters.append(f"{mix_inputs}amix=inputs={len(clips)}:normalize=0[aout]")
 
-    video_dur = duration_of(video)
-
-    # 3. Mux onto the video (h264/aac mp4 for universal playback)
+    # 3. Mux (h264/aac mp4 for universal playback)
     out = OUT / "tour.mp4"
     run(["ffmpeg", "-y", "-i", str(video), *inputs,
          "-filter_complex", ";".join(filters),
-         "-map", "0:v", "-map", "[aout]",
+         "-map", "[vout]", "-map", "[aout]",
          "-c:v", "libx264", "-preset", "medium", "-crf", "23",
          "-c:a", "aac", "-b:a", "128k",
-         "-t", f"{video_dur:.2f}",
+         "-t", f"{total:.2f}",
          "-movflags", "+faststart",
          str(out)])
     size_kb = out.stat().st_size // 1024
-    print(f"Wrote {out} ({size_kb} KB, {video_dur:.1f}s)")
+    print(f"Wrote {out} ({size_kb} KB, {total:.1f}s)")
 
 
 if __name__ == "__main__":

@@ -469,7 +469,9 @@ const App: React.FC = () => {
             </ModuleErrorBoundary>
             <footer className="text-center text-slate-600 mt-24 pb-8 w-full border-t border-slate-800/50 pt-8">
                 <p className="font-medium">Data Sandbox 2.0</p>
-                <p className="mt-2 text-sm">Designed for Interactive Learning</p>
+                <p className="mt-2 text-sm">
+                    Designed for Interactive Learning · <a href="/guide/index.html" className="text-slate-500 hover:text-cyan-400 underline decoration-dotted transition-colors">User Guide</a>
+                </p>
             </footer>
         </div>
     );
