@@ -5,6 +5,7 @@ import { getChatResponse } from '../services/geminiService';
 import QuantitativeBarChart from './QuantitativeBarChart';
 import QualitativeThemeCloud from './QualitativeThemeCloud';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface MixedMethodsAnalysisProps {
     onBack: () => void;
@@ -69,15 +70,14 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
         : null;
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-rose-400 hover:text-rose-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-rose-400">Mixed Methods Analysis</h1>
-                    <p className="text-slate-400 mt-2">Integrate quantitative survey data with qualitative interview themes.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Mixed Methods Analysis"
+            subtitle="Integrate quantitative survey data with qualitative interview themes."
+            accentClass="text-rose-400"
+            backClass="text-rose-400 hover:text-rose-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-slate-800 rounded-lg shadow-2xl p-4">
                     <h3 className="text-lg font-semibold text-center text-slate-300 mb-2">Quantitative: Survey Scores</h3>
@@ -108,7 +108,7 @@ const MixedMethodsAnalysis: React.FC<MixedMethodsAnalysisProps> = ({ onBack }) =
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

@@ -6,6 +6,8 @@ import LogisticRegressionPlot from './LogisticRegressionPlot';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 import DataContextCard from './ui/DataContextCard';
 import { getDataset, BinaryOutcomeDataset } from '../data/realDatasets';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface LogisticRegressionAnalysisProps {
     onBack: () => void;
@@ -78,6 +80,7 @@ const LogisticRegressionAnalysis: React.FC<LogisticRegressionAnalysisProps> = ({
         if (curveParams.beta1 === 0) return null;
         return -curveParams.beta0 / curveParams.beta1;
     }, [curveParams]);
+    const tweenedBoundary = useTweenedNumber(decisionBoundary !== null && isFinite(decisionBoundary) ? decisionBoundary : 0);
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
@@ -118,19 +121,15 @@ const LogisticRegressionAnalysis: React.FC<LogisticRegressionAnalysisProps> = ({
     }, [curveParams, decisionBoundary, selectedPoint, realDataset]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-sky-400 hover:text-sky-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-sky-400">Logistic Regression</h1>
-                    <p className="text-slate-400 mt-2">
-                        {realDataset
-                            ? 'Predict O-ring damage (1 = damage) from launch temperature (deg F).'
-                            : 'Predict a binary outcome (Pass/Fail) based on a variable (Study Hours).'}
-                    </p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Logistic Regression"
+            subtitle={realDataset
+                ? 'Predict O-ring damage (1 = damage) from launch temperature (deg F).'
+                : 'Predict a binary outcome (Pass/Fail) based on a variable (Study Hours).'}
+            accentClass="text-sky-400"
+            backClass="text-sky-400 hover:text-sky-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <LogisticRegressionPlot
@@ -154,7 +153,7 @@ const LogisticRegressionAnalysis: React.FC<LogisticRegressionAnalysisProps> = ({
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">Decision Boundary:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
-                                {decisionBoundary === null || !isFinite(decisionBoundary) ? 'N/A' : decisionBoundary.toFixed(2)}
+                                {decisionBoundary === null || !isFinite(decisionBoundary) ? 'N/A' : tweenedBoundary.toFixed(2)}
                             </span>
                         </div>
                         <button
@@ -185,7 +184,7 @@ const LogisticRegressionAnalysis: React.FC<LogisticRegressionAnalysisProps> = ({
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

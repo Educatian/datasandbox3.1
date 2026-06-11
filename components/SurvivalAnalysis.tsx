@@ -5,6 +5,8 @@ import SurvivalCurveChart from './SurvivalCurveChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface SurvivalAnalysisProps {
     onBack: () => void;
@@ -36,7 +38,7 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
         regenerateData();
     }, [regenerateData]);
 
-    const { curveA, curveB, medianSurvivalA, medianSurvivalB } = useMemo(() => {
+    const { curveA, curveB, medianTimeA, medianTimeB } = useMemo(() => {
         const dataA = survivalData.filter(d => d.group === 'Group A');
         const dataB = survivalData.filter(d => d.group === 'Group B');
         const curveA = calculateKaplanMeier(dataA);
@@ -44,28 +46,31 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
 
         const findMedianSurvival = (curve: SurvivalCurvePoint[]) => {
             const point = curve.find(p => p.survivalProbability <= 0.5);
-            return point ? point.time.toFixed(1) : '>20';
+            return point ? point.time : null;
         };
 
         return {
             curveA,
             curveB,
-            medianSurvivalA: findMedianSurvival(curveA),
-            medianSurvivalB: findMedianSurvival(curveB),
+            medianTimeA: findMedianSurvival(curveA),
+            medianTimeB: findMedianSurvival(curveB),
         };
     }, [survivalData]);
 
+    const tweenedMedianA = useTweenedNumber(medianTimeA ?? 0);
+    const tweenedMedianB = useTweenedNumber(medianTimeB ?? 0);
+    const medianSurvivalA = medianTimeA !== null ? medianTimeA.toFixed(1) : '>20';
+    const medianSurvivalB = medianTimeB !== null ? medianTimeB.toFixed(1) : '>20';
+
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-teal-400 hover:text-teal-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-teal-400">Survival Analysis</h1>
-                    <p className="text-slate-400 mt-2">Compare student dropout curves between a mentored group and a control group.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Survival Analysis"
+            subtitle="Compare student dropout curves between a mentored group and a control group."
+            accentClass="text-teal-400"
+            backClass="text-teal-400 hover:text-teal-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <SurvivalCurveChart curves={[
@@ -91,11 +96,11 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
                         <h3 className="text-lg font-semibold text-teal-400 mb-3">Analysis Results</h3>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-300">Median Survival (Group A):</span>
-                            <span className="font-mono bg-slate-900 px-2 py-1 rounded">{medianSurvivalA} weeks</span>
+                            <span className="font-mono bg-slate-900 px-2 py-1 rounded">{medianTimeA !== null ? tweenedMedianA.toFixed(1) : '>20'} weeks</span>
                         </div>
                         <div className="flex justify-between items-center mt-2 text-sm">
                             <span className="text-slate-300">Median Survival (Group B):</span>
-                            <span className="font-mono bg-slate-900 px-2 py-1 rounded">{medianSurvivalB} weeks</span>
+                            <span className="font-mono bg-slate-900 px-2 py-1 rounded">{medianTimeB !== null ? tweenedMedianB.toFixed(1) : '>20'} weeks</span>
                         </div>
                     </div>
 
@@ -111,7 +116,7 @@ const SurvivalAnalysis: React.FC<SurvivalAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

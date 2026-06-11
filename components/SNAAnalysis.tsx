@@ -4,6 +4,7 @@ import { generateSNAData, processSNAData } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import SNAGraph from './SNAGraph';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface SNAAnalysisProps {
     onBack: () => void;
@@ -92,14 +93,13 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
     }, [time, allInteractions, visibleNodes, visibleLinks]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-sky-400 hover:text-sky-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-sky-400">Social Network Analysis</h1>
-                    <p className="text-slate-400 mt-2">Watch a social network form over time and identify key actors.</p>
-                </div>
-            </header>
+        <ModuleShell
+            title="Social Network Analysis"
+            subtitle="Watch a social network form over time and identify key actors."
+            accentClass="text-sky-400"
+            backClass="text-sky-400 hover:text-sky-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <SNAGraph nodes={visibleNodes} links={visibleLinks} selectedNodeId={selectedNodeId} onNodeClick={setSelectedNodeId} />
@@ -132,7 +132,7 @@ const SNAAnalysis: React.FC<SNAAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

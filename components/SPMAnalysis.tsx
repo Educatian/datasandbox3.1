@@ -3,7 +3,9 @@ import { StudentSequence, FrequentPattern, StudentAction } from '../types';
 import { generateSequenceData, findFrequentPatterns } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface SPMAnalysisProps {
     onBack: () => void;
@@ -16,6 +18,11 @@ const actionMap: Record<StudentAction, { emoji: string; name: string }> = {
     F: { emoji: '💬', name: 'Forum' },
     P: { emoji: '✅', name: 'Pass' },
     E: { emoji: '❌', name: 'Fail/Error' },
+};
+
+const SupportStat: React.FC<{ support: number }> = ({ support }) => {
+    const tweenedSupport = useTweenedNumber(support * 100);
+    return <span className="font-mono text-cyan-400">{tweenedSupport.toFixed(1)}%</span>;
 };
 
 const PatternList: React.FC<{ title: string; patterns: FrequentPattern[] }> = ({ title, patterns }) => (
@@ -33,7 +40,7 @@ const PatternList: React.FC<{ title: string; patterns: FrequentPattern[] }> = ({
                             ))}
                         </div>
                         <div className="text-right">
-                            <span className="font-mono text-cyan-400">{(p.support * 100).toFixed(1)}%</span>
+                            <SupportStat support={p.support} />
                             <span className="text-xs text-slate-500 block">support</span>
                         </div>
                     </li>
@@ -73,14 +80,13 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
     }, [sequences, support, patternLength]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-red-400 hover:text-red-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-red-400">Sequential Pattern Mining</h1>
-                    <p className="text-slate-400 mt-2">Find frequent subsequences of actions, comparing between groups.</p>
-                </div>
-            </header>
+        <ModuleShell
+            title="Sequential Pattern Mining"
+            subtitle="Find frequent subsequences of actions, comparing between groups."
+            accentClass="text-red-400"
+            backClass="text-red-400 hover:text-red-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <PatternList title="Group A (High-Achievers)" patterns={patternsA} />
@@ -106,7 +112,7 @@ const SPMAnalysis: React.FC<SPMAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

@@ -5,6 +5,7 @@ import DecisionTreeVisualizer from './DecisionTreeVisualizer';
 import DecisionBoundaryPlot from './DecisionBoundaryPlot';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface DecisionTreeAnalysisProps {
@@ -78,15 +79,14 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
     }, [sendMessage]);
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-rose-400 hover:text-rose-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-rose-400">Decision Tree Classifier</h1>
-                    <p className="text-slate-400 mt-2">Visualize how a tree learns to classify data by making splits.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Decision Tree Classifier"
+            subtitle="Visualize how a tree learns to classify data by making splits."
+            accentClass="text-rose-400"
+            backClass="text-rose-400 hover:text-rose-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="flex flex-col space-y-8">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
@@ -122,7 +122,7 @@ const DecisionTreeAnalysis: React.FC<DecisionTreeAnalysisProps> = ({ onBack }) =
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

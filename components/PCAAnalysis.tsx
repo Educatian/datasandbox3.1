@@ -4,6 +4,8 @@ import { calculatePCA } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import PCAVisualizer from './PCAVisualizer';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface PCAAnalysisProps {
     onBack: () => void;
@@ -54,6 +56,10 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
         return { pc1, pc2, total: pc1 + pc2 };
     }, [pcaResult]);
 
+    const tweenedPc1 = useTweenedNumber(explainedVariance.pc1);
+    const tweenedPc2 = useTweenedNumber(explainedVariance.pc2);
+    const tweenedTotal = useTweenedNumber(explainedVariance.total);
+
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
         setChatHistory(prev => [...prev, { text: msg, role: 'user' }]);
@@ -80,15 +86,14 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
     }, [explainedVariance]);
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-violet-400 hover:text-violet-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-violet-400">Principal Component Analysis (PCA)</h1>
-                    <p className="text-slate-400 mt-2">Reduce 3D data to its most important 2D representation.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Principal Component Analysis (PCA)"
+            subtitle="Reduce 3D data to its most important 2D representation."
+            accentClass="text-violet-400"
+            backClass="text-violet-400 hover:text-violet-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4 min-h-[500px]">
                     <PCAVisualizer data3D={data3D} pcaResult={pcaResult} />
@@ -99,15 +104,15 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
                                 <span className="text-slate-300">Principal Component 1:</span>
-                                <span className="font-mono bg-slate-900 px-2 py-1 rounded">{explainedVariance.pc1.toFixed(1)}%</span>
+                                <span className="font-mono bg-slate-900 px-2 py-1 rounded">{tweenedPc1.toFixed(1)}%</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-slate-300">Principal Component 2:</span>
-                                <span className="font-mono bg-slate-900 px-2 py-1 rounded">{explainedVariance.pc2.toFixed(1)}%</span>
+                                <span className="font-mono bg-slate-900 px-2 py-1 rounded">{tweenedPc2.toFixed(1)}%</span>
                             </div>
                             <div className="flex justify-between items-center pt-2 border-t border-slate-700">
                                 <span className="text-slate-300 font-bold">Total (in 2D):</span>
-                                <span className="font-mono bg-slate-900 px-2 py-1 rounded font-bold">{explainedVariance.total.toFixed(1)}%</span>
+                                <span className="font-mono bg-slate-900 px-2 py-1 rounded font-bold">{tweenedTotal.toFixed(1)}%</span>
                             </div>
                         </div>
                         <button onClick={regenerateData} className="w-full mt-6 bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg">
@@ -127,7 +132,7 @@ const PCAAnalysis: React.FC<PCAAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

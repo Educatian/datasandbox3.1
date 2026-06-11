@@ -8,6 +8,8 @@ import DataContextCard from './ui/DataContextCard';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { getDataset, GroupedDataset } from '../data/realDatasets';
 import MissionPanel, { MissionDef } from './ui/MissionPanel';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface AnovaAnalysisProps {
     onBack: () => void;
@@ -57,6 +59,8 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
     const [group3, setGroup3] = useState<DistributionParams>({ mean: 60, stdDev: 8, size: 50 });
 
     const [anovaResult, setAnovaResult] = useState({ fStatistic: 0, pValue: 1 });
+    const tweenedF = useTweenedNumber(anovaResult.fStatistic);
+    const tweenedP = useTweenedNumber(anovaResult.pValue);
 
     // Real-data mode
     const [selectedRealId, setSelectedRealId] = useState<string>(REAL_DATA_OPTIONS[0].id);
@@ -153,15 +157,11 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
     ];
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-cyan-400 hover:text-cyan-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-cyan-400">ANOVA Analysis</h1>
-                    <p className="text-slate-400 mt-2">Compare the means of multiple groups to see if they differ significantly.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="ANOVA Analysis"
+            subtitle="Compare the means of multiple groups to see if they differ significantly."
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <div className="sticky top-6">
@@ -216,13 +216,13 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-slate-300">F-Statistic:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
-                                {anovaResult.fStatistic.toFixed(3)}
+                                {tweenedF.toFixed(3)}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">p-value:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
-                                {anovaResult.pValue < 0.001 && anovaResult.pValue !== 0 ? anovaResult.pValue.toExponential(2) : anovaResult.pValue.toFixed(4)}
+                                {tweenedP < 0.001 && tweenedP !== 0 ? tweenedP.toExponential(2) : tweenedP.toFixed(4)}
                             </span>
                         </div>
                     </div>
@@ -239,7 +239,7 @@ const AnovaAnalysis: React.FC<AnovaAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

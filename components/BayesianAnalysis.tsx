@@ -3,6 +3,7 @@ import ProbabilityDistributionChart from './ProbabilityDistributionChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface BayesianAnalysisProps {
     onBack: () => void;
@@ -47,15 +48,13 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-purple-400 hover:text-purple-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-purple-400">Bayesian Inference</h1>
-                    <p className="text-slate-400 mt-2">Update your beliefs about a coin's fairness with new evidence.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Bayesian Inference"
+            subtitle="Update your beliefs about a coin's fairness with new evidence."
+            accentClass="text-purple-400"
+            backClass="text-purple-400 hover:text-purple-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4">
                     <ProbabilityDistributionChart distributions={distributionsForChart} />
@@ -95,7 +94,7 @@ const BayesianAnalysis: React.FC<BayesianAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

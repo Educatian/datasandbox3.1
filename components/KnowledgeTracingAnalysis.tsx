@@ -4,6 +4,7 @@ import { updateMastery } from '../services/statisticsService';
 import MasteryBarChart from './MasteryBarChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface KnowledgeTracingAnalysisProps {
@@ -45,15 +46,13 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-rose-400 hover:text-rose-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-rose-400">Knowledge Tracing</h1>
-                    <p className="text-slate-400 mt-2">Model a student's knowledge mastery using a Bayesian Knowledge Tracing (BKT) model.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Knowledge Tracing"
+            subtitle="Model a student's knowledge mastery using a Bayesian Knowledge Tracing (BKT) model."
+            accentClass="text-rose-400"
+            backClass="text-rose-400 hover:text-rose-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex flex-col justify-center p-6 space-y-6">
                     <h3 className="text-lg font-semibold text-rose-400 text-center">Student's Knowledge Mastery</h3>
@@ -90,7 +89,7 @@ const KnowledgeTracingAnalysis: React.FC<KnowledgeTracingAnalysisProps> = ({ onB
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

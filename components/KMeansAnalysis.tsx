@@ -5,6 +5,7 @@ import { getChatResponse } from '../services/geminiService';
 import { logEvent } from '../services/loggingService';
 import KMeansPlot from './KMeansPlot';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface KMeansAnalysisProps {
     onBack: () => void;
@@ -139,15 +140,13 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
     }, [k, points, centroids, isAnimating]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-fuchsia-400 hover:text-fuchsia-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-fuchsia-400">K-Means Clustering</h1>
-                    <p className="text-slate-400 mt-2">Watch how data points are grouped into clusters.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="K-Means Clustering"
+            subtitle="Watch how data points are grouped into clusters."
+            accentClass="text-fuchsia-400"
+            backClass="text-fuchsia-400 hover:text-fuchsia-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <KMeansPlot
@@ -190,7 +189,7 @@ const KMeansAnalysis: React.FC<KMeansAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

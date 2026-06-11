@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ConfidenceInterval } from '../types';
 import { generateSampleData, calculateConfidenceInterval } from '../services/statisticsService';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
@@ -7,6 +7,8 @@ import PredictGate from './ui/PredictGate';
 import ConfidenceIntervalChart from './ConfidenceIntervalChart';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
+import { playTick } from '../services/soundService';
 
 interface ConfidenceIntervalAnalysisProps {
     onBack: () => void;
@@ -34,8 +36,36 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
     }, [sampleSize, confidenceLevel]);
 
     const resetSimulations = () => {
+        stopHop();
         setIntervals([]);
     };
+
+    // HOP mode: hypothetical outcomes one at a time (animated uncertainty —
+    // discrete outcomes communicate sampling variability better than static
+    // summaries; Hullman, Resnick & Adar 2015).
+    const [hopRunning, setHopRunning] = useState(false);
+    const hopTimer = useRef<number | null>(null);
+    const runSimulationRef = useRef(runSimulation);
+    runSimulationRef.current = runSimulation;
+
+    const stopHop = () => {
+        if (hopTimer.current) { clearInterval(hopTimer.current); hopTimer.current = null; }
+        setHopRunning(false);
+    };
+
+    const runHop = () => {
+        if (hopRunning) { stopHop(); return; }
+        setHopRunning(true);
+        let count = 0;
+        hopTimer.current = window.setInterval(() => {
+            runSimulationRef.current(1);
+            playTick();
+            count++;
+            if (count >= 30) stopHop();
+        }, 280);
+    };
+
+    useEffect(() => () => stopHop(), []);
 
     const stats = React.useMemo(() => {
         const total = intervals.length;
@@ -47,6 +77,8 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
             percentage: (capturedCount / total) * 100
         };
     }, [intervals]);
+
+    const tweenedPct = useTweenedNumber(stats.percentage);
 
     const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
         "Welcome. This is Dr. Gem. 🧬 Here we test how 'Confident' we can be that our sample represents the truth. Try running 100 samples!",
@@ -112,6 +144,16 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                             <button onClick={() => runSimulation(1)} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg">Resample</button>
                             <button onClick={() => runSimulation(100)} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg">Run 100 Samples</button>
                         </div>
+                        <button
+                            onClick={runHop}
+                            aria-pressed={hopRunning}
+                            className={`w-full p-2 rounded-lg font-bold transition-colors ${hopRunning ? 'bg-rose-700 hover:bg-rose-600 text-white' : 'bg-violet-700 hover:bg-violet-600 text-white'}`}
+                        >
+                            {hopRunning ? '■ Stop the rain' : '▶ Watch 30 samples fall (HOP)'}
+                        </button>
+                        <p className="text-[10px] text-slate-500 -mt-3">
+                            One hypothetical sample at a time: watching intervals capture or miss the fixed true mean is the meaning of "{confidenceLevel}% confidence".
+                        </p>
                         <button onClick={resetSimulations} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
                             Reset
                         </button>
@@ -127,7 +169,7 @@ const ConfidenceIntervalAnalysis: React.FC<ConfidenceIntervalAnalysisProps> = ({
                         <div className="flex justify-between items-center mt-2">
                             <span className="text-slate-300">Intervals Capturing Mean:</span>
                             <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">
-                                {stats.captured} ({stats.percentage.toFixed(1)}%)
+                                {stats.captured} ({tweenedPct.toFixed(1)}%)
                             </span>
                         </div>
                     </div>

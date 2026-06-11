@@ -4,6 +4,7 @@ import { generateHMMSequence } from '../services/statisticsService';
 import HMMSequenceVisualizer from './HMMSequenceVisualizer';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface HMMAnalysisProps {
@@ -38,15 +39,13 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
     }, []);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-orange-400 hover:text-orange-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-orange-400">Hidden Markov Model (HMM)</h1>
-                    <p className="text-slate-400 mt-2">Adjust weather probabilities to see how they influence daily activities.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Hidden Markov Model (HMM)"
+            subtitle="Adjust weather probabilities to see how they influence daily activities."
+            accentClass="text-orange-400"
+            backClass="text-orange-400 hover:text-orange-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4 min-h-[250px]">
                     <HMMSequenceVisualizer sequence={sequence} />
@@ -98,7 +97,7 @@ const HMMAnalysis: React.FC<HMMAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

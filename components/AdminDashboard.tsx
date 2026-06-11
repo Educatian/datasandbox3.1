@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, getCurrentUser, isAdmin } from '../services/supabaseService';
 import { User } from '@supabase/supabase-js';
 import AdminAnalytics from './AdminAnalytics';
+import AdminLiveClass from './AdminLiveClass';
 
 // --- Types ---
 
@@ -95,7 +96,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
     const [userSearch, setUserSearch] = useState('');
     const [userListLoading, setUserListLoading] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false); // For autocomplete dropdown
-    const [adminTab, setAdminTab] = useState<'modules' | 'analytics'>('modules');
+    const [adminTab, setAdminTab] = useState<'modules' | 'analytics' | 'live'>('modules');
 
     // 1. Auth Check (Route Guard)
     useEffect(() => {
@@ -261,7 +262,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
                 </div>
 
                 <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700" role="tablist" aria-label="Admin sections">
-                    {([['modules', 'Modules & Users'], ['analytics', 'Learning Analytics']] as const).map(([tab, label]) => (
+                    {([['modules', 'Modules & Users'], ['analytics', 'Learning Analytics'], ['live', 'Live Class']] as const).map(([tab, label]) => (
                         <button
                             key={tab}
                             role="tab"
@@ -279,6 +280,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ curriculum, onBack, pre
             </header>
 
             {adminTab === 'analytics' && <AdminAnalytics />}
+            {adminTab === 'live' && <AdminLiveClass />}
 
             {adminTab === 'modules' && (
             <>

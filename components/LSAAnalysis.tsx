@@ -4,6 +4,7 @@ import { generateSequenceData, calculateLagSequentialAnalysis } from '../service
 import TransitionGraph from './TransitionGraph';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface LSAAnalysisProps {
@@ -40,14 +41,14 @@ const LSAAnalysis: React.FC<LSAAnalysisProps> = ({ onBack }) => {
     }, [sequences, lag]);
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-blue-400 hover:text-blue-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-blue-400">Lag Sequential Analysis</h1>
-                    <p className="text-slate-400 mt-2">Analyze and compare behavioral transition graphs between two groups.</p>
-                </div>
-            </header>
+        <ModuleShell
+            title="Lag Sequential Analysis"
+            subtitle="Analyze and compare behavioral transition graphs between two groups."
+            accentClass="text-blue-400"
+            backClass="text-blue-400 hover:text-blue-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <TransitionGraph title="Group A (High-Achievers)" result={resultA} actions={ALL_ACTIONS} />
@@ -72,7 +73,7 @@ const LSAAnalysis: React.FC<LSAAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

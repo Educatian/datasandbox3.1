@@ -7,9 +7,14 @@ import LoginPage from './components/LoginPage';
 import CurriculumView from './components/CurriculumView';
 import { ALL_TRACKS, getModuleDef, ModuleDef, MODULE_SCENARIOS, DEMO_MODULE_IDS } from './curriculum';
 import { MODULE_REGISTRY } from './components/moduleRegistry';
+import ModuleErrorBoundary from './components/ui/ModuleErrorBoundary';
+import { isMuted, setMuted } from './services/soundService';
+import { isTourDone } from './components/OnboardingTour';
 
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const ProgressView = lazy(() => import('./components/ProgressView'));
+const LabNotebookView = lazy(() => import('./components/LabNotebookView'));
+const OnboardingTour = lazy(() => import('./components/OnboardingTour'));
 
 const LoadingScreen: React.FC<{ label?: string }> = ({ label = 'Loading...' }) => (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center" role="status">
@@ -72,7 +77,38 @@ const App: React.FC = () => {
     // (used by the screencast scripts).
     const DEMO_MODE = typeof window !== 'undefined' && window.location.search.includes('demo=1');
     const LOCAL_BYPASS = import.meta.env.DEV && DEMO_MODE;
-    const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+    // Deep-linkable module routing: ?module=<id> (works for sharing/LMS links;
+    // browser back/forward navigates between portal and modules).
+    const [activeModuleId, setActiveModuleIdState] = useState<string | null>(() => {
+        if (typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get('module');
+    });
+    const setActiveModuleId = (id: string | null, pushHistory = true) => {
+        setActiveModuleIdState(id);
+        if (pushHistory && typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (id) url.searchParams.set('module', id);
+            else url.searchParams.delete('module');
+            window.history.pushState({ moduleId: id }, '', url);
+        }
+    };
+    useEffect(() => {
+        const onPop = () => {
+            setActiveModuleIdState(new URLSearchParams(window.location.search).get('module'));
+            window.scrollTo(0, 0);
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, []);
+
+    const [soundMuted, setSoundMuted] = useState(isMuted());
+    const toggleMute = () => {
+        const next = !soundMuted;
+        setSoundMuted(next);
+        setMuted(next);
+    };
+
+    const [showTour, setShowTour] = useState(false);
     const [user, setUserState] = useState<User | null>(
         DEMO_MODE ? ({ id: 'demo-guest', email: 'demo@guest' } as unknown as User) : null
     );
@@ -226,6 +262,11 @@ const App: React.FC = () => {
         setPage(activeModuleId || 'portal');
     }, [activeModuleId]);
 
+    // First-run tour (once per browser; demo guests see it too)
+    useEffect(() => {
+        if (user && !isTourDone()) setShowTour(true);
+    }, [user]);
+
     const handleLogout = async () => {
         logLogout();
         await signOut();
@@ -254,6 +295,19 @@ const App: React.FC = () => {
                         userKey={user?.email || user?.id || 'anonymous'}
                         onBack={() => setActiveModuleId(null)}
                         navigateTo={navigateTo}
+                    />
+                </Suspense>
+            );
+        }
+        if (activeModuleId === 'lab_notebook') {
+            return (
+                <Suspense fallback={<LoadingScreen label="Opening your lab notebook..." />}>
+                    <LabNotebookView
+                        userKey={user?.email || user?.id || 'anonymous'}
+                        onBack={() => setActiveModuleId(null)}
+                        navigateTo={navigateTo}
+                        settings={moduleSettings}
+                        isAdmin={isAdminState}
                     />
                 </Suspense>
             );
@@ -321,6 +375,23 @@ const App: React.FC = () => {
                     <span className="text-sm text-slate-300 hidden sm:block max-w-[150px] truncate">
                         {DEMO_MODE ? 'Demo Guest' : user.email}
                     </span>
+                    <button
+                        onClick={toggleMute}
+                        className={`transition-colors p-1 ${soundMuted ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-cyan-300'}`}
+                        title={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
+                        aria-label={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
+                        aria-pressed={soundMuted}
+                    >
+                        {soundMuted ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 9l4 6m0-6l-4 6" />
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728" />
+                            </svg>
+                        )}
+                    </button>
                     {!DEMO_MODE && (
                         <button
                             onClick={() => setActiveModuleId(activeModuleId === 'my_progress' ? null : 'my_progress')}
@@ -330,6 +401,18 @@ const App: React.FC = () => {
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6m4 6V9m4 10V5M5 19h14" />
+                            </svg>
+                        </button>
+                    )}
+                    {!DEMO_MODE && (
+                        <button
+                            onClick={() => setActiveModuleId(activeModuleId === 'lab_notebook' ? null : 'lab_notebook')}
+                            className={`transition-colors p-1 ${activeModuleId === 'lab_notebook' ? 'text-amber-300' : 'text-slate-400 hover:text-amber-300'}`}
+                            title="Lab Notebook"
+                            aria-label="Lab notebook"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </button>
                     )}
@@ -375,7 +458,15 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {renderPage()}
+            {showTour && (
+                <Suspense fallback={null}>
+                    <OnboardingTour onDone={() => setShowTour(false)} />
+                </Suspense>
+            )}
+
+            <ModuleErrorBoundary moduleId={activeModuleId || 'portal'} onBack={() => setActiveModuleId(null)}>
+                {renderPage()}
+            </ModuleErrorBoundary>
             <footer className="text-center text-slate-600 mt-24 pb-8 w-full border-t border-slate-800/50 pt-8">
                 <p className="font-medium">Data Sandbox 2.0</p>
                 <p className="mt-2 text-sm">Designed for Interactive Learning</p>

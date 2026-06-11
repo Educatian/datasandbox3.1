@@ -92,6 +92,7 @@ FROM (VALUES
   ('psm'), ('rdd'), ('sem'), ('survival'),
   ('irt'), ('factor-analysis'), ('knowledge-tracing'),
   ('logistic'), ('decision-tree'), ('k-means'), ('pca'), ('lpa'), ('xai'),
-  ('hmm'), ('spm'), ('lsa'), ('sequential'), ('sna'), ('topic-modeling'), ('multimodal')
+  ('hmm'), ('spm'), ('lsa'), ('sequential'), ('sna'), ('topic-modeling'), ('multimodal'),
+  ('checkpoint-pre'), ('capstone'), ('checkpoint-post')
 ) AS m(id)
 ON CONFLICT (module_id) DO NOTHING;

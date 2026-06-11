@@ -5,6 +5,7 @@ import { getChatResponse } from '../services/geminiService';
 import PredictionGauge from './PredictionGauge';
 import ContributionBars from './ContributionBars';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface XAIAnalysisProps {
     onBack: () => void;
@@ -103,15 +104,13 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
     }, [predictionResult, features, positiveContributions, negativeContributions]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-blue-400 hover:text-blue-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-blue-400">XAI for Prediction</h1>
-                    <p className="text-slate-400 mt-2">See how an AI model arrives at its prediction for a student's success.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="XAI for Prediction"
+            subtitle="See how an AI model arrives at its prediction for a student's success."
+            accentClass="text-blue-400"
+            backClass="text-blue-400 hover:text-blue-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-4">
                     <h3 className="text-lg font-semibold text-blue-400 mb-2">Student Profile</h3>
@@ -146,7 +145,7 @@ const XAIAnalysis: React.FC<XAIAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

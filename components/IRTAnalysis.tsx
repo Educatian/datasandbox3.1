@@ -4,6 +4,7 @@ import ICCChart from './ICCChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface IRTAnalysisProps {
     onBack: () => void;
@@ -32,15 +33,13 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-lime-400 hover:text-lime-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-lime-400">Item Response Theory (IRT)</h1>
-                    <p className="text-slate-400 mt-2">Visualize how item characteristics influence the probability of a correct answer.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Item Response Theory (IRT)"
+            subtitle="Visualize how item characteristics influence the probability of a correct answer."
+            accentClass="text-lime-400"
+            backClass="text-lime-400 hover:text-lime-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4">
                     <ICCChart params={irtParams} />
@@ -80,7 +79,7 @@ const IRTAnalysis: React.FC<IRTAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

@@ -6,6 +6,8 @@ import ContingencyTableVisualizer from './ContingencyTableVisualizer';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
 import DataContextCard from './ui/DataContextCard';
 import { getDataset, ContingencyDataset } from '../data/realDatasets';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface ChiSquareAnalysisProps {
     onBack: () => void;
@@ -24,6 +26,8 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
     const [colLabels, setColLabels] = useState<string[]>(SANDBOX_COL_LABELS);
     const [realDataset, setRealDataset] = useState<ContingencyDataset | null>(null);
     const [chiResult, setChiResult] = useState<ChiSquareResult | null>(null);
+    const tweenedChi2 = useTweenedNumber(chiResult?.chi2 ?? 0);
+    const tweenedP = useTweenedNumber(chiResult?.pValue ?? 1);
 
     // Chat state
     const [chatHistory, setChatHistory] = useState<Message[]>([
@@ -99,15 +103,13 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
     }, [observedData, chiResult, rowLabels, colLabels, realDataset]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-amber-400 hover:text-amber-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-amber-400">Chi-Square Test of Independence</h1>
-                    <p className="text-slate-400 mt-2">Explore the relationship between two categorical variables.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Chi-Square Test of Independence"
+            subtitle="Explore the relationship between two categorical variables."
+            accentClass="text-amber-400"
+            backClass="text-amber-400 hover:text-amber-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-6 flex flex-col space-y-6">
                     <h3 className="text-lg font-semibold text-amber-400 text-center">Contingency Table</h3>
@@ -172,11 +174,11 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
                         <h3 className="text-lg font-semibold text-amber-400 mb-3">Test Results</h3>
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-slate-300">Chi-Square (χ²):</span>
-                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">{chiResult?.chi2.toFixed(3)}</span>
+                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">{chiResult ? tweenedChi2.toFixed(3) : null}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">p-value:</span>
-                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">{chiResult?.pValue.toFixed(4)}</span>
+                            <span className="text-xl font-mono bg-slate-900 px-3 py-1 rounded">{chiResult ? tweenedP.toFixed(4) : null}</span>
                         </div>
                     </div>
 
@@ -192,7 +194,7 @@ const ChiSquareAnalysis: React.FC<ChiSquareAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

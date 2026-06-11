@@ -444,7 +444,40 @@ export const ADVANCED_TRACK: AssessmentDef[] = [
     }
 ];
 
-export const ALL_TRACKS: AssessmentDef[] = [...CURRICULUM, ...ADVANCED_TRACK];
+//================================================
+// Research & capstone track: the full investigative
+// cycle plus pre/post conceptual checkpoints
+//================================================
+
+export const RESEARCH_TRACK: AssessmentDef[] = [
+    {
+        id: 'research-01',
+        title: 'Your Investigation',
+        subTitle: 'The whole cycle, your question',
+        modules: [
+            {
+                id: 'checkpoint-pre', title: 'Checkpoint: Before You Begin',
+                description: 'An 8-question conceptual baseline (with research consent). Not graded; honesty is the point.',
+                manipulation: 'Answer 8 quick conceptual questions before touching the simulations.',
+                component: 'checkpoint'
+            },
+            {
+                id: 'capstone', title: 'Capstone: Your Investigation',
+                description: 'Pose a question, pick real data (or upload your own), explore it, and write a defensible conclusion.',
+                manipulation: 'Run the full investigative cycle and generate a printable lab report.',
+                component: 'capstone'
+            },
+            {
+                id: 'checkpoint-post', title: 'Checkpoint: After the Journey',
+                description: 'The same 8 concepts, after the sandbox. The difference is your learning, measured.',
+                manipulation: 'Retake the conceptual checkpoint and compare with your baseline.',
+                component: 'checkpoint'
+            }
+        ]
+    }
+];
+
+export const ALL_TRACKS: AssessmentDef[] = [...CURRICULUM, ...ADVANCED_TRACK, ...RESEARCH_TRACK];
 
 // Modules exposed in the public demo mode (?demo=1 on production builds):
 // a curated tour of the flagship interactions, no account required.
@@ -572,6 +605,10 @@ export const MODULE_SCENARIOS: Record<string, ModuleScenario> = {
     'multimodal': {
         role: 'Collaboration analyst',
         mission: 'Speech, gaze, and clicks on one timeline. Scrub to the auto-bookmarked moment and judge: was that joint attention or coincidence?'
+    },
+    'capstone': {
+        role: 'Principal investigator',
+        mission: 'No more training wheels: pose your own question, choose your own data, and defend a conclusion whose scope you can justify.'
     },
 };
 

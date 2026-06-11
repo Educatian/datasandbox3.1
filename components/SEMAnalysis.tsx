@@ -4,6 +4,8 @@ import { calculateModelFit } from '../services/statisticsService';
 import { getChatResponse } from '../services/geminiService';
 import PathDiagram from './PathDiagram';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface SEMAnalysisProps {
     onBack: () => void;
@@ -50,6 +52,10 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
     const [userModel, setUserModel] = useState<SEMModel>(initialModel);
     const [fitIndices, setFitIndices] = useState<FitIndices | null>(null);
     const [lastChangedPath, setLastChangedPath] = useState<SEMPath | null>(null);
+    const tweenedChiSquare = useTweenedNumber(fitIndices?.chiSquare ?? 0);
+    const tweenedPValue = useTweenedNumber(fitIndices?.pValue ?? 0);
+    const tweenedCfi = useTweenedNumber(fitIndices?.cfi ?? 0);
+    const tweenedRmsea = useTweenedNumber(fitIndices?.rmsea ?? 0);
 
     // Chat state
     const [chatHistory, setChatHistory] = useState<Message[]>([
@@ -115,15 +121,13 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
     }, [fitIndices, lastChangedPath, variableLabels]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-orange-400 hover:text-orange-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-orange-400">Structural Equation Modeling</h1>
-                    <p className="text-slate-400 mt-2">Test your theory. Click paths to build a model and check its fit to the data.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Structural Equation Modeling"
+            subtitle="Test your theory. Click paths to build a model and check its fit to the data."
+            accentClass="text-orange-400"
+            backClass="text-orange-400 hover:text-orange-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <PathDiagram model={userModel} onPathToggle={handlePathToggle} />
@@ -132,10 +136,10 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-orange-400 mb-3">Model Fit Indices</h3>
                         <div className="space-y-2">
-                            <FitDisplay label="Chi-Square (χ²)" value={fitIndices?.chiSquare.toFixed(2) || 'N/A'} />
-                            <FitDisplay label="p-value" value={fitIndices?.pValue.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.pValue > 0.05} isBad={fitIndices && fitIndices.pValue <= 0.05} />
-                            <FitDisplay label="CFI" value={fitIndices?.cfi.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.cfi >= 0.95} isBad={fitIndices && fitIndices.cfi < 0.90} />
-                            <FitDisplay label="RMSEA" value={fitIndices?.rmsea.toFixed(3) || 'N/A'} isGood={fitIndices && fitIndices.rmsea <= 0.06} isBad={fitIndices && fitIndices.rmsea > 0.10} />
+                            <FitDisplay label="Chi-Square (χ²)" value={fitIndices ? tweenedChiSquare.toFixed(2) : 'N/A'} />
+                            <FitDisplay label="p-value" value={fitIndices ? tweenedPValue.toFixed(3) : 'N/A'} isGood={fitIndices && fitIndices.pValue > 0.05} isBad={fitIndices && fitIndices.pValue <= 0.05} />
+                            <FitDisplay label="CFI" value={fitIndices ? tweenedCfi.toFixed(3) : 'N/A'} isGood={fitIndices && fitIndices.cfi >= 0.95} isBad={fitIndices && fitIndices.cfi < 0.90} />
+                            <FitDisplay label="RMSEA" value={fitIndices ? tweenedRmsea.toFixed(3) : 'N/A'} isGood={fitIndices && fitIndices.rmsea <= 0.06} isBad={fitIndices && fitIndices.rmsea > 0.10} />
                         </div>
                     </div>
 
@@ -151,7 +155,7 @@ const SEMAnalysis: React.FC<SEMAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

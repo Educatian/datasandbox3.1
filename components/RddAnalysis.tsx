@@ -5,6 +5,8 @@ import RddPlot from './RddPlot';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface RddAnalysisProps {
     onBack: () => void;
@@ -18,6 +20,7 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
     const [bandwidth, setBandwidth] = useState(15);
     const [data, setData] = useState<RddPoint[]>([]);
     const [rddResult, setRddResult] = useState<RddResult | null>(null);
+    const tweenedEffect = useTweenedNumber(rddResult && Number.isFinite(rddResult.effect) ? rddResult.effect : 0);
 
     // Chat state
     const { chatHistory, isChatLoading, sendMessage } = useGeminiChat(
@@ -49,15 +52,13 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
     }, [data, cutoff, bandwidth]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-amber-400 hover:text-amber-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-amber-400">Regression Discontinuity Design</h1>
-                    <p className="text-slate-400 mt-2">Estimate an intervention's causal effect by analyzing the "jump" at a cutoff point.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Regression Discontinuity Design"
+            subtitle={`Estimate an intervention's causal effect by analyzing the "jump" at a cutoff point.`}
+            accentClass="text-amber-400"
+            backClass="text-amber-400 hover:text-amber-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     {rddResult && <RddPlot data={data} result={rddResult} cutoff={cutoff} bandwidth={bandwidth} />}
@@ -78,7 +79,7 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
                         <div className="flex justify-between items-center">
                             <span className="text-slate-300">"Jump" at Cutoff:</span>
                             <span className="text-2xl font-mono bg-slate-900 px-3 py-1 rounded">
-                                {rddResult?.effect.toFixed(2) || 'N/A'}
+                                {rddResult ? (Number.isFinite(rddResult.effect) ? tweenedEffect : rddResult.effect).toFixed(2) : 'N/A'}
                             </span>
                         </div>
                     </div>
@@ -95,7 +96,7 @@ const RddAnalysis: React.FC<RddAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

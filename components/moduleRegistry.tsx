@@ -71,4 +71,8 @@ export const MODULE_REGISTRY: Record<string, React.ComponentType<any>> = {
     'topic-modeling': lazy(() => import('./TopicModelingAnalysis')),
     'xai': lazy(() => import('./XAIAnalysis')),
     'multimodal': lazy(() => import('./MultimodalAnalysis')),
+
+    // --- Research track ---
+    'capstone': lazy(() => import('./CapstoneInvestigation')),
+    'checkpoint': lazy(() => import('./CheckpointAssessment')),
 };

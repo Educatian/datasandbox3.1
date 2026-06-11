@@ -4,6 +4,7 @@ import { initializeLPA, expectationStep, maximizationStep } from '../services/st
 import { getChatResponse } from '../services/geminiService';
 import LPAScatterPlot from './LPAScatterPlot';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface LPAAnalysisProps {
     onBack: () => void;
@@ -130,15 +131,13 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
     }, [k, profiles, isAnimating]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-emerald-400 hover:text-emerald-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-emerald-400">Latent Profile Analysis</h1>
-                    <p className="text-slate-400 mt-2">Discover hidden subgroups in your data using Gaussian Mixture Models.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Latent Profile Analysis"
+            subtitle="Discover hidden subgroups in your data using Gaussian Mixture Models."
+            accentClass="text-emerald-400"
+            backClass="text-emerald-400 hover:text-emerald-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <LPAScatterPlot points={points} profiles={profiles} />
@@ -175,7 +174,7 @@ const LPAAnalysis: React.FC<LPAAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

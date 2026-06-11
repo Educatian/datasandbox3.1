@@ -5,6 +5,7 @@ import { getChatResponse } from '../services/geminiService';
 import MultimodalDisplay from './MultimodalDisplay';
 import MultimodalTimeline from './MultimodalTimeline';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface MultimodalAnalysisProps {
     onBack: () => void;
@@ -130,15 +131,14 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
     }
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-indigo-400 hover:text-indigo-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-indigo-400">Multimodal Analysis Dashboard</h1>
-                    <p className="text-slate-400 mt-2">Analyze synchronized video, speech, gaze, and click data from a collaborative session.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Multimodal Analysis Dashboard"
+            subtitle="Analyze synchronized video, speech, gaze, and click data from a collaborative session."
+            accentClass="text-indigo-400"
+            backClass="text-indigo-400 hover:text-indigo-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="flex flex-col space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 bg-slate-800 rounded-lg shadow-2xl p-4">
@@ -175,7 +175,7 @@ const MultimodalAnalysis: React.FC<MultimodalAnalysisProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { logEvent } from '../../services/loggingService';
 import { getMisconception } from '../../data/misconceptions';
+import { playCommit } from '../../services/soundService';
 import ClassComparison from './ClassComparison';
 
 export interface PredictionOption {
@@ -51,6 +52,7 @@ const PredictGate: React.FC<PredictGateProps> = ({ predictionId, question, optio
             confidence,
         });
         onCommit?.(selected, confidence);
+        playCommit();
         setCommitted(true);
     };
 

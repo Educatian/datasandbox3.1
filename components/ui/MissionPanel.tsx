@@ -1,5 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { logEvent } from '../../services/loggingService';
+import { playMissionComplete } from '../../services/soundService';
+
+const CONFETTI_COLORS = ['#22d3ee', '#a78bfa', '#fbbf24', '#34d399', '#f472b6'];
+
+const ConfettiBurst: React.FC = () => (
+    <div className="absolute inset-0 overflow-visible pointer-events-none" aria-hidden="true">
+        {Array.from({ length: 22 }, (_, i) => {
+            const angle = (i / 22) * Math.PI * 2;
+            const dist = 60 + (i % 5) * 22;
+            return (
+                <span
+                    key={i}
+                    className="confetti-piece"
+                    style={{
+                        left: '50%',
+                        top: '40%',
+                        backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                        ['--cx' as any]: `${Math.cos(angle) * dist}px`,
+                        ['--cy' as any]: `${Math.sin(angle) * dist - 30}px`,
+                        ['--cr' as any]: `${180 + (i * 47) % 360}deg`,
+                        animationDelay: `${(i % 6) * 0.03}s`,
+                    }}
+                />
+            );
+        })}
+    </div>
+);
 
 export interface MissionDef {
     id: string;
@@ -61,6 +88,7 @@ const MissionPanel: React.FC<MissionPanelProps> = ({ moduleId, missions, accentC
                 });
                 setJustCompleted(current.id);
                 logEvent('mission_complete', moduleId, { missionId: current.id, title: current.title });
+                playMissionComplete();
                 setTimeout(() => setJustCompleted(null), 4000);
             }
         }, 700);
@@ -70,7 +98,8 @@ const MissionPanel: React.FC<MissionPanelProps> = ({ moduleId, missions, accentC
     if (missions.length === 0) return null;
 
     return (
-        <div className="bg-slate-800/90 border border-amber-500/30 rounded-2xl p-5 shadow-lg">
+        <div className="relative bg-slate-800/90 border border-amber-500/30 rounded-2xl p-5 shadow-lg">
+            {justCompleted && <ConfettiBurst />}
             <div className="flex items-center justify-between gap-3 mb-1">
                 <p className={`text-[10px] uppercase tracking-widest font-bold ${accentClass}`}>
                     Missions · {completed.size}/{missions.length}

@@ -4,6 +4,7 @@ import { generateTimeSeriesData, calculateMovingAverage } from '../services/stat
 import LineChart from './LineChart';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface TimeSeriesAnalysisProps {
@@ -49,15 +50,13 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-lime-400 hover:text-lime-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-lime-400">Time Series Analysis</h1>
-                    <p className="text-slate-400 mt-2">Visualize time-series data, smooth it out, and find hidden patterns.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Time Series Analysis"
+            subtitle="Visualize time-series data, smooth it out, and find hidden patterns."
+            accentClass="text-lime-400"
+            backClass="text-lime-400 hover:text-lime-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl flex items-center justify-center p-4">
                     <LineChart data={data} movingAverageData={movingAverageData} onPointUpdate={handlePointUpdate} />
@@ -97,7 +96,7 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({ onBack }) => {
                     />
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

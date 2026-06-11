@@ -6,6 +6,7 @@ import TopicKeywords from './TopicKeywords';
 import DocumentViewer from './DocumentViewer';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
+import ModuleShell from './ui/ModuleShell';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 
 interface TopicModelingAnalysisProps {
@@ -75,15 +76,14 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
     }, [ldaResult?.topics.length]); // Re-run only when the number of topics changes
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-orange-400 hover:text-orange-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-orange-400">Topic Modeling (LDA)</h1>
-                    <p className="text-slate-400 mt-2">Discover hidden themes in text data by adjusting the number of topics.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Topic Modeling (LDA)"
+            subtitle="Discover hidden themes in text data by adjusting the number of topics."
+            accentClass="text-orange-400"
+            backClass="text-orange-400 hover:text-orange-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-2 flex flex-col space-y-8 self-start">
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg space-y-4">
@@ -119,7 +119,7 @@ const TopicModelingAnalysis: React.FC<TopicModelingAnalysisProps> = ({ onBack })
                     )}
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

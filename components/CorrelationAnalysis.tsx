@@ -11,6 +11,7 @@ import { bivariateDatasets, getDataset, scalePointsToViewport, BivariateDataset 
 import MissionPanel, { MissionDef } from './ui/MissionPanel';
 import { logEvent } from '../services/loggingService';
 import { supabase, isSupabaseConfigured } from '../services/supabaseService';
+import { parseCsv, extractBivariate } from '../utils/csv';
 
 interface CorrelationAnalysisProps {
     onBack: () => void;
@@ -51,6 +52,33 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
     // Cooperative class dataset state (pooled experiment trials from all users)
     const [classDataStatus, setClassDataStatus] = useState<'idle' | 'loading' | 'loaded' | 'insufficient' | 'error'>('idle');
 
+    // Bring-your-own-data (CSV upload) state
+    const [ownData, setOwnData] = useState<{ name: string; n: number; xLabel: string; yLabel: string } | null>(null);
+    const [csvError, setCsvError] = useState<string | null>(null);
+
+    const handleCsvUpload = (file: File) => {
+        setCsvError(null);
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const csv = parseCsv(String(reader.result || ''));
+                const { points: raw, xLabel, yLabel } = extractBivariate(csv);
+                if (raw.length < 3) {
+                    setCsvError('Could not find two numeric columns with at least 3 rows.');
+                    return;
+                }
+                const scaled = scalePointsToViewport(raw);
+                setPoints(scaled.map((p, i) => ({ id: i, x: p.x, y: p.y })));
+                setOwnData({ name: file.name, n: raw.length, xLabel, yLabel });
+                logEvent('own_data_upload', 'correlation-maker', { n: raw.length, xLabel, yLabel });
+                addBotMessage(`Loaded YOUR data (${file.name}: ${xLabel} vs ${yLabel}, n=${raw.length}). This is the whole point of the sandbox: what relationship do you see in your own data?`);
+            } catch {
+                setCsvError('Could not parse that file as CSV.');
+            }
+        };
+        reader.readAsText(file);
+    };
+
     const generateAbstractData = useCallback(() => {
         const data = generateCorrelatedData(30, targetCorrelation, spread);
         setPoints(data);
@@ -65,6 +93,8 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
 
     useEffect(() => {
         setClassDataStatus('idle');
+        setOwnData(null);
+        setCsvError(null);
         if (scenario === 'abstract') {
             generateAbstractData();
             addBotMessage("I've generated some abstract data. Adjust the correlation slider to see how the scatter plot changes.");
@@ -312,11 +342,34 @@ const CorrelationAnalysis: React.FC<CorrelationAnalysisProps> = ({ onBack, custo
                                 >
                                     Reload Original Data
                                 </button>
+
+                                <div className="pt-3 border-t border-slate-700/50">
+                                    <label className="block text-sm text-slate-400 mb-2">…or bring your own data (CSV)</label>
+                                    <input
+                                        type="file"
+                                        accept=".csv,text/csv,text/plain"
+                                        aria-label="Upload your own CSV dataset"
+                                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCsvUpload(f); e.target.value = ''; }}
+                                        className="block w-full text-xs text-slate-400 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-200 file:text-xs file:font-bold hover:file:bg-slate-600 file:cursor-pointer"
+                                    />
+                                    <p className="text-[10px] text-slate-600 mt-1">
+                                        First two numeric columns become x and y. Parsed entirely in your browser; nothing is uploaded anywhere.
+                                    </p>
+                                    {csvError && <p className="text-xs text-rose-400 mt-1" role="alert">{csvError}</p>}
+                                </div>
                             </div>
                         )}
                     </div>
 
-                    {realDataset && <DataContextCard dataset={realDataset} />}
+                    {ownData ? (
+                        <div className="bg-cyan-950/40 border border-cyan-700/40 rounded-xl p-4 text-sm">
+                            <p className="text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-1">Your data</p>
+                            <h4 className="font-bold text-cyan-200">{ownData.name}</h4>
+                            <p className="text-slate-300 mt-1">
+                                {ownData.xLabel} vs {ownData.yLabel} · n = {ownData.n} (rescaled to the canvas; r is unaffected)
+                            </p>
+                        </div>
+                    ) : (realDataset && <DataContextCard dataset={realDataset} />)}
 
                     <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
                         <h3 className="text-lg font-semibold text-cyan-400 mb-3">Statistics</h3>

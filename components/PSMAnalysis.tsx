@@ -5,6 +5,7 @@ import PSMComparisonPlot from './PSMComparisonPlot';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface PSMAnalysisProps {
     onBack: () => void;
@@ -50,15 +51,13 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-green-400 hover:text-green-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-green-400">Propensity Score Matching</h1>
-                    <p className="text-slate-400 mt-2">Visually balance two groups to create a fair comparison.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Propensity Score Matching"
+            subtitle="Visually balance two groups to create a fair comparison."
+            accentClass="text-green-400"
+            backClass="text-green-400 hover:text-green-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4 min-h-[500px]">
                     <PSMComparisonPlot data={data} isMatched={isMatched} />
@@ -92,7 +91,7 @@ const PSMAnalysis: React.FC<PSMAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

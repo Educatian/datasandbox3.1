@@ -5,6 +5,7 @@ import MultiLevelScatterPlot from './MultiLevelScatterPlot';
 import UnifiedGenAIChat from './UnifiedGenAIChat';
 import Slider from './ui/Slider';
 import { useGeminiChat } from '../hooks/useGeminiChat';
+import ModuleShell from './ui/ModuleShell';
 
 interface MultiLevelAnalysisProps {
     onBack: () => void;
@@ -61,15 +62,13 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
     }, [fixedIntercept, fixedSlope, interceptVariance, slopeVariance, regenerateData]);
 
     return (
-        <div className="w-full max-w-6xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-teal-400 hover:text-teal-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-teal-400">Multi-level Modeling</h1>
-                    <p className="text-slate-400 mt-2">Explore how overall trends and group-specific variations interact.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Multi-level Modeling"
+            subtitle="Explore how overall trends and group-specific variations interact."
+            accentClass="text-teal-400"
+            backClass="text-teal-400 hover:text-teal-300"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-2xl p-4">
                     <MultiLevelScatterPlot data={data} overallLine={overallLine} groupLines={groupLines} groupColors={GROUP_COLORS} />
@@ -102,7 +101,7 @@ const MultiLevelAnalysis: React.FC<MultiLevelAnalysisProps> = ({ onBack }) => {
                     </div>
                 </div>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 

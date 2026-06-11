@@ -5,6 +5,8 @@ import { getChatResponse } from '../services/geminiService';
 import FactorLoadingPlot from './FactorLoadingPlot';
 import CorrelationHeatmap from './CorrelationHeatmap';
 import UnifiedGenAIChat, { Message } from './UnifiedGenAIChat';
+import ModuleShell from './ui/ModuleShell';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
 
 interface FactorAnalysisProps {
     onBack: () => void;
@@ -39,6 +41,7 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
         if (!analysisResult) return 0;
         return analysisResult.explainedVariance.reduce((sum, v) => sum + v, 0) * 100;
     }, [analysisResult]);
+    const tweenedVariance = useTweenedNumber(totalVarianceExplained);
 
     const handleSendMessage = useCallback(async (msg: string) => {
         setIsChatLoading(true);
@@ -66,15 +69,14 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
     }, [numFactors, totalVarianceExplained, selectedItemIds]);
 
     return (
-        <div className="w-full max-w-7xl mx-auto">
-            <header className="mb-8">
-                <button onClick={onBack} className="text-violet-400 hover:text-violet-300 mb-4 inline-block">&larr; Back to Portal</button>
-                <div className="text-center">
-                    <h1 className="text-4xl font-bold text-violet-400">Factor Analysis</h1>
-                    <p className="text-slate-400 mt-2">Discover latent constructs by seeing how survey items group together.</p>
-                </div>
-            </header>
-
+        <ModuleShell
+            title="Factor Analysis"
+            subtitle="Discover latent constructs by seeing how survey items group together."
+            accentClass="text-violet-400"
+            backClass="text-violet-400 hover:text-violet-300"
+            maxWidthClass="max-w-7xl"
+            onBack={onBack}
+        >
             <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <aside className="lg:col-span-1 bg-slate-800 p-6 rounded-lg shadow-lg space-y-6 self-start">
                     <div>
@@ -84,7 +86,7 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
                             <span className="font-mono">{numFactors}</span>
                         </label>
                         <input type="range" min={2} max={3} step={1} value={numFactors} onChange={e => setNumFactors(+e.target.value)} aria-label="Number of factors" className="w-full h-2 bg-slate-700 rounded-lg" />
-                        <p className="text-xs text-slate-500 mt-1">Total Variance Explained: {totalVarianceExplained.toFixed(1)}%</p>
+                        <p className="text-xs text-slate-500 mt-1">Total Variance Explained: {tweenedVariance.toFixed(1)}%</p>
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-violet-400 mb-3 border-b border-violet-400/20 pb-2">Survey Items</h3>
@@ -120,7 +122,7 @@ const FactorAnalysis: React.FC<FactorAnalysisProps> = ({ onBack }) => {
                     </div>
                 </section>
             </main>
-        </div>
+        </ModuleShell>
     );
 };
 
