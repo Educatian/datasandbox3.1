@@ -109,6 +109,33 @@ const App: React.FC = () => {
     };
 
     const [showTour, setShowTour] = useState(false);
+
+    // PWA install affordance (Android/desktop Chrome fire beforeinstallprompt;
+    // iOS has no event — the guide documents Add to Home Screen instead).
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    useEffect(() => {
+        const onBeforeInstall = (e: any) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        const onInstalled = () => {
+            setInstallPrompt(null);
+            logEvent('pwa_installed', 'App', {});
+        };
+        window.addEventListener('beforeinstallprompt', onBeforeInstall);
+        window.addEventListener('appinstalled', onInstalled);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+            window.removeEventListener('appinstalled', onInstalled);
+        };
+    }, []);
+    const promptInstall = async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        const choice = await installPrompt.userChoice.catch(() => null);
+        logEvent('pwa_install_prompt', 'App', { outcome: choice?.outcome || 'unknown' });
+        if (choice?.outcome === 'accepted') setInstallPrompt(null);
+    };
     const [user, setUserState] = useState<User | null>(
         DEMO_MODE ? ({ id: 'demo-guest', email: 'demo@guest' } as unknown as User) : null
     );
@@ -375,6 +402,19 @@ const App: React.FC = () => {
                     <span className="text-sm text-slate-300 hidden sm:block max-w-[150px] truncate">
                         {DEMO_MODE ? 'Demo Guest' : user.email}
                     </span>
+                    {installPrompt && (
+                        <button
+                            onClick={promptInstall}
+                            className="flex items-center gap-1 text-xs font-bold text-cyan-300 bg-cyan-900/40 hover:bg-cyan-800/60 border border-cyan-700/50 rounded-full px-3 py-1 transition-colors"
+                            title="Install Data Sandbox as an app"
+                            aria-label="Install app"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4" />
+                            </svg>
+                            Install
+                        </button>
+                    )}
                     <button
                         onClick={toggleMute}
                         className={`transition-colors p-1 ${soundMuted ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-cyan-300'}`}
@@ -444,10 +484,10 @@ const App: React.FC = () => {
 
             {/* Demo mode banner */}
             {DEMO_MODE && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-violet-950/90 backdrop-blur-sm border border-violet-500/40 rounded-full px-5 py-2 shadow-2xl">
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-violet-950/90 backdrop-blur-sm border border-violet-500/40 rounded-full px-5 py-2 shadow-2xl whitespace-nowrap max-w-[94vw]">
                     <span className="text-xs text-violet-200">
-                        <span className="font-bold uppercase tracking-wider mr-2">Demo</span>
-                        A guided taste of the sandbox. Progress is not saved.
+                        <span className="font-bold uppercase tracking-wider">Demo</span>
+                        <span className="hidden sm:inline ml-2">A guided taste of the sandbox. Progress is not saved.</span>
                     </span>
                     <button
                         onClick={() => { window.location.href = window.location.pathname; }}
