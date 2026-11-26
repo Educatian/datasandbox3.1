@@ -55,22 +55,27 @@ export const extractBivariate = (
     yCol?: number,
     maxPoints = 500
 ): { points: { x: number; y: number }[]; xLabel: string; yLabel: string } => {
+    const isNumeric = (cell: string | undefined): boolean =>
+        cell !== undefined && cell.trim() !== '' && Number.isFinite(Number(cell));
     const numericCounts = csv.headers.map((_, c) =>
-        csv.rows.reduce((n, r) => n + (r[c] !== undefined && r[c] !== '' && !Number.isNaN(Number(r[c])) ? 1 : 0), 0)
+        csv.rows.reduce((n, r) => n + (isNumeric(r[c]) ? 1 : 0), 0)
     );
     let xi = xCol;
     let yi = yCol;
     if (xi === undefined || yi === undefined) {
         const ranked = numericCounts
             .map((count, idx) => ({ count, idx }))
+            .filter(({ count }) => count > 0)
             .sort((a, b) => b.count - a.count);
         xi = ranked[0]?.idx ?? 0;
-        yi = ranked[1]?.idx ?? Math.min(1, csv.headers.length - 1);
+        yi = ranked[1]?.idx ?? -1;
         if (xi > yi) [xi, yi] = [yi, xi]; // keep column order natural
     }
 
     const points: { x: number; y: number }[] = [];
     for (const r of csv.rows) {
+        if (points.length >= maxPoints) break;
+        if (!isNumeric(r[xi!]) || !isNumeric(r[yi!])) continue;
         const x = Number(r[xi!]);
         const y = Number(r[yi!]);
         if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
